@@ -146,7 +146,7 @@ describe('Metrics', () => {
 
   it('should reflect submitted metric changes in history', async () => {
     await submitMetricBackupStart(repository.id, requestOpts);
-    await submitMetricBackupEnd(repository.id, { success: true, durationMs: 1234 }, requestOpts);
+    await submitMetricBackupEnd(repository.id, { status: 'complete', durationMs: 1234 }, requestOpts);
     await submitMetricRepositorySize(repository.id, { sizeBytes: 4096 }, requestOpts);
 
     await expect(listMetricsHistory(repository.id, {}, requestOpts)).resolves.toEqual({
