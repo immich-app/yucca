@@ -48,7 +48,7 @@ describe('MetricsController (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/api/metrics/submit/${repository.id}/backup/end`)
         .set('Cookie', `yucca-access-token=${session.accessToken}`)
-        .send({ success: true, durationMs: 1234 })
+        .send({ status: 'complete', durationMs: 1234 })
         .expect(204);
 
       await request(app.getHttpServer())
@@ -73,7 +73,7 @@ describe('MetricsController (e2e)', () => {
             id: expect.any(String),
             repositoryId: repository.id,
             backup: expect.any(String),
-            successfulBackup: expect.any(String),
+            backupStatus: 'complete',
             backupDuration: 1234,
           }),
           expect.objectContaining({
@@ -120,7 +120,7 @@ describe('MetricsController (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/api/metrics/submit/${repository.id}/backup/end`)
         .set('Cookie', `yucca-access-token=${session.accessToken}`)
-        .send({ success: true, durationMs: 1234 })
+        .send({ status: 'complete', durationMs: 1234 })
         .expect(204);
 
       await request(app.getHttpServer())
@@ -147,7 +147,7 @@ describe('MetricsController (e2e)', () => {
           metrics: expect.objectContaining({
             sizeBytes: 4096,
             lastBackup: expect.any(String),
-            lastSuccessfulBackup: expect.any(String),
+            lastBackupStatus: 'complete',
             lastBackupDuration: 1234,
           }),
           meter: expect.any(Object),

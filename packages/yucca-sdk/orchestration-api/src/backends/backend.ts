@@ -1,4 +1,5 @@
 import {
+  BackupStatus,
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
   RepositoryGetResponseDto,
@@ -28,7 +29,7 @@ export abstract class Backend {
   abstract getResticEndpoint(id: string): Promise<string>;
 
   abstract submitMetricBackupStart(id: string): void;
-  abstract submitMetricBackupEnd(id: string, success: boolean, duration: number): void;
+  abstract submitMetricBackupEnd(id: string, status: BackupStatus, durationMs: number): void;
   abstract submitMetricRepositorySize(id: string, size: number): void;
   abstract submitStructuredLog(summary: string, data: object): void;
 

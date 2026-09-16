@@ -1,4 +1,5 @@
 import {
+  BackupStatus,
   createRepository,
   createResticUrl,
   createTicket,
@@ -96,9 +97,9 @@ export class YuccaBackend extends Backend {
       .catch((error) => this.logger.error('Failed to submit backup start metric', error));
   }
 
-  submitMetricBackupEnd(id: string, success: boolean, durationMs: number): void {
+  submitMetricBackupEnd(id: string, status: BackupStatus, durationMs: number): void {
     void this.getRequestOptions()
-      .then((requestOptions) => submitMetricBackupEnd(id, { durationMs, success }, requestOptions))
+      .then((requestOptions) => submitMetricBackupEnd(id, { durationMs, status }, requestOptions))
       .catch((error) => this.logger.error('Failed to submit backup end metric', error));
   }
 

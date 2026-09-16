@@ -2,6 +2,7 @@ import { ConnectionTypes, isoDatetimeToDate } from '@common/server';
 import { createZodDto } from 'nestjs-zod';
 import { CursorPaginationSchema } from 'src/dto/pagination.dto';
 import { z } from 'zod';
+import { BackupStatusSchema } from './metrics.dto';
 
 const RepositoryOwnerSchema = z
   .object({
@@ -17,7 +18,7 @@ const RepositoryMetricsSchema = z
     sizeBytes: z.number(),
     lastStarted: isoDatetimeToDate.nullable(),
     lastBackup: isoDatetimeToDate.nullable(),
-    lastSuccessfulBackup: isoDatetimeToDate.nullable(),
+    lastBackupStatus: BackupStatusSchema.nullable(),
     lastBackupDuration: z.number().nullable(),
   })
   .meta({ id: 'RepositoryMetricsDto' });

@@ -1,4 +1,6 @@
 import { Column, ForeignKeyColumn, type Generated, Table } from '@immich/sql-tools';
+import { BackupStatus } from 'src/enum';
+import { backup_status_enum } from '../enums';
 import { RepositoryTable } from './repository.table';
 
 @Table({ name: 'repositoryMetricsHistory' })
@@ -21,8 +23,8 @@ export class RepositoryMetricsHistoryTable {
   @Column({ type: 'timestamp with time zone', nullable: true })
   backup?: Date;
 
-  @Column({ type: 'timestamp with time zone', nullable: true })
-  successfulBackup?: Date;
+  @Column({ type: 'enum', enum: backup_status_enum, nullable: true })
+  backupStatus?: BackupStatus;
 
   @Column({ type: 'integer', nullable: true })
   backupDuration?: number;

@@ -2,7 +2,8 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 import { TaskStatus, TaskType } from '../enum';
 import { BackendTypeSchema } from './backend.dto';
-import { TaskStatusSchema } from './runningTasks.dto';
+
+const BackupStatusSchema = z.enum(['incomplete', 'complete', 'warn', 'failed']);
 
 export const RetentionPolicySchema = z
   .object({
@@ -28,9 +29,10 @@ const RepositorySchema = z
 
 const RepositoryMetricsSchema = z
   .object({
+    lastStarted: z.string().nullable().optional(),
     lastBackup: z.string().nullable().optional(),
-    lastBackupStatus: TaskStatusSchema.optional(),
-    lastBackupDuration: z.int().optional(),
+    lastBackupStatus: BackupStatusSchema.nullable().optional(),
+    lastBackupDuration: z.int().nullable().optional(),
     sizeBytes: z.int(),
   })
   .meta({ id: 'RepositoryMetricsDto' });

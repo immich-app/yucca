@@ -5,7 +5,7 @@
     value: number;
     label: string;
     color: string;
-    badge: "success" | "warning" | "danger" | "secondary";
+    badge: "success" | "warning" | "danger" | "secondary" | "info";
   };
 
   type Props = {

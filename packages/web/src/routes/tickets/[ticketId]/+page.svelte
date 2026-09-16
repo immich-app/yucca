@@ -28,6 +28,8 @@
     "repository.delete": "Permanently Delete",
     "repository.disable-worm": "Disable Write-only",
   };
+
+  // TODO: complete UI once design is ready
 </script>
 
 <svelte:head><title>Confirm Action &middot; FUTO Backups</title></svelte:head>
@@ -46,7 +48,7 @@
                 bytes={ticket.meter?.sizeBytes ?? ticket.metrics.sizeBytes}
               /></span
             >
-            {#if ticket.metrics.lastSuccessfulBackup}
+            {#if ticket.metrics.lastBackupStatus}
               <i>Last backed up [time ago]</i>
             {:else}
               <i>Never successfully backed up</i>

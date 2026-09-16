@@ -44,11 +44,13 @@ export type TicketCreateResponseDto = {
     /** IdP URL the browser must be sent to */
     redirectTo: string;
 };
+export type BackupStatus = "incomplete" | "complete" | "warn" | "failed";
 export type RepositoryMetricsDto = {
-    lastBackup: string | null;
-    lastSuccessfulBackup: string | null;
-    lastBackupDuration?: number;
     sizeBytes: number;
+    lastStarted?: string | null;
+    lastBackup?: string | null;
+    lastBackupStatus?: (BackupStatus) | null;
+    lastBackupDuration?: number | null;
 };
 export type RepositoryMeterDto = {
     sizeBytes: number;
@@ -133,7 +135,8 @@ export type DiscordLinkRequestResponseDto = {
     discordUsername: string;
 };
 export type SubmitBackupEndRequestDto = {
-    success: boolean;
+    status?: BackupStatus;
+    success?: boolean;
     durationMs: number;
 };
 export type SubmitUpdateSizeRequestDto = {
@@ -152,7 +155,7 @@ export type RepositoryMetricsHistoryDto = {
     sizeBytes?: number | null;
     started?: string | null;
     backup?: string | null;
-    successfulBackup?: string | null;
+    backupStatus?: (BackupStatus) | null;
     backupDuration?: number | null;
 };
 export type RepositoryMetricsHistoryListResponseDto = {

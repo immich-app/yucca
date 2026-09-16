@@ -44,6 +44,10 @@
             tally.warned++;
             break;
           }
+          case "incomplete": {
+            tally.incomplete++;
+            break;
+          }
           default: {
             tally.success++;
             break;
@@ -52,7 +56,7 @@
 
         return tally;
       },
-      { success: 0, offline: 0, warned: 0, failed: 0, neverRun: 0 },
+      { success: 0, offline: 0, warned: 0, failed: 0, incomplete: 0, neverRun: 0 },
     ),
   );
 </script>
@@ -78,6 +82,12 @@
           label: "Successful",
           color: "var(--immich-ui-success-500)",
           badge: "success",
+        },
+        {
+          value: status.incomplete,
+          label: "In-progress or incomplete",
+          color: "var(--immich-ui-info-400)",
+          badge: "info",
         },
         {
           value: status.offline,

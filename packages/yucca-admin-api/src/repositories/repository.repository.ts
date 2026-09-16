@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ExpressionBuilder, Insertable, Kysely, Updateable } from 'kysely';
 import { jsonBuildObject } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
+import { BackupStatus } from 'src/enum';
 import { DB } from 'src/schema';
 import { RepositoryTable } from 'src/schema/tables/repository.table';
 import { toCursorPage } from 'src/utils/pagination';
@@ -18,7 +19,7 @@ type RepositoryMetricsJson = {
   sizeBytes: number;
   lastStarted: Date | null;
   lastBackup: Date | null;
-  lastSuccessfulBackup: Date | null;
+  lastBackupStatus: BackupStatus | null;
   lastBackupDuration: number | null;
 };
 
@@ -27,7 +28,7 @@ const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetri
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
     lastStarted: eb.ref('repositoryMetrics.lastStarted'),
     lastBackup: eb.ref('repositoryMetrics.lastBackup'),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
+    lastBackupStatus: eb.ref('repositoryMetrics.lastBackupStatus'),
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   })
     .$castTo<RepositoryMetricsJson>()

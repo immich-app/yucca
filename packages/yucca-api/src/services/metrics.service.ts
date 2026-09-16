@@ -8,6 +8,7 @@ import {
   SubmitUpdateSizeRequestDto,
 } from 'src/dto/metrics.dto';
 import { CursorPaginationDto } from 'src/dto/pagination.dto';
+import { BackupStatus } from 'src/enum';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { RepositoryMetricsRepository } from 'src/repositories/repositoryMetrics.repository';
 import { RepositoryMetricsHistoryRepository } from 'src/repositories/repositoryMetricsHistory.repository';
@@ -54,13 +55,21 @@ export class MetricsService {
     }
 
     const now = new Date();
-    await this.metrics.save(repositoryId, { lastStarted: now });
-    await this.history.create({ repositoryId, started: now });
+    await this.metrics.save(repositoryId, {
+      lastStarted: now,
+      lastBackupStatus: BackupStatus.Incomplete,
+    });
+
+    await this.history.create({
+      repositoryId,
+      started: now,
+      backupStatus: BackupStatus.Incomplete,
+    });
 
     this.userLastStarted.record(toUnixSeconds(now), { user_id: auth.id, repository_id: repositoryId });
   }
 
-  async submitBackupEnd(auth: AuthDto, repositoryId: string, dto: SubmitBackupEndRequestDto) {
+  async submitBackupEnd(auth: AuthDto, repositoryId: string, { durationMs, status }: SubmitBackupEndRequestDto) {
     const repository = await this.repositories.get(repositoryId);
     if (repository.userId !== auth.id) {
       throw new UnauthorizedException();
@@ -69,19 +78,21 @@ export class MetricsService {
     const now = new Date();
     await this.metrics.save(repositoryId, {
       lastBackup: now,
-      lastBackupDuration: dto.durationMs,
-      ...(dto.success ? { lastSuccessfulBackup: now } : {}),
+      lastBackupDuration: durationMs,
+      lastBackupStatus: status,
     });
+
     await this.history.create({
       repositoryId,
       backup: now,
-      backupDuration: dto.durationMs,
-      ...(dto.success ? { successfulBackup: now } : {}),
+      backupStatus: status,
+      backupDuration: durationMs,
     });
 
     this.userLastBackup.record(toUnixSeconds(now), { user_id: auth.id, repository_id: repositoryId });
-    this.userLastBackupDuration.record(dto.durationMs, { user_id: auth.id, repository_id: repositoryId });
-    if (dto.success) {
+    this.userLastBackupDuration.record(durationMs, { user_id: auth.id, repository_id: repositoryId });
+
+    if (status === BackupStatus.Complete) {
       this.userLastSuccessfulBackup.record(toUnixSeconds(now), { user_id: auth.id, repository_id: repositoryId });
     }
   }

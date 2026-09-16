@@ -16,6 +16,13 @@ export enum AuditAction {
   DisableWorm = 'repository.disable-worm',
 }
 
+export enum BackupStatus {
+  Incomplete = 'incomplete',
+  Complete = 'complete',
+  Warn = 'warn',
+  Failed = 'failed',
+}
+
 // Audiences of the ES256 JWTs this service mints for the CLI login flow.
 export enum JwtAudience {
   // One-time authorization code handed to the loopback redirect (short TTL).

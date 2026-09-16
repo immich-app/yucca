@@ -65,7 +65,7 @@ export type ImmichBackupStatus =
         | 'unconfigured'
         | 'never';
     }
-  | { kind: 'complete' | 'warn' | 'failed'; lastBackup: string };
+  | { kind: 'complete' | 'warn' | 'incomplete' | 'failed'; lastBackup: string };
 
 const toImmichBackupStatus = (
   data: ImmichBackupStatusDto | undefined,

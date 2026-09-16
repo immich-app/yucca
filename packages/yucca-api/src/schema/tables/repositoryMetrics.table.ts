@@ -1,4 +1,6 @@
 import { Column, ForeignKeyColumn, Table } from '@immich/sql-tools';
+import { BackupStatus } from 'src/enum';
+import { backup_status_enum } from '../enums';
 import { RepositoryTable } from './repository.table';
 
 @Table({ name: 'repositoryMetrics' })
@@ -15,8 +17,8 @@ export class RepositoryMetricsTable {
   @Column({ type: 'timestamp with time zone', nullable: true })
   lastBackup?: Date;
 
-  @Column({ type: 'timestamp with time zone', nullable: true })
-  lastSuccessfulBackup?: Date;
+  @Column({ type: 'enum', enum: backup_status_enum, nullable: true })
+  lastBackupStatus?: BackupStatus;
 
   @Column({ type: 'integer', nullable: true })
   lastBackupDuration?: number;

@@ -564,7 +564,7 @@ export class RepositoryService {
         await closeLog(lastBackupStatus, error);
 
         if (backend.isMetricsCapable()) {
-          backend.submitMetricBackupEnd(remoteId, lastBackupStatus !== TaskStatus.Failed, lastBackupDuration);
+          backend.submitMetricBackupEnd(remoteId, lastBackupStatus, lastBackupDuration);
         }
       } catch (error) {
         this.telemetry.submitStructuredLog('Failed to finalise backup', {

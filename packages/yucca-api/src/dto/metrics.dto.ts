@@ -1,12 +1,26 @@
 import { isoDatetimeToDate } from '@common/server';
 import { createZodDto } from 'nestjs-zod';
+import { BackupStatus } from 'src/enum';
 import { z } from 'zod';
+
+export const BackupStatusSchema = z.enum(BackupStatus).meta({ id: 'BackupStatus' });
 
 const SubmitBackupEndRequestSchema = z
   .object({
-    success: z.boolean(),
+    status: BackupStatusSchema.optional(),
+    // TODO: drop support for `success` once new metrics consumers rolled out
+    // remove the line below, the `.refine` and `.transform` statements
+    success: z.boolean().optional(),
     durationMs: z.int().min(0),
   })
+  .refine(({ status, success }) => status !== undefined || success !== undefined, {
+    message: 'Either status or success is required',
+    path: ['status'],
+  })
+  .transform(({ status, success, durationMs }) => ({
+    status: status ?? (success ? BackupStatus.Complete : BackupStatus.Failed),
+    durationMs,
+  }))
   .meta({ id: 'SubmitBackupEndRequestDto' });
 
 const SubmitUpdateSizeRequestSchema = z
@@ -21,7 +35,7 @@ const RepositoryMetricsHistorySchema = z
     sizeBytes: z.number().nullable().optional(),
     started: isoDatetimeToDate.nullable().optional(),
     backup: isoDatetimeToDate.nullable().optional(),
-    successfulBackup: isoDatetimeToDate.nullable().optional(),
+    backupStatus: BackupStatusSchema.nullable().optional(),
     backupDuration: z.number().nullable().optional(),
   })
   .meta({ id: 'RepositoryMetricsHistoryDto' });
