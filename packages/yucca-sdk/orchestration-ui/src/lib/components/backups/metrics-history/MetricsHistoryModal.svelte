@@ -77,21 +77,11 @@
           {@const isStart = entry.started != null}
           {@const isEnd = entry.backup != null}
           {@const isSize = entry.sizeBytes != null && !isStart && !isEnd}
-          {@const succeeded =
-            isEnd &&
-            entry.successfulBackup != null &&
-            entry.successfulBackup === entry.backup}
+          {@const status = entry.backupStatus}
           <Stack gap={1} class="px-4 py-3">
             <HStack class="justify-between gap-4">
               <HStack class="gap-2">
-                {#if isStart}
-                  <Icon
-                    icon={mdiPlayCircleOutline}
-                    size="18"
-                    class="text-info-500"
-                  />
-                  <Text>Backup started</Text>
-                {:else if isEnd && succeeded}
+                {#if status === 'complete'}
                   <Icon
                     icon={mdiCheckCircleOutline}
                     size="18"
@@ -99,6 +89,37 @@
                   />
                   <Text>Backup finished</Text>
                   <Badge size="tiny" color="success">Success</Badge>
+                {:else if status === 'warn'}
+                  <Icon
+                    icon={mdiAlertCircleOutline}
+                    size="18"
+                    class="text-warning-500"
+                  />
+                  <Text>Backup finished</Text>
+                  <Badge size="tiny" color="warning">Warning</Badge>
+                {:else if status === 'incomplete'}
+                  <Icon
+                    icon={mdiAlertCircleOutline}
+                    size="18"
+                    class="text-warning-500"
+                  />
+                  <Text>Backup incomplete</Text>
+                  <Badge size="tiny" color="warning">Incomplete</Badge>
+                {:else if status === 'failed'}
+                  <Icon
+                    icon={mdiAlertCircleOutline}
+                    size="18"
+                    class="text-danger-500"
+                  />
+                  <Text>Backup finished</Text>
+                  <Badge size="tiny" color="danger">Failed</Badge>
+                {:else if isStart}
+                  <Icon
+                    icon={mdiPlayCircleOutline}
+                    size="18"
+                    class="text-info-500"
+                  />
+                  <Text>Backup started</Text>
                 {:else if isEnd}
                   <Icon
                     icon={mdiAlertCircleOutline}

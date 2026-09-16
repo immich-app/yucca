@@ -160,7 +160,7 @@ describe('Metrics', () => {
           id: expect.any(String),
           repositoryId: repository.id,
           backup: expect.any(String),
-          successfulBackup: expect.any(String),
+          backupStatus: expect.any(String),
           backupDuration: 1234,
         }),
         expect.objectContaining({
@@ -180,7 +180,7 @@ describe('Metrics', () => {
         metrics: expect.objectContaining({
           sizeBytes: 4096,
           lastBackup: expect.any(String),
-          lastSuccessfulBackup: expect.any(String),
+          lastBackupStatus: expect.any(String),
           lastBackupDuration: 1234,
         }),
       }),

@@ -44,6 +44,9 @@
       case "warn": {
         return { color: "warning", icon: mdiCloudCheckVariantOutline } as const;
       }
+      case "incomplete": {
+        return { color: "warning", icon: mdiCloudAlertOutline } as const;
+      }
       case "paused": {
         return { color: "warning", icon: mdiCloudAlertOutline } as const;
       }
@@ -93,6 +96,8 @@
       Backup failed
     {:else if status.kind === "warn"}
       Backed up with warnings <RelativeTime time={status.lastBackup} />
+    {:else if status.kind === "incomplete"}
+      Backup did not complete <RelativeTime time={status.lastBackup} />
     {:else if status.kind === "paused"}
       Backups paused
     {:else if status.kind === "unconfigured"}

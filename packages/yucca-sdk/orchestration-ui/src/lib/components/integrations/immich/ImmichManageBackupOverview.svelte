@@ -37,6 +37,9 @@
       case "warn": {
         return { color: "warning", icon: mdiAlert } as const;
       }
+      case "incomplete": {
+        return { color: "warning", icon: mdiAlert } as const;
+      }
       case "complete": {
         return { color: "success", icon: mdiCheck } as const;
       }
@@ -88,6 +91,8 @@
         Last backup failed <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "warn"}
         Last backup finished with warnings <RelativeTime time={status.lastBackup} />
+      {:else if status.kind === "incomplete"}
+        Last backup did not complete <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "complete"}
         Last backup successful <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "paused"}

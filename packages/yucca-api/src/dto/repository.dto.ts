@@ -18,10 +18,10 @@ const RepositorySchema = z
 export const RepositoryMetricsSchema = z
   .object({
     sizeBytes: z.number(),
-    lastStarted: isoDatetimeToDate.optional(),
-    lastBackup: isoDatetimeToDate.optional(),
-    lastBackupStatus: BackupStatusSchema.optional(),
-    lastBackupDuration: z.number().optional(),
+    lastStarted: isoDatetimeToDate.nullable().optional(),
+    lastBackup: isoDatetimeToDate.nullable().optional(),
+    lastBackupStatus: BackupStatusSchema.nullable().optional(),
+    lastBackupDuration: z.number().nullable().optional(),
   })
   .meta({ id: 'RepositoryMetricsDto' });
 
