@@ -47,10 +47,10 @@ export type TicketCreateResponseDto = {
 export type BackupStatus = "incomplete" | "complete" | "warn" | "failed";
 export type RepositoryMetricsDto = {
     sizeBytes: number;
-    lastStarted?: string;
-    lastBackup?: string;
-    lastBackupStatus?: BackupStatus;
-    lastBackupDuration?: number;
+    lastStarted?: string | null;
+    lastBackup?: string | null;
+    lastBackupStatus?: (BackupStatus) | null;
+    lastBackupDuration?: number | null;
 };
 export type RepositoryMeterDto = {
     sizeBytes: number;
