@@ -86,10 +86,10 @@ export type IntegrationsResponseDto = {
     immichState?: ImmichStateDto;
     immichIntegration?: ImmichIntegrationDto;
 };
-export type TaskStatus = "incomplete" | "complete" | "warn" | "failed";
 export type RepositoryMetricsDto = {
+    lastStarted?: string;
     lastBackup?: string | null;
-    lastBackupStatus?: TaskStatus;
+    lastBackupStatus?: "incomplete" | "complete" | "warn" | "failed";
     lastBackupDuration?: number;
     sizeBytes: number;
 };
@@ -275,6 +275,7 @@ export type RunResponseDto = {
     run: RunDto;
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
+export type TaskStatus = "incomplete" | "complete" | "warn" | "failed";
 export type ActiveScheduleItemDto = {
     repositoryId: string;
     status: TaskStatus;

@@ -1566,12 +1566,21 @@
       "RepositoryMetricsDto": {
         "type": "object",
         "properties": {
+          "lastStarted": {
+            "type": "string"
+          },
           "lastBackup": {
             "type": "string",
             "nullable": true
           },
           "lastBackupStatus": {
-            "$ref": "#/components/schemas/TaskStatus"
+            "type": "string",
+            "enum": [
+              "incomplete",
+              "complete",
+              "warn",
+              "failed"
+            ]
           },
           "lastBackupDuration": {
             "type": "integer",
@@ -1586,15 +1595,6 @@
         },
         "required": [
           "sizeBytes"
-        ]
-      },
-      "TaskStatus": {
-        "type": "string",
-        "enum": [
-          "incomplete",
-          "complete",
-          "warn",
-          "failed"
         ]
       },
       "RepositoryMeterDto": {
@@ -2353,6 +2353,15 @@
         "required": [
           "repositoryId",
           "status"
+        ]
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "incomplete",
+          "complete",
+          "warn",
+          "failed"
         ]
       },
       "RunningTaskListResponse": {
