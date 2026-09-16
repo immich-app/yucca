@@ -68,7 +68,7 @@ describe('Bootstrap', () => {
     await waitFor(() => apiSubmitMetricBackupEnd.mock.calls.length > 0);
     expect(apiSubmitMetricBackupEnd).toHaveBeenCalledWith(
       remoteId,
-      { success: false, durationMs: expect.any(Number) },
+      { status: 'failed', durationMs: expect.any(Number) },
       expect.any(Object),
     );
 
