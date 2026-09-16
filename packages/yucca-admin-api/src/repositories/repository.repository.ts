@@ -14,14 +14,24 @@ const ownerJson = (eb: ExpressionBuilder<DB, 'repositories' | 'users'>) =>
     disabled: eb.ref('users.disabled'),
   }).as('user');
 
+type RepositoryMetricsJson = {
+  sizeBytes: number;
+  lastStarted: Date | null;
+  lastBackup: Date | null;
+  lastSuccessfulBackup: Date | null;
+  lastBackupDuration: number | null;
+};
+
 const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
-    lastStarted: eb.ref('repositoryMetrics.lastStarted').$castTo<Date | null>(),
-    lastBackup: eb.ref('repositoryMetrics.lastBackup').$castTo<Date | null>(),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup').$castTo<Date | null>(),
+    lastStarted: eb.ref('repositoryMetrics.lastStarted'),
+    lastBackup: eb.ref('repositoryMetrics.lastBackup'),
+    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
-  }).as('metrics');
+  })
+    .$castTo<RepositoryMetricsJson>()
+    .as('metrics');
 
 @Injectable()
 export class RepositoryRepository {

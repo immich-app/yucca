@@ -6,20 +6,37 @@ import { DB } from 'src/schema';
 import { AuditLogTable } from 'src/schema/tables/auditLog.table';
 import { RepositoryTable } from 'src/schema/tables/repository.table';
 
+type RepositoryMetricsJson = {
+  sizeBytes: number;
+  lastBackup: Date | null;
+  lastSuccessfulBackup: Date | null;
+  lastBackupDuration?: number;
+};
+
+type RepositoryMeterJson = {
+  sizeBytes: number;
+  objectCount: number;
+  lastUpdated: Date | null;
+};
+
 export const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
-    lastBackup: eb.ref('repositoryMetrics.lastBackup').$castTo<Date | null>(),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup').$castTo<Date | null>(),
+    lastBackup: eb.ref('repositoryMetrics.lastBackup'),
+    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
-  }).as('metrics');
+  })
+    .$castTo<RepositoryMetricsJson>()
+    .as('metrics');
 
 export const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
   jsonBuildObject({
     sizeBytes: eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)),
     objectCount: eb.fn.coalesce('repositoryMeter.objectCount', eb.val(0)),
-    lastUpdated: eb.ref('repositoryMeter.timestamp').$castTo<Date>(),
-  }).as('meter');
+    lastUpdated: eb.ref('repositoryMeter.timestamp'),
+  })
+    .$castTo<RepositoryMeterJson>()
+    .as('meter');
 
 @Injectable()
 export class RepositoryRepository {
