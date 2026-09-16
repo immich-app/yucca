@@ -6,6 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import Database from 'better-sqlite3';
 import { SqliteDialect } from 'kysely';
 import { KyselyModule } from 'nestjs-kysely';
+import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

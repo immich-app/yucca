@@ -2,17 +2,22 @@
 # Manual edits may be lost in future updates.
 
 provider "registry.opentofu.org/jeremmfr/junos" {
-  version     = "2.19.0"
+  version     = "2.20.0"
   constraints = "~> 2.19"
   hashes = [
-    "h1:s5wxKF9Zqrgra04dUQfvHIdNiUIyzC1YoUi983h/Omc=",
-    "zh:0133026a8e4187f54e6101c9faab426896328be804638daeaf1a22376d1d8805",
-    "zh:0532ba48ee37c814e18a76c714c0d0810fe688fe791989639b3bf5e43f7ceaff",
-    "zh:0fa82a384b25a58b65523e0ea4768fa1212b1f5cfc0c9379d31162454fedcc9d",
-    "zh:4e325ace584dac143bd770884eb1bbeba96aa59ac88c84cdf641bf4bdcab9857",
-    "zh:5e4d22b3792d20a6a38f27d8c712343b4c60a060967b18911148ba8de5a9be2c",
-    "zh:7a8cdb6452db79ae49e74a5a54bdc6298364720c3cbbdb674a1870468a04a5f1",
-    "zh:97b5a8fe55923c3b6c1d231e1c7f8e7df88ab653c0d234aacdfcc58b4bd3902a",
-    "zh:9cca035a71f1469113ec294ebd2634d9196ad7f4071c3ca1010016fbd547ba8f",
+    "h1:92U6+V7PrqWXUAJAhYQlk89TRNRUJ+ygA1oGgRwNr9k=",
+    "h1:E9T7IkVBtK/2AWJYVr04ISpAB/nxwn9dV1araJaUdb4=",
+    "h1:Ep044JoidgV/D+hRhid55qFOxL3fSoNIJmb4EV5c2QM=",
+    "h1:ZriYYApI/JuhW7wluVvYcbJXiDMM/8Q4f75KOh+p0Mw=",
+    "h1:h9LZT9yaRDtHWmmPNGbcsyYxHd/OgFIw6MyzjtPBVLo=",
+    "h1:u7L/p8IoNTYE3r4b3sJGxq64TXAyHTCe+fzwymjNv4Q=",
+    "h1:y70amccTR6DoP3+2ZiUOy5ATvemEvzQtNOcnxRfp8a0=",
+    "zh:120ba53b2b096d2f2bdcc901714082e8a5ec53975e4927a8d9d1e995d354c44f",
+    "zh:466c80f924dedfe8cf2fef2accde83a5f01aaf5ecb6d5e7dff695cbc5ecb1bcf",
+    "zh:5276b899c5072fac2778e2479ff1c02901d997ce3c0542067f1b84cf3607f2ca",
+    "zh:6af994156713ef9abf2fb768eebc3860e7dd38dc71b85df12c7d3e2d277c9639",
+    "zh:6c663458da6554cc63bc145a43b6aa42d535dc7c2f0203da39ee3b3a4f03f21a",
+    "zh:bb96e871ef6b02eb081ea0567e4a875b8a20cfb3cc8ade4385b91a0011674e0c",
+    "zh:c89c85cd143201c1d1d82f0b04d77945e6ead654303be83a0097fe6cc2d802ce",
   ]
 }

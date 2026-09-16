@@ -7,7 +7,7 @@ config_roots = ["ansible/ceph", "ansible/talos", "packages/restic-proxy"]
 node = "25.9.0"
 pnpm = "10.28.1"
 wrangler = "4.127.0"
-go = "1.27.0"
+go = "1.27.1"
 golangci-lint = "2.13.2"
 restic = "0.19.1"
 
@@ -15,9 +15,9 @@ gh = "2.100.0"
 "github:git-town/git-town" = "22.7.1"
 
 k3d = "5.9.0"
-kubectl = "1.36.3"
+kubectl = "1.37.0"
 helm = "3.22.0"
-tilt = "0.34.5"
+tilt = "0.37.7"
 
 # Static validation of the k8s surface (mise run k8s:validate, used by CI).
 # flux-local runs via `uvx` (see .mise/tasks/k8s/validate): uv auto-fetches a
@@ -26,15 +26,15 @@ tilt = "0.34.5"
 kubeconform = "0.8.0"
 kustomize = "5.8.1"            # flux-local shells out to it
 flux2 = "2.9.5"                # ...and to the flux CLI
-uv = "0.9.18"
+uv = "0.12.12"
 
 # github backend: the aqua backend fails to verify cosign v3's sigstore
 # bundles ("No bundle found in attestation").
 "github:sigstore/cosign" = "v3.1.3"
-"github:grafana/dashboard-linter" = "0.2.0"
+"github:grafana/dashboard-linter" = "v0.3.0"
 
 # Infrastructure tooling (added for tf/ and ansible/ subtrees)
-opentofu = "1.11.5"
+opentofu = "1.12.6"
 terragrunt = "0.99.5"
 # ansible/mgmt convergence (mgmt:ansible task, run from CI on prod apply).
 "pipx:ansible-core" = "2.21.4"

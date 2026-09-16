@@ -39,11 +39,6 @@
         },
         {
           "type": "json",
-          "path": "packages/restic-api/package.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
           "path": "packages/web/package.json",
           "jsonpath": "$.version"
         },

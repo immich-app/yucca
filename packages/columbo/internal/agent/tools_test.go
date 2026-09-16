@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"columbo/internal/o11y"
+
 	"github.com/cloudwego/eino/components/tool"
 )
 
@@ -158,5 +160,31 @@ func TestTruncateNote(t *testing.T) {
 	}
 	if got := truncateNote("short"); got != "short" {
 		t.Fatalf("short note mangled: %q", got)
+	}
+}
+
+func TestClientTelemetryBlock(t *testing.T) {
+	if got := clientTelemetryBlock(nil); !strings.Contains(got, "lookup unavailable") {
+		t.Fatalf("nil case = %q", got)
+	}
+	empty := clientTelemetryBlock([]o11y.ClientEvent{})
+	if !strings.Contains(empty, "never reported in") || !strings.Contains(empty, "opt-in") {
+		t.Fatalf("empty case must not be read as 'no backups ran': %q", empty)
+	}
+	got := clientTelemetryBlock([]o11y.ClientEvent{
+		{Event: "Backup finished", Status: "failed", Version: "0.40.1", Count: "77", Last: "2026-09-11T10:16:49Z", Error: "Unknown site 'local'"},
+		{Event: "Running backup", Version: "0.43.0", Count: "2", Last: "2026-09-15T08:44:08Z"},
+	})
+	for _, want := range []string{
+		"2026-09-11T10:16:49Z  Backup finished  status=failed  client=0.40.1  ×77",
+		"example error: Unknown site 'local'",
+		"2026-09-15T08:44:08Z  Running backup  client=0.43.0  ×2",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("block missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "status=  ") {
+		t.Fatalf("events without a status must omit the field: %q", got)
 	}
 }

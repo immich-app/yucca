@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { join } from 'node:path';
 import {
@@ -10,7 +10,9 @@ import {
 import { InternalEvent, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import type { ImmichIntegration, ModuleConfig } from '../moduleConfig';
+import { LockRepository } from '../repositories/lock.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { RepositoryRepository } from '../repositories/repository.repository';
 import { RepositoryIntegrationImmichRepository } from '../repositories/repositoryIntegrationImmich.repository';
 import { RepositoryPathRepository } from '../repositories/repositoryPath.repository';
 import { RunHistoryRepository } from '../repositories/runHistory.repository';
@@ -30,10 +32,12 @@ export class IntegrationsService {
     private readonly repositoryIntegrationImmich: RepositoryIntegrationImmichRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryService: RepositoryService,
+    private readonly repository: RepositoryRepository,
     private readonly runHistory: RunHistoryRepository,
     private readonly schedule: ScheduleRepository,
     private readonly scheduleService: ScheduleService,
     private readonly telemetry: TelemetryService,
+    private readonly lock: LockRepository,
   ) {}
 
   @OnEvent(InternalEvent.ModuleConfigUpdated)
@@ -82,75 +86,82 @@ export class IntegrationsService {
     };
   }
 
+  private static ImmichIntegrationConfig = Symbol('ImmichIntegrationConfig');
+
   async configureImmichIntegration(dto: ConfigureImmichIntegrationRequestDto): Promise<{ repositoryId: string }> {
     const { immichIntegration } = this.moduleConfig.get();
     if (!immichIntegration) {
       throw new BadRequestException('Immich integration is not enabled.');
     }
 
-    const existing = await this.repositoryIntegrationImmich.get();
-
-    let repositoryId: string;
-    let scheduleId: string;
-
-    if (existing) {
-      repositoryId = existing.id;
-      scheduleId = existing.scheduleId;
-      await this.repositoryService.updateRepository(existing.id, {
-        name: dto.name,
-        worm: dto.worm,
-        retentionPolicy: dto.retentionPolicy,
-      });
-      await this.scheduleService.applyScheduleUpdate(scheduleId, { cron: dto.cron, paused: dto.paused });
-    } else {
-      ({
-        repository: { id: repositoryId },
-      } = await this.repositoryService.createRepository({
-        name: dto.name,
-        worm: dto.worm,
-      }));
-
-      if (dto.retentionPolicy !== undefined) {
-        await this.repositoryService.updateRepository(repositoryId, {
-          retentionPolicy: dto.retentionPolicy,
-        });
-      }
-
-      ({
-        schedule: { id: scheduleId },
-      } = await this.scheduleService.createSchedule({
-        name: 'Immich Backup',
-        cron: dto.cron,
-        repositories: [repositoryId],
-      }));
-
-      if (dto.paused) {
-        await this.scheduleService.applyScheduleUpdate(scheduleId, { paused: true });
+    if (dto.repositoryId) {
+      const boundRepository = await this.repository.get(dto.repositoryId);
+      if (!boundRepository) {
+        throw new NotFoundException('Specified repository does not exist');
       }
     }
 
-    const configuration: ImmichRepositoryConfig = {
-      dataFolders: dto.dataFolders,
-      backupConfiguration: dto.backupConfiguration,
-      libraries: dto.libraries,
-    };
+    return this.lock.tryWithLock(IntegrationsService.ImmichIntegrationConfig, async () => {
+      const existingConfiguration = await this.repositoryIntegrationImmich.get();
 
-    await this.repositoryIntegrationImmich.upsert(repositoryId, scheduleId, configuration);
-    await this.syncImmichRepositoryPaths(repositoryId, configuration, immichIntegration);
+      let repositoryId: string | undefined = dto.repositoryId ?? existingConfiguration?.id;
+      if (repositoryId) {
+        await this.repositoryService.updateRepository(repositoryId, {
+          name: dto.name,
+          worm: dto.worm,
+          retentionPolicy: dto.retentionPolicy,
+        });
+      } else {
+        ({
+          repository: { id: repositoryId },
+        } = await this.repositoryService.createRepository({
+          name: dto.name,
+          worm: dto.worm,
+          retentionPolicy: dto.retentionPolicy,
+        }));
+      }
 
-    this.telemetry.submitStructuredLog('Configured Immich integration', {
-      repositoryId,
-      scheduleId,
+      let scheduleId: string | undefined = existingConfiguration?.scheduleId;
+      if (scheduleId) {
+        await this.scheduleService.applyScheduleUpdate(scheduleId, {
+          repositories: [repositoryId],
+          cron: dto.cron,
+          paused: dto.paused,
+        });
+      } else {
+        ({
+          schedule: { id: scheduleId },
+        } = await this.scheduleService.createSchedule({
+          name: 'Immich Backup',
+          paused: dto.paused ?? false,
+          cron: dto.cron,
+          repositories: [repositoryId],
+        }));
+      }
+
+      const configuration: ImmichRepositoryConfig = {
+        dataFolders: dto.dataFolders,
+        backupConfiguration: dto.backupConfiguration,
+        libraries: dto.libraries,
+      };
+
+      await this.repositoryIntegrationImmich.upsert(repositoryId, scheduleId, configuration);
+      await this.syncImmichRepositoryPaths(repositoryId, configuration, immichIntegration);
+
+      this.telemetry.submitStructuredLog('Configured Immich integration', {
+        repositoryId,
+        scheduleId,
+      });
+
+      this.events.publish({
+        type: 'IntegrationUpdate',
+        integrations: await this.getIntegrationsConfig(),
+      });
+
+      return {
+        repositoryId,
+      };
     });
-
-    this.events.publish({
-      type: 'IntegrationUpdate',
-      integrations: await this.getIntegrationsConfig(),
-    });
-
-    return {
-      repositoryId,
-    };
   }
 
   async enterImmichMaintenanceRollback(dto: ImmichRollbackRequestDto): Promise<{ jwt: string }> {

@@ -179,3 +179,52 @@ func formValue(t *testing.T, encoded []byte, key string) string {
 	}
 	return values.Get(key)
 }
+
+func TestClientTelemetryParsesDigestAndStaysScoped(t *testing.T) {
+	srv, captured, form := recordingServer(t, http.StatusOK, strings.Join([]string{
+		`{"_msg":"[telemetry] Backup finished","data.lastBackupStatus":"failed","data.version":"0.40.1","c":"77","last":"2026-09-11T10:16:49Z","err":"{\"data.error.message\":\"Unknown site\\n  'local'\"}"}`,
+		`{"_msg":"[telemetry] Running backup","data.version":"0.43.0","c":"2","last":"2026-09-15T08:44:08Z","err":"{}"}`,
+		``,
+	}, "\n"))
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	events, err := client.ClientTelemetry(context.Background(), 30*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if captured.URL.Path != "/select/logsql/query" {
+		t.Fatalf("unexpected path %q", captured.URL.Path)
+	}
+	query := formValue(t, *form, "query")
+	if !strings.HasPrefix(query, `(user:="user-1" or customerId:="user-1") and (_msg:"[telemetry]")`) {
+		t.Fatalf("digest query was not scoped: %q", query)
+	}
+	if len(events) != 2 {
+		t.Fatalf("events = %+v", events)
+	}
+	first := events[0]
+	if first.Event != "Backup finished" || first.Status != "failed" || first.Version != "0.40.1" || first.Count != "77" {
+		t.Fatalf("first = %+v", first)
+	}
+	if first.Error != "Unknown site 'local'" {
+		t.Fatalf("error = %q, want the whitespace-collapsed restic message", first.Error)
+	}
+	if events[1].Error != "" {
+		t.Fatalf("row_any's empty object should yield no error, got %q", events[1].Error)
+	}
+}
+
+func TestClientTelemetryTruncatesLongErrors(t *testing.T) {
+	stack := strings.Repeat("a", maxClientErrorChars*2)
+	srv, _, _ := recordingServer(t, http.StatusOK,
+		`{"_msg":"[telemetry] Backup finished","err":"{\"data.error.message\":\"`+stack+`\"}"}`)
+	client := NewClient(srv.URL, srv.URL, "user-1")
+
+	events, err := client.ClientTelemetry(context.Background(), time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := events[0].Error; got != stack[:maxClientErrorChars]+"…" {
+		t.Fatalf("error was not truncated to %d chars: len=%d", maxClientErrorChars, len(got))
+	}
+}

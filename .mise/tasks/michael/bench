@@ -3,7 +3,7 @@
 #MISE dir="{{config_root}}/packages/michael"
 set -e
 
-# Complements the fleet-level `mise bench` (real restic CLI against a running
+# Complements `yuctl tools bench` (real restic CLI against a running
 # backend): these measure per-request cost inside the process.
 #
 # The source-network benchmarks resolve against the committed three-network

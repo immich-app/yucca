@@ -1866,6 +1866,9 @@
           },
           "paused": {
             "type": "boolean"
+          },
+          "repositoryId": {
+            "type": "string"
           }
         },
         "required": [
@@ -2007,6 +2010,14 @@
             "items": {
               "type": "string"
             }
+          },
+          "retentionPolicy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetentionPolicyDto"
+              }
+            ],
+            "nullable": true
           }
         },
         "required": [
@@ -2388,6 +2399,9 @@
           "name": {
             "type": "string"
           },
+          "paused": {
+            "type": "boolean"
+          },
           "cron": {
             "type": "string"
           },
@@ -2400,6 +2414,7 @@
         },
         "required": [
           "name",
+          "paused",
           "cron",
           "repositories"
         ]

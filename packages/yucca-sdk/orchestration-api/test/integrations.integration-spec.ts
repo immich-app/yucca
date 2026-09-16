@@ -2,8 +2,9 @@ import { ModuleConfigRepository } from 'src/repositories/moduleConfig.repository
 import { RepositoryIntegrationImmichRepository } from 'src/repositories/repositoryIntegrationImmich.repository';
 import { RepositoryPathRepository } from 'src/repositories/repositoryPath.repository';
 import { IntegrationsService } from 'src/services/integrations.service';
+import { RepositoryService } from 'src/services/repository.service';
 import { ScheduleService } from 'src/services/schedule.service';
-import { createTestingModule, TestContext } from './testUtils';
+import { createRemoteRepository, createTestingModule, TestContext } from './testUtils';
 
 let ctx: TestContext;
 

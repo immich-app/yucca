@@ -28,6 +28,7 @@ import { BackendRepository } from './repositories/backend.repository';
 import { BootstrapRepository } from './repositories/bootstrap.repository';
 import { ConfigRepository } from './repositories/config.repository';
 import { DatabaseRepository } from './repositories/database.repository';
+import { LockRepository } from './repositories/lock.repository';
 import { LoggingRepository } from './repositories/logging.repository';
 import { ModuleConfigRepository } from './repositories/moduleConfig.repository';
 import { RepositoryRepository } from './repositories/repository.repository';
@@ -73,6 +74,7 @@ export const repositories = [
   BootstrapRepository,
   ConfigRepository,
   DatabaseRepository,
+  LockRepository,
   LoggingRepository,
   ModuleConfigRepository,
   RepositoryRepository,

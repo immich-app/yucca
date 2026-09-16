@@ -129,6 +129,11 @@ Michael operation semantics (restic REST protocol):
 - op:="save_blob" = a blob write; what it MEANS depends on blob_type: data = backup content uploading; index = index flush; snapshots = a backup COMPLETED (the snapshot record is written last); keys = repository key setup. locks is the exception — restic writes a lock at the start of EVERY operation, including read-only ones (restore, check), so lock writes prove activity, not backups.
 - get_blob = blob read (restores, checks); check_blob = existence probe; delete_blob = cleanup (locks after every operation; data/index during prune); list_blobs = listing; save_config = repository initialization (happens once, before the first backup); create_repository = repository creation.
 So: op:="save_blob" blob_type:="snapshots" = completed backups; op:="save_blob" blob_type:="data" = backup traffic; status:>=400 on michael = failing restic requests.
+- client telemetry: the user's own backup client (the Immich integration / standalone container) ships structured logs home, which yucca-api records as _msg:"[telemetry] <summary>" with the payload flattened into data.* fields. This is the ONLY view of what happened on the user's MACHINE — including restic's own stderr — so when the server side looks clean, look here before concluding nothing is wrong.
+  - "[telemetry] Backup finished" is the key event: data.lastBackupStatus (complete/warn/failed), data.repositoryId, data.version (the client's version), and on failure data.error.message — the verbatim restic retry/error log as the client saw it. Typical contents: DNS/TLS failures, "request timeout" (restic's stuck-request timeout), local permission and cache errors. None of these are visible server-side, because the request never arrived.
+  - Lifecycle events trace the rest of a run: "Running backup", "Finished backup to primary backend", "Finished prune on primary backend", "Creating"/"Created Immich database backup", "Running"/"Finished repository prune|import|snapshot restore", "Connected FUTO Backups backend", "Configured Immich integration", "Unhandled request error" (a 5xx inside the client itself).
+  - Telemetry is opt-in: no [telemetry] logs means the user declined it or runs an old client, NOT that nothing happened.
+  - The digest below is prefetched for free. Drill in with query_logs for the full text, e.g. _msg:"[telemetry] Backup finished" data.lastBackupStatus:="failed" — data.error.message is often multi-KB, so prefer a narrow limit or a "| fields _time, data.error.message" pipe.
 
 Platform health (fleet-wide, not user-specific): the query_health tool runs fixed named probes over platform telemetry — michael error rates and latency, storage-backend health, Ceph/RGW health, pool capacity. When the user's telemetry shows server-side errors (5xx, timeouts), check whether a platform incident overlaps their error window; a healthy platform during that window is itself evidence. One or two probes over the incident window usually suffice — do not audit the whole platform.
 
@@ -190,6 +195,7 @@ func (r *Runner) run(ctx context.Context, userID, userMessage string) (Outcome, 
 	}
 
 	userMessage += "\n\n" + availableMetricsLine(box.availableMetrics(ctx))
+	userMessage += "\n\n" + clientTelemetryBlock(box.clientTelemetry(ctx))
 
 	zerolog.Ctx(ctx).Info().
 		Str("audit", "investigation_start").
@@ -226,6 +232,32 @@ func availableMetricsLine(names []string) string {
 		return "Metrics with data for this account (last 30d): none — this account has produced no metrics at all."
 	}
 	return "Metrics with data for this account (last 30d): " + strings.Join(names, ", ")
+}
+
+func clientTelemetryBlock(events []o11y.ClientEvent) string {
+	if events == nil {
+		return "Client telemetry for this account: (lookup unavailable — query the logs to find out)"
+	}
+	if len(events) == 0 {
+		return "Client telemetry for this account (last 30d): none — this account's backup client has never reported in. " +
+			"Telemetry is opt-in, so this means the user declined it or runs a client too old to send it, NOT that no backups ran."
+	}
+	var b strings.Builder
+	b.WriteString("What this account's own backup client reported home (last 30d, newest first, count after ×):")
+	for _, e := range events {
+		b.WriteString("\n- " + e.Last + "  " + e.Event)
+		if e.Status != "" {
+			b.WriteString("  status=" + e.Status)
+		}
+		if e.Version != "" {
+			b.WriteString("  client=" + e.Version)
+		}
+		b.WriteString("  ×" + e.Count)
+		if e.Error != "" {
+			b.WriteString("\n    example error: " + e.Error)
+		}
+	}
+	return b.String()
 }
 
 type tokenTally struct {
