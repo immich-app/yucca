@@ -81,6 +81,7 @@ const RepositoryCreateRequestSchema = z
     worm: z.boolean(),
     site: z.string().optional().describe('Internal site code from environment metadata'),
     paths: z.array(z.string()).optional(),
+    retentionPolicy: RetentionPolicySchema.nullable().optional(),
   })
   .meta({ id: 'RepositoryCreateRequestDto' });
 

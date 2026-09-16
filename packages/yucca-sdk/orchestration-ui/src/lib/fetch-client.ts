@@ -167,6 +167,7 @@ export type ConfigureImmichIntegrationRequestDto = {
     libraries: "all" | string[];
     retentionPolicy?: (RetentionPolicyDto) | null;
     paused?: boolean;
+    repositoryId?: string;
 };
 export type ConfigureImmichIntegrationResponseDto = {
     repositoryId: string;
@@ -202,6 +203,7 @@ export type RepositoryCreateRequestDto = {
     /** Internal site code from environment metadata */
     site?: string;
     paths?: string[];
+    retentionPolicy?: (RetentionPolicyDto) | null;
 };
 export type RepositoryCreateResponseDto = {
     repository: LocalRepositoryDto;
@@ -290,6 +292,7 @@ export type RunningTaskListResponse = {
 };
 export type ScheduleCreateRequestDto = {
     name: string;
+    paused: boolean;
     cron: string;
     repositories: string[];
 };
