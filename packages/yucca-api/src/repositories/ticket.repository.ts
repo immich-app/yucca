@@ -4,7 +4,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { TicketAction } from 'src/enum';
 import { DB } from 'src/schema';
 import { TicketTable } from 'src/schema/tables/ticket.table';
-import { meterJson, metricsJson } from './repository.repository';
+import { meterColumns, metricsColumns, withMetricsAndMeter } from './repository.repository';
 
 @Injectable()
 export class TicketRepository {
@@ -25,8 +25,8 @@ export class TicketRepository {
       .executeTakeFirst();
   }
 
-  getActive(id: string, token: string) {
-    return this.db
+  async getActive(id: string, token: string) {
+    const row = await this.db
       .selectFrom('tickets')
       .innerJoin('repositories', 'repositories.id', 'tickets.repositoryId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
@@ -37,9 +37,11 @@ export class TicketRepository {
       .where('tickets.validAt', 'is not', null)
       .where('tickets.consumedAt', 'is', null)
       .where('tickets.expiresAt', '>', new Date())
-      .select(metricsJson)
-      .select(meterJson)
+      .select(metricsColumns)
+      .select(meterColumns)
       .executeTakeFirst();
+
+    return row ? withMetricsAndMeter(row) : undefined;
   }
 
   activate(id: string) {

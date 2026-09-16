@@ -1,5 +1,6 @@
 import { Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
+import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { DB } from 'src/schema';
 import { getKyselyConfig } from 'src/utils/database';
 
@@ -107,6 +108,31 @@ export const testUtils = {
       .returningAll()
       .executeTakeFirstOrThrow();
   },
+
+  setRepositoryMetrics: (
+    repositoryId: string,
+    {
+      sizeBytes = 4096,
+      lastStarted = new Date(),
+      lastBackup = new Date(),
+      lastSuccessfulBackup = new Date(),
+      lastBackupDuration = 1234,
+    }: Partial<{
+      sizeBytes: number;
+      lastStarted: Date;
+      lastBackup: Date;
+      lastSuccessfulBackup: Date;
+      lastBackupDuration: number;
+    }> = {},
+  ) => {
+    return getDb()
+      .insertInto('repositoryMetrics')
+      .values({ id: repositoryId, sizeBytes, lastStarted, lastBackup, lastSuccessfulBackup, lastBackupDuration })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  },
+
+  getRepositoryRepository: () => new RepositoryRepository(getDb()),
 
   getUser: (id: string) => {
     return getDb().selectFrom('users').selectAll().where('id', '=', id).executeTakeFirst();

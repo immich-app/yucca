@@ -1,42 +1,59 @@
 import { Injectable } from '@nestjs/common';
 import { ExpressionBuilder, Insertable, Kysely, Updateable } from 'kysely';
-import { jsonBuildObject } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { DB } from 'src/schema';
 import { AuditLogTable } from 'src/schema/tables/auditLog.table';
 import { RepositoryTable } from 'src/schema/tables/repository.table';
 
-type RepositoryMetricsJson = {
-  sizeBytes: number;
-  lastBackup: Date | null;
-  lastSuccessfulBackup: Date | null;
+type RepositoryMetricsRow = {
+  metricsSizeBytes: string | number;
+  lastBackup?: Date;
+  lastSuccessfulBackup?: Date;
   lastBackupDuration?: number;
 };
 
-type RepositoryMeterJson = {
-  sizeBytes: number;
-  objectCount: number;
-  lastUpdated: Date | null;
+type RepositoryMeterRow = {
+  meterSizeBytes: string | number;
+  meterObjectCount: string | number;
+  meterLastUpdated?: Date;
 };
 
-export const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) =>
-  jsonBuildObject({
-    sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
-    lastBackup: eb.ref('repositoryMetrics.lastBackup'),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
-    lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
-  })
-    .$castTo<RepositoryMetricsJson>()
-    .as('metrics');
+export const metricsColumns = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetrics'>) => [
+  eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)).as('metricsSizeBytes'),
+  eb.ref('repositoryMetrics.lastBackup').as('lastBackup'),
+  eb.ref('repositoryMetrics.lastSuccessfulBackup').as('lastSuccessfulBackup'),
+  eb.ref('repositoryMetrics.lastBackupDuration').as('lastBackupDuration'),
+];
 
-export const meterJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) =>
-  jsonBuildObject({
-    sizeBytes: eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)),
-    objectCount: eb.fn.coalesce('repositoryMeter.objectCount', eb.val(0)),
-    lastUpdated: eb.ref('repositoryMeter.timestamp'),
-  })
-    .$castTo<RepositoryMeterJson>()
-    .as('meter');
+export const meterColumns = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMeter'>) => [
+  eb.fn.coalesce('repositoryMeter.sizeBytes', eb.val(0)).as('meterSizeBytes'),
+  eb.fn.coalesce('repositoryMeter.objectCount', eb.val(0)).as('meterObjectCount'),
+  eb.ref('repositoryMeter.timestamp').as('meterLastUpdated'),
+];
+
+export const withMetricsAndMeter = <T extends RepositoryMetricsRow & RepositoryMeterRow>({
+  metricsSizeBytes,
+  lastBackup,
+  lastSuccessfulBackup,
+  lastBackupDuration,
+  meterSizeBytes,
+  meterObjectCount,
+  meterLastUpdated,
+  ...row
+}: T) => ({
+  ...row,
+  metrics: {
+    sizeBytes: Number(metricsSizeBytes),
+    lastBackup: lastBackup ?? null,
+    lastSuccessfulBackup: lastSuccessfulBackup ?? null,
+    lastBackupDuration,
+  },
+  meter: {
+    sizeBytes: Number(meterSizeBytes),
+    objectCount: Number(meterObjectCount),
+    lastUpdated: meterLastUpdated ?? null,
+  },
+});
 
 @Injectable()
 export class RepositoryRepository {
@@ -47,8 +64,8 @@ export class RepositoryRepository {
     return this.get(row.id);
   }
 
-  get(id: string) {
-    return this.db
+  async get(id: string) {
+    const row = await this.db
       .selectFrom('repositories')
       .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
@@ -56,13 +73,15 @@ export class RepositoryRepository {
       .where('repositories.id', '=', id)
       .selectAll('repositories')
       .select('connections.type as connectionType')
-      .select(metricsJson)
-      .select(meterJson)
+      .select(metricsColumns)
+      .select(meterColumns)
       .executeTakeFirstOrThrow();
+
+    return withMetricsAndMeter(row);
   }
 
-  getByUser(userId: string) {
-    return this.db
+  async getByUser(userId: string) {
+    const rows = await this.db
       .selectFrom('repositories')
       .innerJoin('connections', 'connections.id', 'repositories.connectionId')
       .leftJoin('repositoryMetrics', 'repositoryMetrics.id', 'repositories.id')
@@ -70,9 +89,11 @@ export class RepositoryRepository {
       .where('repositories.userId', '=', userId)
       .selectAll('repositories')
       .select('connections.type as connectionType')
-      .select(metricsJson)
-      .select(meterJson)
+      .select(metricsColumns)
+      .select(meterColumns)
       .execute();
+
+    return rows.map((row) => withMetricsAndMeter(row));
   }
 
   async update(id: string, repository: Updateable<RepositoryTable>) {
