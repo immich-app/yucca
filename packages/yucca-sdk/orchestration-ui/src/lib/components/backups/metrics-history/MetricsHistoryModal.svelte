@@ -81,7 +81,14 @@
           <Stack gap={1} class="px-4 py-3">
             <HStack class="justify-between gap-4">
               <HStack class="gap-2">
-                {#if status === 'complete'}
+                {#if isStart}
+                  <Icon
+                    icon={mdiPlayCircleOutline}
+                    size="18"
+                    class="text-info-500"
+                  />
+                  <Text>Backup started</Text>
+                {:else if status === 'complete'}
                   <Icon
                     icon={mdiCheckCircleOutline}
                     size="18"
@@ -113,13 +120,6 @@
                   />
                   <Text>Backup finished</Text>
                   <Badge size="tiny" color="danger">Failed</Badge>
-                {:else if isStart}
-                  <Icon
-                    icon={mdiPlayCircleOutline}
-                    size="18"
-                    class="text-info-500"
-                  />
-                  <Text>Backup started</Text>
                 {:else if isEnd}
                   <Icon
                     icon={mdiAlertCircleOutline}
