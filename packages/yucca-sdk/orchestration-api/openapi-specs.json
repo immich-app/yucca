@@ -1567,7 +1567,8 @@
         "type": "object",
         "properties": {
           "lastStarted": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "lastBackup": {
             "type": "string",
@@ -1579,13 +1580,16 @@
               "incomplete",
               "complete",
               "warn",
-              "failed"
-            ]
+              "failed",
+              null
+            ],
+            "nullable": true
           },
           "lastBackupDuration": {
             "type": "integer",
             "minimum": -9007199254740991,
-            "maximum": 9007199254740991
+            "maximum": 9007199254740991,
+            "nullable": true
           },
           "sizeBytes": {
             "type": "integer",

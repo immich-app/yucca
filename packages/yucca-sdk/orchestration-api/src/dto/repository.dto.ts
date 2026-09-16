@@ -30,10 +30,10 @@ const RepositorySchema = z
 
 const RepositoryMetricsSchema = z
   .object({
-    lastStarted: z.string().optional(),
+    lastStarted: z.string().nullable().optional(),
     lastBackup: z.string().nullable().optional(),
-    lastBackupStatus: BackupStatusSchema.optional(),
-    lastBackupDuration: z.int().optional(),
+    lastBackupStatus: BackupStatusSchema.nullable().optional(),
+    lastBackupDuration: z.int().nullable().optional(),
     sizeBytes: z.int(),
   })
   .meta({ id: 'RepositoryMetricsDto' });

@@ -87,10 +87,10 @@ export type IntegrationsResponseDto = {
     immichIntegration?: ImmichIntegrationDto;
 };
 export type RepositoryMetricsDto = {
-    lastStarted?: string;
+    lastStarted?: string | null;
     lastBackup?: string | null;
-    lastBackupStatus?: "incomplete" | "complete" | "warn" | "failed";
-    lastBackupDuration?: number;
+    lastBackupStatus?: ("incomplete" | "complete" | "warn" | "failed" | null) | null;
+    lastBackupDuration?: number | null;
     sizeBytes: number;
 };
 export type RepositoryMeterDto = {
