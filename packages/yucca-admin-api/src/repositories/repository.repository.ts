@@ -19,7 +19,7 @@ const metricsJson = (eb: ExpressionBuilder<DB, 'repositories' | 'repositoryMetri
     sizeBytes: eb.fn.coalesce('repositoryMetrics.sizeBytes', eb.val(0)),
     lastStarted: eb.ref('repositoryMetrics.lastStarted'),
     lastBackup: eb.ref('repositoryMetrics.lastBackup'),
-    lastSuccessfulBackup: eb.ref('repositoryMetrics.lastSuccessfulBackup'),
+    lastBackupStatus: eb.ref('repositoryMetrics.lastBackupStatus'),
     lastBackupDuration: eb.ref('repositoryMetrics.lastBackupDuration'),
   }).as('metrics');
 

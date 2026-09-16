@@ -4,6 +4,8 @@ import { TaskStatus, TaskType } from '../enum';
 import { BackendTypeSchema } from './backend.dto';
 import { TaskStatusSchema } from './runningTasks.dto';
 
+const BackupStatusSchema = z.enum(['incomplete', 'complete', 'warn', 'failed']);
+
 export const RetentionPolicySchema = z
   .object({
     keepLast: z.int().optional(),
@@ -28,8 +30,9 @@ const RepositorySchema = z
 
 const RepositoryMetricsSchema = z
   .object({
+    lastStarted: z.string().optional(),
     lastBackup: z.string().nullable().optional(),
-    lastBackupStatus: TaskStatusSchema.optional(),
+    lastBackupStatus: BackupStatusSchema.optional(),
     lastBackupDuration: z.int().optional(),
     sizeBytes: z.int(),
   })

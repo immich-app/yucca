@@ -1,5 +1,10 @@
 import { registerEnum } from '@immich/sql-tools';
-import { AuditAction, TicketAction } from 'src/enum';
+import { AuditAction, BackupStatus, TicketAction } from 'src/enum';
+
+export const backup_status_enum = registerEnum({
+  name: 'backup_status_enum',
+  values: Object.values(BackupStatus),
+});
 
 export const ticket_action_enum = registerEnum({
   name: 'ticket_action_enum',

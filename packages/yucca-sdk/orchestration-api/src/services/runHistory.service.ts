@@ -40,7 +40,7 @@ export class RunHistoryService {
 
           const result = await this.backend.getBackend(repository.backendId);
           if (result?.backend.isMetricsCapable()) {
-            result.backend.submitMetricBackupEnd(repository.remoteId, false, Date.now() - +new Date(run.start));
+            result.backend.submitMetricBackupEnd(repository.remoteId, TaskStatus.Failed, Date.now() - +new Date(run.start));
           }
         } catch (error) {
           this.telemetry.submitStructuredLog('Failed to finalise interrupted backup', {

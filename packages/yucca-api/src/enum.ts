@@ -24,6 +24,13 @@ export enum MetadataKey {
   Feature = 'FEATURE',
 }
 
+export enum BackupStatus {
+  Incomplete = 'incomplete',
+  Complete = 'complete',
+  Warn = 'warn',
+  Failed = 'failed',
+}
+
 export enum DeviceFlowEventType {
   Start = 'START',
   Success = 'SUCCESS',

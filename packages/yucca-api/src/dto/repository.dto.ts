@@ -1,6 +1,7 @@
 import { isoDatetimeToDate } from '@common/server';
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { BackupStatusSchema } from './metrics.dto';
 
 const RepositorySchema = z
   .object({
@@ -16,10 +17,11 @@ const RepositorySchema = z
 
 export const RepositoryMetricsSchema = z
   .object({
-    lastBackup: isoDatetimeToDate.nullable(),
-    lastSuccessfulBackup: isoDatetimeToDate.nullable(),
-    lastBackupDuration: z.number().optional(),
     sizeBytes: z.number(),
+    lastStarted: isoDatetimeToDate.optional(),
+    lastBackup: isoDatetimeToDate.optional(),
+    lastBackupStatus: BackupStatusSchema.optional(),
+    lastBackupDuration: z.number().optional(),
   })
   .meta({ id: 'RepositoryMetricsDto' });
 

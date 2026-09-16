@@ -1,10 +1,8 @@
 import type { RepositoryMetricsDto } from '$lib/fetch-client';
 
-export type BackupOutcome = 'never' | 'complete' | 'warn' | 'failed';
+export type BackupOutcome = 'never' | 'complete' | 'warn' | 'incomplete' | 'failed';
 
-export const getBackupOutcome = (
-  metrics: RepositoryMetricsDto | undefined,
-): BackupOutcome => {
+export const getBackupOutcome = (metrics: RepositoryMetricsDto | undefined): BackupOutcome => {
   if (!metrics?.lastBackup) {
     return 'never';
   }
@@ -15,6 +13,9 @@ export const getBackupOutcome = (
     }
     case 'warn': {
       return 'warn';
+    }
+    case 'incomplete': {
+      return 'incomplete';
     }
     default: {
       return 'complete';

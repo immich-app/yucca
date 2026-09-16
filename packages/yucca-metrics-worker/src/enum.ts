@@ -7,3 +7,10 @@ export enum AuditAction {
   DeleteRepository = 'repository.delete',
   DisableWorm = 'repository.disable-worm',
 }
+
+export enum BackupStatus {
+  Incomplete = 'incomplete',
+  Complete = 'complete',
+  Warn = 'warn',
+  Failed = 'failed',
+}
