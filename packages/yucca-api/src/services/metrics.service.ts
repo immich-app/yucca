@@ -63,6 +63,7 @@ export class MetricsService {
     await this.history.create({
       repositoryId,
       started: now,
+      backupStatus: BackupStatus.Incomplete,
     });
 
     this.userLastStarted.record(toUnixSeconds(now), { user_id: auth.id, repository_id: repositoryId });
