@@ -257,7 +257,7 @@ export function oidcDeviceFlow({ connectionType, connectionName }: {
 }
 export function createTicket(ticketCreateRequestDto: TicketCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: TicketCreateResponseDto;
     }>("/api/auth/ticket", oazapfts.json({
         ...opts,
@@ -296,7 +296,7 @@ export function listConnections(opts?: Oazapfts.RequestOpts) {
 }
 export function createConnection(connectionCreateRequestDto: ConnectionCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: ConnectionResponseDto;
     }>("/api/connections", oazapfts.json({
         ...opts,
@@ -389,7 +389,7 @@ export function listMetricsHistory(repositoryId: string, { cursor, limit }: {
 }
 export function createRepository(repositoryCreateRequestDto: RepositoryCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: RepositoryCreateResponseDto;
     }>("/api/repository", oazapfts.json({
         ...opts,
@@ -433,7 +433,7 @@ export function deleteRepository(id: string, ticketId: string, opts?: Oazapfts.R
 }
 export function createResticUrl(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: RepositoryCreateResticUrlDto;
     }>(`/api/repository/${encodeURIComponent(id)}/restic`, {
         ...opts,

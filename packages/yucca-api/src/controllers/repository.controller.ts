@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
-import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request } from 'express';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
@@ -25,7 +25,7 @@ export class RepositoryController {
 
   @Post()
   @AuthRoute()
-  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  @ApiCreatedResponse({ type: RepositoryCreateResponseDto })
   async createRepository(
     @Auth() auth: AuthDto,
     @Body() dto: RepositoryCreateRequestDto,
@@ -64,7 +64,7 @@ export class RepositoryController {
 
   @Post('/:id/restic')
   @AuthRoute()
-  @ApiOkResponse({ type: RepositoryCreateResticUrlDto })
+  @ApiCreatedResponse({ type: RepositoryCreateResticUrlDto })
   async createResticUrl(@Auth() auth: AuthDto, @Param('id') id: string): Promise<RepositoryCreateResticUrlDto> {
     return this.repository.createUrl(auth, id);
   }

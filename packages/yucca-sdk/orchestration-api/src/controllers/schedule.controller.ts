@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiParam } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiParam } from '@nestjs/swagger';
 import {
   ScheduleCreateRequestDto,
   ScheduleCreateResponseDto,
@@ -14,7 +14,7 @@ export class ScheduleController {
   constructor(private readonly service: ScheduleService) {}
 
   @Post()
-  @ApiOkResponse({ type: ScheduleCreateResponseDto })
+  @ApiCreatedResponse({ type: ScheduleCreateResponseDto })
   createSchedule(@Body() dto: ScheduleCreateRequestDto): Promise<ScheduleCreateResponseDto> {
     return this.service.createSchedule(dto);
   }

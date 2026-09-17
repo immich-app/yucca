@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { FilesystemListingRequestDto, FilesystemListingResponseDto } from '../dto/filesystem.dto';
 import {
   ListSnapshotsResponseDto,
@@ -24,7 +24,7 @@ export class RepositoryController {
 
   @Post()
   @ApiQuery({ name: 'backend', type: String, required: false })
-  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  @ApiCreatedResponse({ type: RepositoryCreateResponseDto })
   createRepository(
     @Body() dto: RepositoryCreateRequestDto,
     @Query('backend') backendId?: string,
@@ -63,7 +63,7 @@ export class RepositoryController {
 
   @Post('/:id')
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ type: LogResponseDto })
+  @ApiCreatedResponse({ type: LogResponseDto })
   async createBackup(@Param('id') id: string): Promise<LogResponseDto> {
     const { logId } = await this.service.createBackup(id);
     return { logId };
@@ -78,7 +78,7 @@ export class RepositoryController {
 
   @Post('/:id/import')
   @ApiQuery({ name: 'backend', type: String })
-  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  @ApiCreatedResponse({ type: RepositoryCreateResponseDto })
   importRepository(@Param('id') id: string, @Query('backend') backend: string): Promise<RepositoryCreateResponseDto> {
     return this.service.importRepository(id, backend);
   }
@@ -108,7 +108,7 @@ export class RepositoryController {
 
   @Post('/:id/snapshots/prune')
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ type: LogResponseDto })
+  @ApiCreatedResponse({ type: LogResponseDto })
   async pruneRepository(@Param('id') id: string): Promise<LogResponseDto> {
     const { logId } = await this.service.pruneRepository(id);
     return { logId };
@@ -117,7 +117,7 @@ export class RepositoryController {
   @Post('/:id/snapshots/:snapshot')
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'snapshot', type: String })
-  @ApiOkResponse({ type: LogResponseDto })
+  @ApiCreatedResponse({ type: LogResponseDto })
   async restoreSnapshot(
     @Param('id') id: string,
     @Param('snapshot') snapshotId: string,
@@ -130,7 +130,7 @@ export class RepositoryController {
   @ApiParam({ name: 'id', type: String })
   @ApiParam({ name: 'snapshot', type: String })
   @ApiQuery({ name: 'backend', type: String })
-  @ApiOkResponse({ type: LogResponseDto })
+  @ApiCreatedResponse({ type: LogResponseDto })
   async restoreFromPoint(
     @Param('id') id: string,
     @Param('snapshot') snapshotId: string,

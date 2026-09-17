@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import { ColumboInvestigateRequestDto, ColumboInvestigationDto } from 'src/dto/columbo.dto';
 import { AuthRoute } from 'src/middleware/auth.guard';
 import { ColumboService } from 'src/services/columbo.service';
@@ -10,7 +10,7 @@ export class ColumboController {
 
   @Post('/investigations')
   @AuthRoute()
-  @ApiOkResponse({ type: ColumboInvestigationDto })
+  @ApiCreatedResponse({ type: ColumboInvestigationDto })
   startInvestigation(@Body() dto: ColumboInvestigateRequestDto): Promise<ColumboInvestigationDto> {
     return this.columbo.startInvestigation(dto);
   }

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Res } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import {
   ConfigureImmichIntegrationRequestDto,
   ConfigureImmichIntegrationResponseDto,
@@ -29,7 +29,7 @@ export class IntegrationsController {
   }
 
   @Post('immich')
-  @ApiOkResponse({ type: ConfigureImmichIntegrationResponseDto })
+  @ApiCreatedResponse({ type: ConfigureImmichIntegrationResponseDto })
   configureImmichIntegration(
     @Body() dto: ConfigureImmichIntegrationRequestDto,
   ): Promise<ConfigureImmichIntegrationResponseDto> {
