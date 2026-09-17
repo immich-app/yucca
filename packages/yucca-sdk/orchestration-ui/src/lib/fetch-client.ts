@@ -631,6 +631,14 @@ export function getRun(id: string, opts?: Oazapfts.RequestOpts) {
         ...opts
     }));
 }
+export function downloadRunLog(id: string, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchBlob<{
+        status: 200;
+        data: Blob;
+    }>(`/api/yucca/logs/${encodeURIComponent(id)}/download`, {
+        ...opts
+    }));
+}
 export function logStreamSse(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText(`/api/yucca/logs/${encodeURIComponent(id)}/stream`, {
         ...opts

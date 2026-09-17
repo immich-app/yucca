@@ -15,7 +15,7 @@
   };
 
   const { run }: Props = $props();
-  const { ViewLog } = $derived(getRunActions(run));
+  const { ViewLog, DownloadLog } = $derived(getRunActions(run));
 
   const nouns = {
     restore: { name: "restore", running: "Restore", done: "Restored" },
@@ -70,7 +70,7 @@
   });
 </script>
 
-<StackListItem title={status.title} color={status.color} actions={[ViewLog]}>
+<StackListItem title={status.title} color={status.color} actions={[ViewLog, DownloadLog]}>
   {#snippet icon()}
     <Icon icon={status.icon} />
   {/snippet}

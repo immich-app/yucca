@@ -2,6 +2,7 @@ import { sdk } from '$lib';
 import ViewStatusModal from '$lib/components/backups/dialogs/ViewStatusModal.svelte';
 import { SocketEvent } from '$lib/events';
 import { getRun, getRunHistory, type RunDto } from '$lib/fetch-client';
+import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { modalManager, type ActionItem } from '@immich/ui';
@@ -89,5 +90,14 @@ export const getRunActions = (run: RunDto) => {
     onAction: () => void modalManager.open(ViewStatusModal, { logId: run.id }),
   };
 
-  return { ViewLog };
+  const DownloadLog: ActionItem = {
+    title: 'Download Full Log',
+    onAction: () =>
+      window.open(
+        `${getProvider().baseUrl}/api/yucca/logs/${run.id}/download`,
+        '_blank',
+      ),
+  };
+
+  return { ViewLog, DownloadLog };
 };
