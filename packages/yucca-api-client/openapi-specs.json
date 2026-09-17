@@ -1027,7 +1027,8 @@
           "incomplete",
           "complete",
           "warn",
-          "failed"
+          "failed",
+          "cancelled"
         ]
       },
       "RepositoryMeterDto": {

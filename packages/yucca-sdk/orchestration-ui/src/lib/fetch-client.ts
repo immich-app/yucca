@@ -89,7 +89,7 @@ export type IntegrationsResponseDto = {
 export type RepositoryMetricsDto = {
     lastStarted?: string | null;
     lastBackup?: string | null;
-    lastBackupStatus?: ("incomplete" | "complete" | "warn" | "failed" | null) | null;
+    lastBackupStatus?: ("incomplete" | "complete" | "warn" | "failed" | "cancelled" | null) | null;
     lastBackupDuration?: number | null;
     sizeBytes: number;
 };
@@ -140,7 +140,7 @@ export type ScheduleDto = {
     lastRun?: string;
     lastFinished?: string;
 };
-export type RunStatus = "incomplete" | "complete" | "warn" | "failed";
+export type RunStatus = "incomplete" | "complete" | "warn" | "failed" | "cancelled";
 export type RunType = "schedule" | "restore" | "backup" | "forget";
 export type RunDto = {
     id: string;
@@ -277,7 +277,7 @@ export type RunResponseDto = {
     run: RunDto;
 };
 export type TaskType = "schedule" | "restore" | "backup" | "forget";
-export type TaskStatus = "incomplete" | "complete" | "warn" | "failed";
+export type TaskStatus = "incomplete" | "complete" | "warn" | "failed" | "cancelled";
 export type ActiveScheduleItemDto = {
     repositoryId: string;
     status: TaskStatus;

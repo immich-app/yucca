@@ -44,7 +44,7 @@ export type TicketCreateResponseDto = {
     /** IdP URL the browser must be sent to */
     redirectTo: string;
 };
-export type BackupStatus = "incomplete" | "complete" | "warn" | "failed";
+export type BackupStatus = "incomplete" | "complete" | "warn" | "failed" | "cancelled";
 export type RepositoryMetricsDto = {
     sizeBytes: number;
     lastStarted?: string | null;

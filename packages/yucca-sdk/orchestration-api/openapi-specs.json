@@ -1581,6 +1581,7 @@
               "complete",
               "warn",
               "failed",
+              "cancelled",
               null
             ],
             "nullable": true
@@ -1787,7 +1788,8 @@
           "incomplete",
           "complete",
           "warn",
-          "failed"
+          "failed",
+          "cancelled"
         ]
       },
       "RunType": {
@@ -2376,7 +2378,8 @@
           "incomplete",
           "complete",
           "warn",
-          "failed"
+          "failed",
+          "cancelled"
         ]
       },
       "RunningTaskListResponse": {

@@ -38,6 +38,13 @@
           icon: mdiCloudOffOutline,
         } as const;
       }
+      case "cancelled": {
+        return {
+          title: `Cancelled ${noun.name}`,
+          color: "warning",
+          icon: mdiCloudOffOutline,
+        } as const;
+      }
       case "warn": {
         return {
           title: `${noun.done} with warnings`,
@@ -70,7 +77,7 @@
 
   {#if run.status === "incomplete"}
     Started <RelativeTime time={run.start} />
-  {:else if run.status === "failed"}
+  {:else if run.status === "failed" || run.status === "cancelled"}
     Attempted {#if run.end}<RelativeTime time={run.end} />{/if}
   {:else}
     {noun.done} {#if run.end}<RelativeTime time={run.end} />{/if}

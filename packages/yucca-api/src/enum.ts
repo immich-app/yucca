@@ -29,6 +29,7 @@ export enum BackupStatus {
   Complete = 'complete',
   Warn = 'warn',
   Failed = 'failed',
+  Cancelled = 'cancelled',
 }
 
 export enum DeviceFlowEventType {

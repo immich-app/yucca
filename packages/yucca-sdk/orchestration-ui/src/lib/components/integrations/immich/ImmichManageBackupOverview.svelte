@@ -39,7 +39,8 @@
       case "warn": {
         return { color: "warning", icon: mdiAlert } as const;
       }
-      case "incomplete": {
+      case "incomplete":
+      case "cancelled": {
         return { color: "warning", icon: mdiAlert } as const;
       }
       case "complete": {
@@ -108,6 +109,8 @@
         Last backup finished with warnings <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "incomplete"}
         Last backup did not complete <RelativeTime time={status.lastBackup} />
+      {:else if status.kind === "cancelled"}
+        Last backup was cancelled <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "complete"}
         Last backup successful <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "paused"}
