@@ -41,7 +41,11 @@
   import MockImmichServerStatus from "./immich/MockImmichServerStatus.svelte";
   import MockImmichPurchaseInfo from "./immich/MockImmichPurchaseInfo.svelte";
   import MockImmichStorageSpace from "./immich/MockImmichStorageSpace.svelte";
+  import PageLayout from "../ui/PageLayout.svelte";
+  import ImmichBackupAttemptsPage from "../integrations/immich/ImmichBackupAttemptsPage.svelte";
+  import ImmichBackupSettingsPage from "../integrations/immich/ImmichBackupSettingsPage.svelte";
   import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
+  import ImmichSnapshotsPage from "../integrations/immich/ImmichSnapshotsPage.svelte";
   import ImmichOnboardingRestoreFlow from "../integrations/immich/ImmichOnboardingRestoreFlow.svelte";
   import MockImmichHideBackupsReminder from "./immich/MockImmichHideBackupsReminder.svelte";
 
@@ -52,7 +56,13 @@
   const { onExit }: Props = $props();
   const { testUiRestore, demoPadding } = options;
 
-  let route = $state<"photos" | "settings">("photos");
+  let route = $state<
+    | "photos"
+    | "settings"
+    | "backup-settings"
+    | "backup-attempts"
+    | "backup-snapshots"
+  >("photos");
 
   const sampleQuestions = [
     {
@@ -68,6 +78,8 @@
       answer: "Sample answer copy for the FAQ preview.",
     },
   ];
+
+  const backToBackups = () => (route = "settings");
 
   demoPadding.set(true);
   onDestroy(() => demoPadding.set(false));
@@ -186,7 +198,7 @@
 
   <AppShellSidebar class="relative">
     <div class="flex h-full flex-col pt-4 pr-2">
-      {#if route === "settings"}
+      {#if route !== "photos"}
         <ImmichBackupsAdminNavButton href="#" />
 
         <NavbarItem
@@ -247,7 +259,7 @@
           <ImmichBackupsSidebarItem href="#" />
         </MockImmichStorageSpace>
 
-        {#if route !== "settings"}
+        {#if route === "photos"}
           <MockImmichPurchaseInfo />
         {/if}
 
@@ -272,7 +284,22 @@
         },
         ...sampleQuestions,
       ]}
+      onConfigure={() => (route = "backup-settings")}
+      onViewAttempts={() => (route = "backup-attempts")}
+      onViewSnapshots={() => (route = "backup-snapshots")}
     />
+  {:else if route === "backup-settings"}
+    <PageLayout title="Backup settings" onBack={backToBackups}>
+      <ImmichBackupSettingsPage onUnconfigured={backToBackups} />
+    </PageLayout>
+  {:else if route === "backup-attempts"}
+    <PageLayout title="Backup attempts" onBack={backToBackups}>
+      <ImmichBackupAttemptsPage onUnconfigured={backToBackups} />
+    </PageLayout>
+  {:else if route === "backup-snapshots"}
+    <PageLayout title="Snapshots" onBack={backToBackups}>
+      <ImmichSnapshotsPage onUnconfigured={backToBackups} />
+    </PageLayout>
   {:else}
     <MockImmichPhotos />
   {/if}

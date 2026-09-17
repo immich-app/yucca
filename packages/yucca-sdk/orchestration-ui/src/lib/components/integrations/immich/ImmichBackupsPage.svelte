@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import UpsellPage from "../../onboarding/upsell/UpsellPage.svelte";
-  import ImmichManageBackup from "./ImmichManageBackup.svelte";
+  import ImmichManageBackupPage from "./ImmichManageBackupPage.svelte";
   import ImmichOnboardingSetupFlow from "./ImmichOnboardingSetupFlow.svelte";
 
   type Question = {
@@ -13,9 +13,19 @@
     price: string;
     includedStorage: string;
     questions: Question[];
+    onConfigure: () => void;
+    onViewAttempts: () => void;
+    onViewSnapshots: () => void;
   };
 
-  const { price, includedStorage, questions }: Props = $props();
+  const {
+    price,
+    includedStorage,
+    questions,
+    onConfigure,
+    onViewAttempts,
+    onViewSnapshots,
+  }: Props = $props();
 </script>
 
 <ImmichOnboardingSetupFlow>
@@ -23,5 +33,5 @@
     <UpsellPage {price} {includedStorage} {questions} onGetStarted={onStart} />
   {/snippet}
 
-  <ImmichManageBackup />
+  <ImmichManageBackupPage {onConfigure} {onViewAttempts} {onViewSnapshots} />
 </ImmichOnboardingSetupFlow>
