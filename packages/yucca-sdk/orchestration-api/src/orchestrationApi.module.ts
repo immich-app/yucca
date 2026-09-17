@@ -54,6 +54,7 @@ import { ScheduleService } from './services/schedule.service';
 import { SessionService } from './services/session.service';
 import { TelemetryService } from './services/telemetry.service';
 import { YuccaService } from './services/yucca.service';
+import { discardStateCacheDirectory } from './utils/cache';
 import { yuccaWellKnown } from './wellKnown';
 
 export const controllers = [
@@ -144,6 +145,7 @@ class OrchestrationConfigModule {
           useFactory: async (...args: any[]): Promise<ModuleConfig> => {
             const config = await options.useFactory(...args);
             config.statePath ??= resolve(homedir(), '.yucca');
+            discardStateCacheDirectory(config as ModuleConfig);
             yuccaWellKnown.configure(config.wellKnownUrl);
             return config as ModuleConfig;
           },

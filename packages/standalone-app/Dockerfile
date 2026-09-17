@@ -64,11 +64,13 @@ COPY --from=proxy /restic-proxy /usr/local/bin/
 COPY --from=builder /deploy ./
 COPY --chmod=0755 packages/standalone-app/docker-entrypoint.sh /usr/local/bin/
 
-RUN mkdir -p /data && chown node:node /data /app
+RUN mkdir -p /data /cache && chown node:node /data /cache /app
 VOLUME /data
+VOLUME /cache
 
 ENV NODE_ENV="production"
 ENV YUCCA_STATE_PATH="/data"
+ENV YUCCA_CACHE_PATH="/cache"
 ENV YUCCA_UI_PATH="/app/build"
 ENV HOST="0.0.0.0"
 ENV PORT=22676
