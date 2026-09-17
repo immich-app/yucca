@@ -5,6 +5,7 @@
   import type { LocalRepositoryDto, ScheduleDto } from "$lib/fetch-client";
   import type { ImmichBackupStatus } from "$lib/services/immich.integration.service";
   import { handleCreateBackup } from "$lib/services/repository.service";
+  import { handleCancelTask } from "$lib/services/task.service";
   import { Button, FormatBytes, Icon } from "@immich/ui";
   import {
     mdiAlert,
@@ -13,6 +14,7 @@
     mdiCloudUploadOutline,
     mdiInformation,
     mdiProgressUpload,
+    mdiStopCircleOutline,
   } from "@mdi/js";
   import cronstrue from "cronstrue";
 
@@ -67,15 +69,28 @@
     </span>
 
     {#snippet trailing()}
-      <Button
-        variant="ghost"
-        size="small"
-        class="whitespace-nowrap"
-        leadingIcon={mdiCloudUploadOutline}
-        onclick={() => void handleCreateBackup(repository.id)}
-      >
-        Back up now
-      </Button>
+      {#if status.kind === "running"}
+        <Button
+          variant="ghost"
+          size="small"
+          color="danger"
+          class="whitespace-nowrap"
+          leadingIcon={mdiStopCircleOutline}
+          onclick={() => void handleCancelTask(repository.id)}
+        >
+          Cancel backup
+        </Button>
+      {:else}
+        <Button
+          variant="ghost"
+          size="small"
+          class="whitespace-nowrap"
+          leadingIcon={mdiCloudUploadOutline}
+          onclick={() => void handleCreateBackup(repository.id)}
+        >
+          Back up now
+        </Button>
+      {/if}
     {/snippet}
 
     {#snippet footer()}
