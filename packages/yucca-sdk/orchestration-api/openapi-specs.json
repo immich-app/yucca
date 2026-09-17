@@ -2400,6 +2400,7 @@
             "type": "string"
           },
           "paused": {
+            "default": false,
             "type": "boolean"
           },
           "cron": {
@@ -2414,7 +2415,6 @@
         },
         "required": [
           "name",
-          "paused",
           "cron",
           "repositories"
         ]
