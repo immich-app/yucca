@@ -293,7 +293,7 @@ export type RunningTaskListResponse = {
 };
 export type ScheduleCreateRequestDto = {
     name: string;
-    paused: boolean;
+    paused?: boolean;
     cron: string;
     repositories: string[];
 };
