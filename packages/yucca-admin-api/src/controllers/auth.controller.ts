@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
-import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { parse } from 'cookie';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
@@ -73,7 +73,7 @@ export class AuthController {
   }
 
   @Post('/cli/token')
-  @ApiOkResponse({ type: CliTokenResponseDto })
+  @ApiCreatedResponse({ type: CliTokenResponseDto })
   async cliToken(@Body() body: CliTokenRequestDto): Promise<CliTokenResponseDto> {
     return await this.auth.cliToken(body.code, body.codeVerifier);
   }

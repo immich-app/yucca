@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, Req, Res, Sse } from '@nestjs/common';
-import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { Duration } from 'luxon';
 import { type Observable } from 'rxjs';
@@ -135,7 +135,7 @@ export class AuthController {
 
   @Post('/ticket')
   @AuthRoute()
-  @ApiOkResponse({ type: TicketCreateResponseDto })
+  @ApiCreatedResponse({ type: TicketCreateResponseDto })
   async createTicket(@Auth() auth: AuthDto, @Body() dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
     return await this.auth.createTicket(auth, dto);
   }

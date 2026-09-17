@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import { BackendResponseDto, BackendsResponseDto, CreateLocalBackendRequestDto } from '../dto/backend.dto';
 import { BackendService } from '../services/backend.service';
 
@@ -14,7 +14,7 @@ export class BackendController {
   }
 
   @Post('local')
-  @ApiOkResponse({ type: BackendResponseDto })
+  @ApiCreatedResponse({ type: BackendResponseDto })
   createLocalBackend(@Body() dto: CreateLocalBackendRequestDto): Promise<BackendResponseDto> {
     return this.service.createLocalBackend(dto);
   }

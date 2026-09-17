@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import {
   AllowlistAddRequestDto,
   AllowlistEntriesResponseDto,
@@ -25,7 +25,7 @@ export class AllowlistController {
 
   @Post()
   @AuthRoute()
-  @ApiOkResponse({ type: AllowlistEntryResponseDto })
+  @ApiCreatedResponse({ type: AllowlistEntryResponseDto })
   addAllowlistEntry(@Body() dto: AllowlistAddRequestDto): Promise<AllowlistEntryResponseDto> {
     return this.allowlist.add(dto);
   }
@@ -39,14 +39,14 @@ export class AllowlistController {
 
   @Post('/invite')
   @AuthRoute()
-  @ApiOkResponse({ type: AllowlistEntriesResponseDto })
+  @ApiCreatedResponse({ type: AllowlistEntriesResponseDto })
   inviteEmails(@Body() dto: AllowlistInviteRequestDto): Promise<AllowlistEntriesResponseDto> {
     return this.allowlist.invite(dto);
   }
 
   @Post('/invite-batch')
   @AuthRoute()
-  @ApiOkResponse({ type: AllowlistEntriesResponseDto })
+  @ApiCreatedResponse({ type: AllowlistEntriesResponseDto })
   inviteBatch(@Body() dto: AllowlistInviteBatchRequestDto): Promise<AllowlistEntriesResponseDto> {
     return this.allowlist.inviteBatch(dto);
   }

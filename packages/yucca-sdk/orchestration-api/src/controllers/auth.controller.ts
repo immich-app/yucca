@@ -1,5 +1,5 @@
 import { Body, Controller, Post, Req, Res, Sse } from '@nestjs/common';
-import { ApiBody, ApiOkResponse } from '@nestjs/swagger';
+import { ApiBody, ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import { type Request, type Response } from 'express';
 import { SESSION_TTL_MS } from '../const';
 import { CreateSessionRequestDto, DeviceFlowEventDto } from '../dto/auth.dto';
@@ -49,7 +49,7 @@ export class AuthController {
   }
 
   @Post('/ticket')
-  @ApiOkResponse({ type: TicketCreateResponseDto })
+  @ApiCreatedResponse({ type: TicketCreateResponseDto })
   async createTicket(@Body() dto: TicketCreateRequestDto): Promise<TicketCreateResponseDto> {
     return await this.auth.createTicket(dto);
   }

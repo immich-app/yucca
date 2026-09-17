@@ -337,7 +337,7 @@ export function createSession(createSessionRequestDto: CreateSessionRequestDto, 
 }
 export function createTicket(ticketCreateRequestDto: TicketCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: TicketCreateResponseDto;
     }>("/api/yucca/auth/ticket", oazapfts.json({
         ...opts,
@@ -355,7 +355,7 @@ export function getBackends(opts?: Oazapfts.RequestOpts) {
 }
 export function createLocalBackend(createLocalBackendRequestDto: CreateLocalBackendRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: BackendResponseDto;
     }>("/api/yucca/backend/local", oazapfts.json({
         ...opts,
@@ -399,7 +399,7 @@ export function getImmichBackupStatus(opts?: Oazapfts.RequestOpts) {
 }
 export function configureImmichIntegration(configureImmichIntegrationRequestDto: ConfigureImmichIntegrationRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: ConfigureImmichIntegrationResponseDto;
     }>("/api/yucca/integrations/immich", oazapfts.json({
         ...opts,
@@ -465,7 +465,7 @@ export function createRepository(repositoryCreateRequestDto: RepositoryCreateReq
     backend?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: RepositoryCreateResponseDto;
     }>(`/api/yucca/repository${QS.query(QS.explode({
         backend
@@ -517,7 +517,7 @@ export function deleteRepository(id: string, opts?: Oazapfts.RequestOpts) {
 }
 export function createBackup(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: LogResponseDto;
     }>(`/api/yucca/repository/${encodeURIComponent(id)}`, {
         ...opts,
@@ -536,7 +536,7 @@ export function checkImportRepository(id: string, backend: string, opts?: Oazapf
 }
 export function importRepository(id: string, backend: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: RepositoryCreateResponseDto;
     }>(`/api/yucca/repository/${encodeURIComponent(id)}/import${QS.query(QS.explode({
         backend
@@ -573,7 +573,7 @@ export function getSnapshots(id: string, opts?: Oazapfts.RequestOpts) {
 }
 export function pruneRepository(id: string, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: LogResponseDto;
     }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/prune`, {
         ...opts,
@@ -582,7 +582,7 @@ export function pruneRepository(id: string, opts?: Oazapfts.RequestOpts) {
 }
 export function restoreSnapshot(id: string, snapshot: string, repositorySnapshotRestoreRequestDto: RepositorySnapshotRestoreRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: LogResponseDto;
     }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}`, oazapfts.json({
         ...opts,
@@ -601,7 +601,7 @@ export function forgetSnapshot(id: string, snapshot: string, opts?: Oazapfts.Req
 }
 export function restoreFromPoint(id: string, snapshot: string, backend: string, repositorySnapshotRestoreFromPointRequestDto: RepositorySnapshotRestoreFromPointRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: LogResponseDto;
     }>(`/api/yucca/repository/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(snapshot)}/restore-from-point${QS.query(QS.explode({
         backend
@@ -652,7 +652,7 @@ export function cancelTask(parentId: string, opts?: Oazapfts.RequestOpts) {
 }
 export function createSchedule(scheduleCreateRequestDto: ScheduleCreateRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
-        status: 200;
+        status: 201;
         data: ScheduleCreateResponseDto;
     }>("/api/yucca/schedule", oazapfts.json({
         ...opts,

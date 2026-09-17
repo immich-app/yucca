@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import { AuthDto } from 'src/dto/auth.dto';
 import {
   FeatureEnableBatchRequestDto,
@@ -30,7 +30,7 @@ export class FeaturesController {
 
   @Post('/:flag/enable-batch')
   @AuthRoute()
-  @ApiOkResponse({ type: FeatureEnableBatchResponseDto })
+  @ApiCreatedResponse({ type: FeatureEnableBatchResponseDto })
   enableFeatureBatch(
     @Auth() auth: AuthDto,
     @Param('flag') flag: string,

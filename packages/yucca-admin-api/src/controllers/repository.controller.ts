@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import {
   RepositoryCreateRequestDto,
   RepositoryCreateResponseDto,
@@ -26,7 +26,7 @@ export class RepositoryController {
 
   @Post()
   @AuthRoute()
-  @ApiOkResponse({ type: RepositoryCreateResponseDto })
+  @ApiCreatedResponse({ type: RepositoryCreateResponseDto })
   createRepository(@Body() dto: RepositoryCreateRequestDto): Promise<RepositoryCreateResponseDto> {
     return this.repository.create(dto);
   }
@@ -40,7 +40,7 @@ export class RepositoryController {
 
   @Post('/:id/url')
   @AuthRoute()
-  @ApiOkResponse({ type: RepositoryUrlResponseDto })
+  @ApiCreatedResponse({ type: RepositoryUrlResponseDto })
   repositoryUrl(@Param('id') id: string): Promise<RepositoryUrlResponseDto> {
     return this.repository.url(id);
   }
