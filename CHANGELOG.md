@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.45.0](https://github.com/immich-app/yucca/compare/v0.44.0...v0.45.0) (2026-09-18)
+
+
+### Features
+
+* second batch of feedback changes ([#694](https://github.com/immich-app/yucca/issues/694)) ([e3c650c](https://github.com/immich-app/yucca/commit/e3c650c01d933e0b4cdb22799d1059fab32da9b4))
+
+
+### Bug Fixes
+
+* correct openapi contracts ([#692](https://github.com/immich-app/yucca/issues/692)) ([1922ca2](https://github.com/immich-app/yucca/commit/1922ca21014a666f17514ca0697e004308174268))
+
 ## [0.44.0](https://github.com/immich-app/yucca/compare/v0.43.0...v0.44.0) (2026-09-16)
 
 
