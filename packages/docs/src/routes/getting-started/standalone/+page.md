@@ -18,6 +18,7 @@ docker run -d --name futo-backups \
   --restart always \
   -p 127.0.0.1:22676:22676 \
   -v "$HOME/.yucca:/data" \
+  -v futo-backups-cache:/cache \
   -v /my/important/data:/target/important-data:ro \
   ghcr.io/immich-app/futo-backups-standalone:v0
 ```
@@ -37,6 +38,7 @@ services:
       - 127.0.0.1:22676:22676
     volumes:
       - data:/data
+      - cache:/cache
       # add additional mounts for the data you want to backup
       - /my/important/data:/target/important-data:ro
     restart: always
@@ -44,6 +46,8 @@ services:
 volumes:
   data:
     name: futo-backups-data
+  cache:
+    name: futo-backups-cache
 ```
 
 ```bash
@@ -56,6 +60,7 @@ docker compose up -d
 | Mount | Purpose |
 | --- | --- |
 | `/data` | The app's own state: its database, settings and your encryption key. Never delete this volume |
+| `/cache` | Working files that make later backups faster. Safe to delete: the app rebuilds it on the next run |
 | `/target/...` | The data you want backed up. Add one mount per folder |
 | `/backends/...` | Optional. A local disk to store backups on, such as an external drive |
 
