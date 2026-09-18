@@ -24,7 +24,13 @@ export class RunningTasksRepository {
 
     const controller = new AbortController();
 
-    signal?.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+      } else {
+        signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+      }
+    }
 
     this.activeTasks.set(parentId, task);
     this.controllers.set(parentId, controller);
