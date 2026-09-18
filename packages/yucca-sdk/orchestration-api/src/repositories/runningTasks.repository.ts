@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { RunningTaskDto } from '../dto/runningTasks.dto';
 import { TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
+import { TaskCancelledError } from '../utils/errors';
 
 @Injectable()
 export class RunningTasksRepository {
@@ -23,7 +24,13 @@ export class RunningTasksRepository {
 
     const controller = new AbortController();
 
-    signal?.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+      } else {
+        signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+      }
+    }
 
     this.activeTasks.set(parentId, task);
     this.controllers.set(parentId, controller);
@@ -69,6 +76,6 @@ export class RunningTasksRepository {
       throw new NotFoundException(`No running task for parent ${parentId}`);
     }
 
-    controller.abort();
+    controller.abort(new TaskCancelledError());
   }
 }

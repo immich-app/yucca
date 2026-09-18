@@ -15,7 +15,7 @@
   };
 
   const { run }: Props = $props();
-  const { ViewLog } = $derived(getRunActions(run));
+  const { ViewLog, DownloadLog } = $derived(getRunActions(run));
 
   const nouns = {
     restore: { name: "restore", running: "Restore", done: "Restored" },
@@ -35,6 +35,13 @@
         return {
           title: `Failed ${noun.name}`,
           color: "danger",
+          icon: mdiCloudOffOutline,
+        } as const;
+      }
+      case "cancelled": {
+        return {
+          title: `Cancelled ${noun.name}`,
+          color: "warning",
           icon: mdiCloudOffOutline,
         } as const;
       }
@@ -63,14 +70,14 @@
   });
 </script>
 
-<StackListItem title={status.title} color={status.color} actions={[ViewLog]}>
+<StackListItem title={status.title} color={status.color} actions={[ViewLog, DownloadLog]}>
   {#snippet icon()}
     <Icon icon={status.icon} />
   {/snippet}
 
   {#if run.status === "incomplete"}
     Started <RelativeTime time={run.start} />
-  {:else if run.status === "failed"}
+  {:else if run.status === "failed" || run.status === "cancelled"}
     Attempted {#if run.end}<RelativeTime time={run.end} />{/if}
   {:else}
     {noun.done} {#if run.end}<RelativeTime time={run.end} />{/if}

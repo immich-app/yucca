@@ -64,6 +64,9 @@
       case "failed": {
         return "failed";
       }
+      case "cancelled": {
+        return "cancelled";
+      }
       case "warn": {
         return "warned";
       }
@@ -108,6 +111,9 @@
       }
       case "failed": {
         return `${titles[type].done} failed`;
+      }
+      case "cancelled": {
+        return `${titles[type].done} cancelled`;
       }
       default: {
         return titles[type].running;

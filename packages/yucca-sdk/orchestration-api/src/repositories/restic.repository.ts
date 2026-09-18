@@ -1,6 +1,5 @@
 import { backup, forget, init, keyList, ls, prune, restore, snapshots, stats, unlock } from '@futo-org/restic-wrapper';
 import { Injectable } from '@nestjs/common';
-import { join } from 'node:path';
 import { Writable } from 'node:stream';
 import { RepositorySnapshotRestoreRequestDto } from '../dto/repository.dto';
 import { createSampledLogWriter, RetentionPolicy } from '../utils/restic';
@@ -15,7 +14,7 @@ export class ResticRepository {
   ) {}
 
   private get cacheDir() {
-    return join(this.moduleConfig.get().statePath, 'restic-cache');
+    return this.moduleConfig.get().cachePath;
   }
 
   async init(repository: string, key: Uint8Array, placement: ResticPlacement) {
@@ -48,7 +47,7 @@ export class ResticRepository {
       .password(Buffer.from(key).toString('hex'))
       .tag(...tags)
       .addFile(...paths)
-      .exclude(this.cacheDir)
+      .excludeCaches()
       .signal(signal)
       .on('event', write)
       .run();

@@ -3,6 +3,8 @@ import { BootstrapRepository } from '../repositories/bootstrap.repository';
 import { ConfigRepository } from '../repositories/config.repository';
 import { DatabaseRepository } from '../repositories/database.repository';
 import { LoggingRepository } from '../repositories/logging.repository';
+import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
+import { discardStateCacheDirectory } from '../utils/cache';
 import { RunHistoryService } from './runHistory.service';
 import { ScheduleService } from './schedule.service';
 
@@ -15,12 +17,17 @@ export class BootstrapService implements OnApplicationBootstrap {
     private readonly schedule: ScheduleService,
     private readonly bootstrap: BootstrapRepository,
     private readonly runHistory: RunHistoryService,
+    private readonly moduleConfig: ModuleConfigRepository,
   ) {
     this.logger.setContext(BootstrapService.name);
   }
 
   async onApplicationBootstrap() {
     try {
+      if (this.moduleConfig.hasLock()) {
+        await discardStateCacheDirectory(this.moduleConfig.get());
+      }
+
       await this.database.runMigrations();
       await this.config.bootstrap();
       await this.schedule.bootstrap();

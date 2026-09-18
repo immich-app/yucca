@@ -120,6 +120,14 @@
                   />
                   <Text>Backup finished</Text>
                   <Badge size="tiny" color="danger">Failed</Badge>
+                {:else if status === 'cancelled'}
+                  <Icon
+                    icon={mdiAlertCircleOutline}
+                    size="18"
+                    class="text-warning-500"
+                  />
+                  <Text>Backup cancelled</Text>
+                  <Badge size="tiny" color="warning">Cancelled</Badge>
                 {:else if isEnd}
                   <Icon
                     icon={mdiAlertCircleOutline}

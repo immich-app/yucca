@@ -11,7 +11,7 @@ import { TaskStatus } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import { DB } from '../schema';
 import { type RunType } from '../schema/tables/runHistory.table';
-import { writeError } from '../utils/errors';
+import { getTaskStatus, writeError } from '../utils/errors';
 import { LoggingRepository } from './logging.repository';
 import { ModuleConfigRepository } from './moduleConfig.repository';
 import { StorageRepository } from './storage.repository';
@@ -154,7 +154,7 @@ export class RunHistoryRepository {
           writeError(log, error);
           log.close();
 
-          await finalize(TaskStatus.Failed);
+          await finalize(getTaskStatus(error));
         });
     } catch (error) {
       callback(error);

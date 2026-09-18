@@ -8,6 +8,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65_535).default(22_676),
   HOST: z.string().trim().min(1).default('127.0.0.1'),
   YUCCA_STATE_PATH: z.string().trim().min(1).default(resolve(homedir(), '.yucca')),
+  YUCCA_CACHE_PATH: optionalString,
   YUCCA_WELL_KNOWN_URL: optionalString,
   YUCCA_UI_PATH: optionalString,
   YUCCA_DISABLE_AUTH: z.stringbool().default(false),
@@ -17,6 +18,7 @@ export type Env = {
   port: number;
   host: string;
   statePath: string;
+  cachePath?: string;
   wellKnownUrl?: string;
   uiPath?: string;
   disableAuth: boolean;
@@ -36,6 +38,7 @@ export const readEnv = (source: NodeJS.ProcessEnv = process.env): Env => {
     port: parsed.PORT,
     host: parsed.HOST,
     statePath: resolve(parsed.YUCCA_STATE_PATH),
+    cachePath: parsed.YUCCA_CACHE_PATH ? resolve(parsed.YUCCA_CACHE_PATH) : undefined,
     wellKnownUrl: parsed.YUCCA_WELL_KNOWN_URL,
     uiPath: parsed.YUCCA_UI_PATH ? resolve(parsed.YUCCA_UI_PATH) : undefined,
     disableAuth: parsed.YUCCA_DISABLE_AUTH,

@@ -1,4 +1,3 @@
-import { ResticBackupCommandCouldNotReadSourceDataError } from '@futo-org/restic-wrapper';
 import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Updateable } from 'kysely';
 import { randomUUID } from 'node:crypto';
@@ -41,6 +40,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
+import { getTaskStatus } from '../utils/errors';
 import { DEFAULT_RETENTION_POLICY, RetentionPolicy } from '../utils/restic';
 import { BootstrapService } from './bootstrap.service';
 import { TelemetryService } from './telemetry.service';
@@ -537,23 +537,24 @@ export class RepositoryService {
 
     const finish = async (error?: any) => {
       try {
-        const lastBackupStatus = error
-          ? error instanceof ResticBackupCommandCouldNotReadSourceDataError
-            ? TaskStatus.Warn
-            : TaskStatus.Failed
-          : TaskStatus.Complete;
+        const lastBackupStatus = getTaskStatus(error);
 
         const lastBackup = new Date().toISOString();
         const lastBackupDuration = Date.now() - +startTime;
 
-        void this.updateLocalMetrics(id, {
-          resticParameters: { endpoint, key, placement },
+        await this.updateLocalMetrics(id, {
           additionalMetrics: {
             lastBackup,
             lastBackupStatus,
             lastBackupDuration,
           },
         });
+
+        if (lastBackupStatus !== TaskStatus.Cancelled) {
+          void this.updateLocalMetrics(id, {
+            resticParameters: { endpoint, key, placement },
+          });
+        }
 
         this.telemetry.submitStructuredLog('Backup finished', {
           repositoryId: id,

@@ -15,7 +15,7 @@
   } from "@mdi/js";
   import GlobalSettings from "../settings/GlobalSettings.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
-  import Dashboard from "../dashboard/Dashboard.svelte";
+  import DashboardPage from "../dashboard/DashboardPage.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
 
   let open = $state(true);
@@ -99,7 +99,7 @@
 
   <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
     {#if route === "dashboard"}
-      <Dashboard onViewBackups={() => (route = "backups")} />
+      <DashboardPage onViewBackups={() => (route = "backups")} />
     {:else if route === "backups"}
       <BackupsList />
     {:else if route === "config"}

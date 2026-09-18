@@ -1015,6 +1015,37 @@
         ]
       }
     },
+    "/api/yucca/logs/{id}/download": {
+      "get": {
+        "operationId": "downloadRunLog",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/jsonl": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "RunHistory"
+        ]
+      }
+    },
     "/api/yucca/logs/{id}/stream": {
       "get": {
         "operationId": "logStreamSse",
@@ -1581,6 +1612,7 @@
               "complete",
               "warn",
               "failed",
+              "cancelled",
               null
             ],
             "nullable": true
@@ -1787,7 +1819,8 @@
           "incomplete",
           "complete",
           "warn",
-          "failed"
+          "failed",
+          "cancelled"
         ]
       },
       "RunType": {
@@ -2376,7 +2409,8 @@
           "incomplete",
           "complete",
           "warn",
-          "failed"
+          "failed",
+          "cancelled"
         ]
       },
       "RunningTaskListResponse": {

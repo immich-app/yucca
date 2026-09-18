@@ -6,7 +6,8 @@
     | "running"
     | "complete"
     | "warned"
-    | "failed";
+    | "failed"
+    | "cancelled";
 </script>
 
 <script lang="ts">
@@ -75,6 +76,12 @@
     forget: "Old backups could not be pruned",
   };
 
+  const cancelled: Record<BackupStatusType, string> = {
+    backup: "Your backup was cancelled",
+    restore: "Your restore was cancelled",
+    forget: "Pruning old backups was cancelled",
+  };
+
   const reassurance: Record<BackupStatusType, string> = {
     backup: "No changes were made to your existing backups.",
     restore: "Your backups are untouched — nothing was lost.",
@@ -106,6 +113,9 @@
       case "failed": {
         return failed[type];
       }
+      case "cancelled": {
+        return cancelled[type];
+      }
       case "complete": {
         return succeeded[type];
       }
@@ -121,7 +131,7 @@
   const titleColor = $derived(
     backupState === "complete"
       ? "success"
-      : backupState === "warned"
+      : backupState === "warned" || backupState === "cancelled"
         ? "warning"
         : backupState === "failed"
           ? "danger"
@@ -131,7 +141,8 @@
   const terminal = $derived(
     backupState === "complete" ||
       backupState === "warned" ||
-      backupState === "failed",
+      backupState === "failed" ||
+      backupState === "cancelled",
   );
 </script>
 

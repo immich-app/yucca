@@ -1,4 +1,3 @@
-import { ResticBackupCommandCouldNotReadSourceDataError } from '@futo-org/restic-wrapper';
 import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob, CronTime } from 'cron';
@@ -19,6 +18,7 @@ import { RepositoryIntegrationImmichRepository } from '../repositories/repositor
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { ScheduleRepository } from '../repositories/schedule.repository';
 import { ScheduleTable } from '../schema/tables/schedule.table';
+import { getTaskStatus } from '../utils/errors';
 import { RepositoryService } from './repository.service';
 import { TelemetryService } from './telemetry.service';
 
@@ -132,10 +132,7 @@ export class ScheduleService {
         scheduleStatus[index] = { repositoryId, status: TaskStatus.Complete };
         this.runningTasks.updateTask(id, { scheduleStatus });
       } catch (error) {
-        const status =
-          error instanceof ResticBackupCommandCouldNotReadSourceDataError ? TaskStatus.Warn : TaskStatus.Failed;
-
-        scheduleStatus[index] = { repositoryId, status };
+        scheduleStatus[index] = { repositoryId, status: getTaskStatus(error) };
         this.runningTasks.updateTask(id, { scheduleStatus });
       }
     }

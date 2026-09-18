@@ -42,6 +42,7 @@ export enum TaskStatus {
   Complete = 'complete',
   Warn = 'warn',
   Failed = 'failed',
+  Cancelled = 'cancelled',
 }
 
 export enum TaskType {

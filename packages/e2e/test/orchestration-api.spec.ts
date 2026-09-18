@@ -849,7 +849,7 @@ describe('Running task cancellation', () => {
       runs: expect.arrayContaining([
         expect.objectContaining({
           id: logId,
-          status: 'failed',
+          status: 'cancelled',
         }),
       ]),
     });

@@ -16,10 +16,15 @@ async function bootstrap() {
 
   await mkdir(env.statePath, { recursive: true });
 
+  if (env.cachePath) {
+    await mkdir(env.cachePath, { recursive: true });
+  }
+
   const app = await NestFactory.create<NestExpressApplication>(
     OrchestrationApiModule.forRootAsync({
       useFactory: () => ({
         statePath: env.statePath,
+        cachePath: env.cachePath,
         wellKnownUrl: env.wellKnownUrl,
         requireSession: !env.disableAuth,
       }),

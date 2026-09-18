@@ -21,6 +21,7 @@ export enum BackupStatus {
   Complete = 'complete',
   Warn = 'warn',
   Failed = 'failed',
+  Cancelled = 'cancelled',
 }
 
 // Audiences of the ES256 JWTs this service mints for the CLI login flow.
