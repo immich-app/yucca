@@ -61,14 +61,33 @@ describe('Repository', () => {
       ctx.backendId,
     );
 
-    const metricsEvent = waitForEvent(ctx.events, 'RepositoryUpdate');
+    const statusEvent = waitForEvent(ctx.events, 'RepositoryUpdate');
+    const sizeEvent = waitForEvent(
+      ctx.events,
+      'RepositoryUpdate',
+      (event) => event.type === 'RepositoryUpdate' && event.repository.metrics?.sizeBytes === 1024,
+    );
 
     const { logId, task } = await repositoryService.createBackup(repository.id);
     await task;
 
     expect(logId).toEqual(expect.any(String));
 
-    await expect(metricsEvent).resolves.toEqual(
+    await expect(statusEvent).resolves.toEqual(
+      expect.objectContaining({
+        type: 'RepositoryUpdate',
+        repositoryId: repository.id,
+        repository: expect.objectContaining({
+          metrics: expect.objectContaining({
+            sizeBytes: 0,
+            lastBackup: expect.any(String),
+            lastBackupStatus: TaskStatus.Complete,
+          }),
+        }),
+      }),
+    );
+
+    await expect(sizeEvent).resolves.toEqual(
       expect.objectContaining({
         type: 'RepositoryUpdate',
         repositoryId: repository.id,

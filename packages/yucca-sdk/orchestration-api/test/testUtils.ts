@@ -120,10 +120,14 @@ export async function createTestingModule(): Promise<TestContext> {
   };
 }
 
-export function waitForEvent(events: TestEventBus, type: GatewayEvent['type']): Promise<GatewayEvent> {
+export function waitForEvent(
+  events: TestEventBus,
+  type: GatewayEvent['type'],
+  predicate: (event: GatewayEvent) => boolean = () => true,
+): Promise<GatewayEvent> {
   return new Promise((resolve) => {
     const onEvent = (event: GatewayEvent) => {
-      if (event.type === type) {
+      if (event.type === type && predicate(event)) {
         events.off(onEvent);
         resolve(event);
       }
