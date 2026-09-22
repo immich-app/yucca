@@ -6,6 +6,7 @@ import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { ConfigurationKey } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
+import type { ResticProxyThrottle } from '../proxy/resticProxy';
 import { DB } from '../schema';
 import { yuccaWellKnown } from '../wellKnown';
 import { LoggingRepository } from './logging.repository';
@@ -192,6 +193,22 @@ export class ConfigRepository {
 
   async getSessionSecret(): Promise<Buffer> {
     return Buffer.from(await this.get(ConfigurationKey.SessionSecret), 'hex');
+  }
+
+  async getThrottle(): Promise<ResticProxyThrottle | undefined> {
+    const bytesPerSec = await this.getOptional(ConfigurationKey.ThrottleBytesPerSec);
+    if (bytesPerSec === undefined) {
+      return;
+    }
+
+    const quietHours = await this.getOptional(ConfigurationKey.ThrottleQuietHours);
+
+    return { bytesPerSec: Number.parseInt(bytesPerSec), quietHours: quietHours || undefined };
+  }
+
+  async setThrottle({ bytesPerSec, quietHours }: ResticProxyThrottle) {
+    await this.set(ConfigurationKey.ThrottleBytesPerSec, String(bytesPerSec));
+    await this.set(ConfigurationKey.ThrottleQuietHours, quietHours ?? '');
   }
 
   async getResticOptions(
