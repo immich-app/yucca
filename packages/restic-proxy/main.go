@@ -61,6 +61,11 @@ func main() {
 
 	client := client.New(api)
 	proxy := proxy.New(client)
+	if err := proxy.Throttle(cfg.ThrottleBytesPerSec, cfg.ThrottleQuietHours); err != nil {
+		log.Error().Err(err).Msg("failed to apply the configured throttle")
+		os.Exit(5)
+	}
+
 	handler := hlog.NewHandler(log.Logger)(hlog.MethodHandler("method")(hlog.URLHandler("path")(hlog.RemoteAddrHandler("remote_addr")(proxy))))
 
 	server := &http.Server{
