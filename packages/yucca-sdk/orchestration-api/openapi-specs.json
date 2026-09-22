@@ -150,6 +150,56 @@
         ]
       }
     },
+    "/api/yucca/config": {
+      "get": {
+        "operationId": "getConfig",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Config"
+        ]
+      },
+      "put": {
+        "operationId": "updateConfig",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigUpdateRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Config"
+        ]
+      }
+    },
     "/api/yucca/debug/reset": {
       "post": {
         "operationId": "resetOrchestrator",
@@ -1394,6 +1444,45 @@
         },
         "required": [
           "backend"
+        ]
+      },
+      "BandwidthDto": {
+        "type": "object",
+        "properties": {
+          "bytesPerSec": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "quietHours": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d-([01]\\d|2[0-3]):[0-5]\\d$"
+          }
+        },
+        "required": [
+          "bytesPerSec"
+        ]
+      },
+      "ConfigResponseDto": {
+        "type": "object",
+        "properties": {
+          "bandwidth": {
+            "$ref": "#/components/schemas/BandwidthDto"
+          }
+        },
+        "required": [
+          "bandwidth"
+        ]
+      },
+      "ConfigUpdateRequestDto": {
+        "type": "object",
+        "properties": {
+          "bandwidth": {
+            "$ref": "#/components/schemas/BandwidthDto"
+          }
+        },
+        "required": [
+          "bandwidth"
         ]
       },
       "FilesystemListingItemDto": {
