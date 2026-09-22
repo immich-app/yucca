@@ -3,12 +3,25 @@ package ipc
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"os"
 
 	"restic-proxy/internal/config"
 )
+
+type ControlType string
+
+const ControlThrottle ControlType = "throttle"
+
+type Control struct {
+	Type     ControlType      `json:"type"`
+	Throttle *ThrottleControl `json:"throttle,omitempty"`
+}
+
+type ThrottleControl struct {
+	BytesPerSec int    `json:"bytesPerSec"`
+	QuietHours  string `json:"quietHours"`
+}
 
 type Ready struct {
 	Address string `json:"address"`
@@ -42,8 +55,16 @@ func ReportReadyFromConfig(cfg config.Config, addr net.Addr) (*os.File, error) {
 	return ReportReady(cfg.ReadyFd, Ready{Address: addr.String(), Port: tcpAddr.Port})
 }
 
-func WaitForParentExit(pipe *os.File) {
+func ReadControl(pipe *os.File, apply func(Control)) {
 	defer pipe.Close()
 
-	_, _ = io.Copy(io.Discard, pipe)
+	decoder := json.NewDecoder(pipe)
+	for {
+		var control Control
+		if err := decoder.Decode(&control); err != nil {
+			return
+		}
+
+		apply(control)
+	}
 }
