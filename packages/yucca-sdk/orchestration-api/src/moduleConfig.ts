@@ -1,5 +1,6 @@
 import type { Socket } from 'socket.io';
 import { GatewayEvent } from './events/events.gateway';
+import type { ResticProxyThrottle } from './proxy/resticProxy';
 
 export const ModuleConfigProvider = Symbol('ModuleConfig');
 
@@ -34,6 +35,7 @@ export type ModuleConfig = {
   requireSession?: boolean;
   requireLock?: boolean;
   developmentMode?: boolean;
+  throttle?: ResticProxyThrottle;
 
   authenticate?: AuthenticateFn;
   onInternalEvent?: (event: GatewayEvent) => void;
