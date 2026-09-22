@@ -62,11 +62,7 @@ func TestThrottle_AppliesOnlyOutsideTheQuietHours(t *testing.T) {
 func TestPace_LeavesTheBodyAloneWithoutALimit(t *testing.T) {
 	body := io.NopCloser(bytes.NewReader([]byte("payload")))
 
-	limit, err := newThrottle(0, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if pace(t.Context(), body, limit) != body {
+	if pace(t.Context(), body, throttled(t, 0, "")) != body {
 		t.Error("expected an unthrottled body to be passed through untouched")
 	}
 }
@@ -74,11 +70,7 @@ func TestPace_LeavesTheBodyAloneWithoutALimit(t *testing.T) {
 func TestPace_LeavesTheBodyAloneInsideTheQuietHours(t *testing.T) {
 	body := io.NopCloser(bytes.NewReader([]byte("payload")))
 
-	limit, err := newThrottle(1024, "00:00-00:00")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if pace(t.Context(), body, limit) != body {
+	if pace(t.Context(), body, throttled(t, 1024, "00:00-00:00")) != body {
 		t.Error("expected a body inside the quiet hours to be passed through untouched")
 	}
 }

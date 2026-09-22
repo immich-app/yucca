@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"io"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -38,10 +39,10 @@ func (limit *throttle) active(now time.Time) bool {
 	return !limit.window.contains(now.Hour()*60 + now.Minute())
 }
 
-func pace(ctx context.Context, body io.ReadCloser, limit *throttle) io.ReadCloser {
-	if !limit.active(time.Now()) {
+func pace(ctx context.Context, body io.ReadCloser, current *atomic.Pointer[throttle]) io.ReadCloser {
+	if !current.Load().active(time.Now()) {
 		return body
 	}
 
-	return newPaced(ctx, body, limit.limiter)
+	return newPaced(ctx, body, current)
 }

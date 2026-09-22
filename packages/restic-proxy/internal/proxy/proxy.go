@@ -82,7 +82,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	}
 
 	log.Debug().Msg("handled request")
-	request.Body = pace(request.Context(), request.Body, handler.throttle.Load())
+	request.Body = pace(request.Context(), request.Body, &handler.throttle)
 
 	route := routed{key: repositoryId, grant: grant, path: path}
 	handler.reverse.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), contextKey{}, route)))
