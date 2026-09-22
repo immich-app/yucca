@@ -23,6 +23,7 @@ async function bootstrap() {
             async createDatabaseBackup() {
               return 'dev-database-backup.sql';
             },
+            async cleanupDatabaseBackups() {},
             async enterMaintenanceRollback() {
               return {
                 jwt: 'abc',
