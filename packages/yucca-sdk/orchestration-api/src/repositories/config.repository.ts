@@ -95,14 +95,15 @@ export class ConfigRepository {
   }
 
   private async set(key: ConfigurationKey, value: string) {
+    await this.setAll({ [key]: value });
+  }
+
+  private async setAll(values: Partial<Record<ConfigurationKey, string>>) {
     await this.db
       .insertInto('config')
-      .values({
-        key,
-        value,
-      })
-      .onConflict((oc) => oc.doUpdateSet({ value }))
-      .executeTakeFirstOrThrow();
+      .values(Object.entries(values).map(([key, value]) => ({ key, value })))
+      .onConflict((oc) => oc.column('key').doUpdateSet((eb) => ({ value: eb.ref('excluded.value') })))
+      .execute();
   }
 
   private async get(key: ConfigurationKey) {
@@ -207,8 +208,10 @@ export class ConfigRepository {
   }
 
   async setThrottle({ bytesPerSec, quietHours }: ResticProxyThrottle) {
-    await this.set(ConfigurationKey.ThrottleBytesPerSec, String(bytesPerSec));
-    await this.set(ConfigurationKey.ThrottleQuietHours, quietHours ?? '');
+    await this.setAll({
+      [ConfigurationKey.ThrottleBytesPerSec]: String(bytesPerSec),
+      [ConfigurationKey.ThrottleQuietHours]: quietHours ?? '',
+    });
   }
 
   async getResticOptions(
