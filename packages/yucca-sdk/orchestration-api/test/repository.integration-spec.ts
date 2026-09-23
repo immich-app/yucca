@@ -3,10 +3,60 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { TaskStatus } from 'src/enum';
 import { BackendRepository } from 'src/repositories/backend.repository';
+import { ModuleConfigRepository } from 'src/repositories/moduleConfig.repository';
+import { RepositoryIntegrationImmichRepository } from 'src/repositories/repositoryIntegrationImmich.repository';
+import { IntegrationsService } from 'src/services/integrations.service';
 import { RepositoryService } from 'src/services/repository.service';
+import { newImmichHooksMock } from './mocks';
 import { createTestingModule, TestContext, waitForEvent } from './testUtils';
 
 let ctx: TestContext;
+
+const configureImmich = async (hooks: Partial<ReturnType<typeof newImmichHooksMock>>) => {
+  const integrationsService = ctx.module.get(IntegrationsService);
+  const moduleConfig = ctx.module.get(ModuleConfigRepository);
+  const immichRepository = ctx.module.get(RepositoryIntegrationImmichRepository);
+
+  moduleConfig.update({
+    immichIntegration: {
+      dataPath: '/data/immich',
+      dataFolders: ['upload'],
+      libraries: [],
+      hooks: { ...newImmichHooksMock(), ...hooks },
+    },
+  });
+
+  await integrationsService.configureImmichIntegration({
+    name: 'Immich Backup',
+    worm: false,
+    cron: '0 2 * * *',
+    dataFolders: ['upload'],
+    backupConfiguration: false,
+    libraries: 'all',
+  });
+
+  const integration = await immichRepository.get();
+
+  return {
+    repositoryId: integration!.id,
+    teardown: async () => {
+      await immichRepository.delete();
+      moduleConfig.update({ immichIntegration: undefined });
+    },
+  };
+};
+
+const backupWithHooks = async (hooks: Partial<ReturnType<typeof newImmichHooksMock>>) => {
+  const repositoryService = ctx.module.get(RepositoryService);
+  const { repositoryId, teardown } = await configureImmich(hooks);
+
+  try {
+    const { task } = await repositoryService.createBackup(repositoryId);
+    await task;
+  } finally {
+    await teardown();
+  }
+};
 
 beforeAll(async () => {
   ctx = await createTestingModule();
@@ -100,6 +150,68 @@ describe('Repository', () => {
         }),
       }),
     );
+  });
+
+  describe('Immich integration hooks', () => {
+    it('passes the task abort signal to the database backup hook and tags the snapshot', async () => {
+      const createDatabaseBackup = jest.fn().mockResolvedValue('dump.sql.gz');
+
+      await backupWithHooks({ createDatabaseBackup });
+
+      expect(createDatabaseBackup).toHaveBeenCalledWith(expect.any(AbortSignal));
+      expect(ctx.resticMock.backup).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.any(AbortSignal),
+        ['yucca.v1.immichBackupFileName=dump.sql.gz'],
+      );
+    });
+
+    it('runs cleanup after the backup succeeds', async () => {
+      const cleanupDatabaseBackups = jest.fn();
+
+      await backupWithHooks({
+        createDatabaseBackup: jest.fn().mockResolvedValue('dump.sql.gz'),
+        cleanupDatabaseBackups,
+      });
+
+      expect(cleanupDatabaseBackups).toHaveBeenCalledTimes(1);
+      expect(cleanupDatabaseBackups.mock.invocationCallOrder[0]).toBeGreaterThan(
+        ctx.resticMock.backup.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('skips cleanup when the backup fails', async () => {
+      const cleanupDatabaseBackups = jest.fn();
+      ctx.resticMock.backup.mockRejectedValue(new Error('Backup failed'));
+
+      await expect(backupWithHooks({ cleanupDatabaseBackups })).rejects.toThrow('Backup failed');
+
+      expect(cleanupDatabaseBackups).not.toHaveBeenCalled();
+    });
+
+    it('still backs up without a tag when the database backup hook fails', async () => {
+      await backupWithHooks({ createDatabaseBackup: jest.fn().mockRejectedValue(new Error('pg_dump failed')) });
+
+      expect(ctx.resticMock.backup).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.any(AbortSignal),
+        [],
+      );
+    });
+
+    it('completes the backup when cleanup rejects', async () => {
+      await expect(
+        backupWithHooks({ cleanupDatabaseBackups: jest.fn().mockRejectedValue(new Error('locked')) }),
+      ).resolves.toBeUndefined();
+    });
   });
 
   it('sets lastBackupStatus to failed on failure', async () => {
