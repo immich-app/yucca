@@ -155,6 +155,10 @@ describe('Integrations', () => {
     moduleConfig.update({ immichIntegration: undefined });
   });
 
+  const hooks = {
+    getImmichDatabaseDumpConfig: jest.fn().mockResolvedValue({ enabled: true, keepLastAmount: 14 }),
+    configureImmichDatabaseDump: jest.fn(),
+  };
   it('pauses and resumes the managed schedule', async () => {
     const moduleConfig = ctx.module.get(ModuleConfigRepository);
     const integrationsService = ctx.module.get(IntegrationsService);
@@ -166,6 +170,7 @@ describe('Integrations', () => {
         dataPath: '/data/immich',
         dataFolders: ['upload'],
         libraries: [],
+        hooks: hooks as never,
       },
     });
 
@@ -188,6 +193,16 @@ describe('Integrations', () => {
     };
 
     expect((await getSchedule())?.paused).toBe(false);
+
+    const status = await integrationsService.getImmichBackupStatus();
+    expect(status.databaseDump).toEqual({ enabled: true, keepLastAmount: 14 });
+
+    await integrationsService.configureImmichDatabaseDump({ enabled: false });
+    expect(hooks.configureImmichDatabaseDump).toHaveBeenCalledWith({ enabled: false });
+
+    expect(status.databaseDumpWarningIgnored).toBe(false);
+    await integrationsService.ignoreImmichDatabaseDumpWarning();
+    expect((await integrationsService.getImmichBackupStatus()).databaseDumpWarningIgnored).toBe(true);
 
     await integrationsService.configureImmichIntegration({ ...configuration, paused: true });
 

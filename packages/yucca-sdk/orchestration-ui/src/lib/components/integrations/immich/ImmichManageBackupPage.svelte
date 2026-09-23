@@ -10,6 +10,7 @@
     useImmichBackupStatusEventHandler,
   } from "$lib/services/immich.integration.service";
   import { Container, Stack } from "@immich/ui";
+  import ImmichDatabaseDumpAlert from "./ImmichDatabaseDumpAlert.svelte";
   import ImmichManageBackupOverview from "./ImmichManageBackupOverview.svelte";
 
   type Props = {
@@ -35,6 +36,7 @@
   <Container size="medium" center>
     {#if repository && schedule}
       <Stack class="mt-4" gap={6}>
+        <ImmichDatabaseDumpAlert />
         <ImmichManageBackupOverview {repository} {schedule} status={backup.status} />
         <BackendsList {repository} />
         <RepositoryRunHistory {repository} onViewAll={onViewAttempts} />
