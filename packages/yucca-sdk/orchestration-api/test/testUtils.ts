@@ -16,7 +16,7 @@ import { ModuleConfigProvider } from 'src/moduleConfig';
 import { controllers, repositories, services } from 'src/orchestrationApi.module';
 import { BackendRepository } from 'src/repositories/backend.repository';
 import { ResticRepository } from 'src/repositories/restic.repository';
-import { newResticRepositoryMock } from './mocks';
+import { newResticRepositoryMock, RepositoryInterface } from './mocks';
 
 type GatewayListener = (event: GatewayEvent) => void;
 
@@ -49,7 +49,7 @@ export interface TestContext {
   gateway: EventsGateway;
   events: TestEventBus;
   database: InstanceType<typeof Database>;
-  resticMock: jest.Mocked<ResticRepository>;
+  resticMock: jest.Mocked<RepositoryInterface<ResticRepository>>;
   backendId: string;
   statePath: string;
   backendPath: string;

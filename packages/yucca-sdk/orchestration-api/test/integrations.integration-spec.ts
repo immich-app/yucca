@@ -4,7 +4,8 @@ import { RepositoryPathRepository } from 'src/repositories/repositoryPath.reposi
 import { IntegrationsService } from 'src/services/integrations.service';
 import { RepositoryService } from 'src/services/repository.service';
 import { ScheduleService } from 'src/services/schedule.service';
-import { createRemoteRepository, createTestingModule, TestContext } from './testUtils';
+import { newImmichHooksMock } from './mocks';
+import { createTestingModule, TestContext } from './testUtils';
 
 let ctx: TestContext;
 
@@ -42,6 +43,7 @@ describe('Integrations', () => {
         dataPath: '/data/immich',
         dataFolders: ['upload', 'library'],
         libraries: [],
+        hooks: newImmichHooksMock(),
       },
     });
 
@@ -79,6 +81,7 @@ describe('Integrations', () => {
           { id: 'lib-1', name: 'Photos', importPaths: ['/mnt/photos'], exclusionPatterns: [] },
           { id: 'lib-2', name: 'Videos', importPaths: ['/mnt/videos'], exclusionPatterns: [] },
         ],
+        hooks: newImmichHooksMock(),
       },
     });
 
@@ -119,6 +122,7 @@ describe('Integrations', () => {
         dataPath: '/data/immich',
         dataFolders: ['upload'],
         libraries: [],
+        hooks: newImmichHooksMock(),
       },
     });
 
@@ -155,10 +159,7 @@ describe('Integrations', () => {
     moduleConfig.update({ immichIntegration: undefined });
   });
 
-  const hooks = {
-    getImmichDatabaseDumpConfig: jest.fn().mockResolvedValue({ enabled: true, keepLastAmount: 14 }),
-    configureImmichDatabaseDump: jest.fn(),
-  };
+  const hooks = newImmichHooksMock();
   it('pauses and resumes the managed schedule', async () => {
     const moduleConfig = ctx.module.get(ModuleConfigRepository);
     const integrationsService = ctx.module.get(IntegrationsService);
@@ -170,7 +171,7 @@ describe('Integrations', () => {
         dataPath: '/data/immich',
         dataFolders: ['upload'],
         libraries: [],
-        hooks: hooks as never,
+        hooks,
       },
     });
 
@@ -192,7 +193,8 @@ describe('Integrations', () => {
       return schedules.find((entry) => entry.id === integration?.scheduleId);
     };
 
-    expect((await getSchedule())?.paused).toBe(false);
+    const initialSchedule = await getSchedule();
+    expect(initialSchedule?.paused).toBe(false);
 
     const status = await integrationsService.getImmichBackupStatus();
     expect(status.databaseDump).toEqual({ enabled: true, keepLastAmount: 14 });
@@ -202,15 +204,18 @@ describe('Integrations', () => {
 
     expect(status.databaseDumpWarningIgnored).toBe(false);
     await integrationsService.ignoreImmichDatabaseDumpWarning();
-    expect((await integrationsService.getImmichBackupStatus()).databaseDumpWarningIgnored).toBe(true);
+    const ignoredStatus = await integrationsService.getImmichBackupStatus();
+    expect(ignoredStatus.databaseDumpWarningIgnored).toBe(true);
 
     await integrationsService.configureImmichIntegration({ ...configuration, paused: true });
 
-    expect((await getSchedule())?.paused).toBe(true);
+    const pausedSchedule = await getSchedule();
+    expect(pausedSchedule?.paused).toBe(true);
 
     await integrationsService.configureImmichIntegration({ ...configuration, paused: false });
 
-    expect((await getSchedule())?.paused).toBe(false);
+    const resumedSchedule = await getSchedule();
+    expect(resumedSchedule?.paused).toBe(false);
 
     await immichRepository.delete();
     moduleConfig.update({ immichIntegration: undefined });

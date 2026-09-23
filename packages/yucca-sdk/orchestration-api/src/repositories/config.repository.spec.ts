@@ -8,7 +8,7 @@ describe(ConfigRepository.name, () => {
     selectFrom: jest.fn(() => ({
       where: jest.fn(() => ({
         select: jest.fn(() => ({
-          executeTakeFirst: jest.fn().mockResolvedValue(),
+          executeTakeFirst: jest.fn(),
         })),
       })),
     })),
@@ -32,8 +32,8 @@ describe(ConfigRepository.name, () => {
   });
 
   it('falls back to global config and core count without placement', async () => {
-    const connections = jest.spyOn(yuccaWellKnown, 'getConnections').mockResolvedValue();
-    const packSize = jest.spyOn(yuccaWellKnown, 'getPackSizeMib').mockResolvedValue();
+    const connections = jest.spyOn(yuccaWellKnown, 'getConnections').mockResolvedValue(undefined);
+    const packSize = jest.spyOn(yuccaWellKnown, 'getPackSizeMib').mockResolvedValue(undefined);
     const repository = new ConfigRepository(db as never, { statePath: '/state' }, LoggingRepository.create());
 
     await expect(repository.getResticOptions({ siteCode: null, storageClusterCode: null })).resolves.toEqual({

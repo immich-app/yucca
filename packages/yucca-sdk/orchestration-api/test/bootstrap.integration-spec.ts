@@ -7,6 +7,7 @@ import { BootstrapRepository } from 'src/repositories/bootstrap.repository';
 import { ConfigRepository } from 'src/repositories/config.repository';
 import { RepositoryRepository } from 'src/repositories/repository.repository';
 import { RunHistoryRepository } from 'src/repositories/runHistory.repository';
+import { type RunType } from 'src/schema/tables/runHistory.table';
 import { BootstrapService } from 'src/services/bootstrap.service';
 import { createTestingModule, TestContext, waitFor } from './testUtils';
 
@@ -15,7 +16,7 @@ const apiSubmitStructuredLog = submitStructuredLog as jest.Mock;
 
 let ctx: TestContext;
 
-const createInterruptedRun = async (type = TaskType.Backup) => {
+const createInterruptedRun = async (type: RunType = TaskType.Backup) => {
   const repositoryId = randomUUID();
   const remoteId = `remote-${repositoryId}`;
 
