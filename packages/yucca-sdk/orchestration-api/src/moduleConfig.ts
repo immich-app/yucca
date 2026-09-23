@@ -22,7 +22,7 @@ export type ImmichIntegration = {
     exclusionPatterns: string[];
   }[];
   hooks: {
-    createDatabaseBackup(): Promise<string>;
+    createDatabaseBackup(signal: AbortSignal): Promise<string>;
     cleanupDatabaseBackups(): Promise<void>;
     getImmichDatabaseDumpConfig(): Promise<ImmichDatabaseDumpConfig>;
     configureImmichDatabaseDump(config: Partial<ImmichDatabaseDumpConfig>): Promise<void>;

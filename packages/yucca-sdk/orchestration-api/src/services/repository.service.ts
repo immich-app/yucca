@@ -597,7 +597,7 @@ export class RepositoryService {
             });
 
             try {
-              const backupFileName = await config.immichIntegration.hooks.createDatabaseBackup();
+              const backupFileName = await immichHooks.createDatabaseBackup(taskSignal);
               tags.push(`${ResticTagPrefix.ImmichBackupFileName}=${backupFileName}`);
 
               this.telemetry.submitStructuredLog('Created Immich database backup', {
