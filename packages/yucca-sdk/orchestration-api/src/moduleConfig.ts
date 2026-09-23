@@ -18,6 +18,7 @@ export type ImmichIntegration = {
   }[];
   hooks: {
     createDatabaseBackup(): Promise<string>;
+    cleanupDatabaseBackups(): Promise<void>;
     enterMaintenanceRollback(
       repositoryId: string,
       snapshotId: string,
