@@ -162,6 +162,7 @@ export type ImmichBackupStatusDto = {
     schedule?: ScheduleDto;
     latestBackupRun?: RunDto;
     databaseDump?: ImmichDatabaseDumpConfigDto;
+    databaseDumpWarningIgnored?: boolean;
 };
 export type ConfigureImmichIntegrationRequestDto = {
     name: string;
@@ -415,6 +416,12 @@ export function configureImmichIntegration(configureImmichIntegrationRequestDto:
         method: "POST",
         body: configureImmichIntegrationRequestDto
     })));
+}
+export function ignoreImmichDatabaseDumpWarning(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/integrations/immich/database-dump/ignore-warning", {
+        ...opts,
+        method: "POST"
+    }));
 }
 export function configureImmichDatabaseDump(configureImmichDatabaseDumpRequestDto: ConfigureImmichDatabaseDumpRequestDto, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/api/yucca/integrations/immich/database-dump", oazapfts.json({

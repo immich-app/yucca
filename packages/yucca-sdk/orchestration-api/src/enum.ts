@@ -22,6 +22,7 @@ export enum ConfigurationKey {
   OnboardedKey = 'onboarded-key',
   Telemetry = 'telemetry',
   SkippedOnboardingExtraConfig = 'skipped-onboarding-extra-config',
+  IgnoredImmichDatabaseDumpWarning = 'ignored-immich-database-dump-warning',
   ResticOptionRestConnections = 'restic-o-rest-connections',
   SessionSecret = 'session-secret',
   StatePath = 'state-path',

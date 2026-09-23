@@ -200,6 +200,10 @@ describe('Integrations', () => {
     await integrationsService.configureImmichDatabaseDump({ enabled: false });
     expect(hooks.configureImmichDatabaseDump).toHaveBeenCalledWith({ enabled: false });
 
+    expect(status.databaseDumpWarningIgnored).toBe(false);
+    await integrationsService.ignoreImmichDatabaseDumpWarning();
+    expect((await integrationsService.getImmichBackupStatus()).databaseDumpWarningIgnored).toBe(true);
+
     await integrationsService.configureImmichIntegration({ ...configuration, paused: true });
 
     expect((await getSchedule())?.paused).toBe(true);

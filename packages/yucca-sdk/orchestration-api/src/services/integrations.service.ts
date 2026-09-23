@@ -11,6 +11,7 @@ import {
 import { InternalEvent, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
 import type { ImmichIntegration, ModuleConfig } from '../moduleConfig';
+import { ConfigRepository } from '../repositories/config.repository';
 import { LockRepository } from '../repositories/lock.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { RepositoryRepository } from '../repositories/repository.repository';
@@ -30,6 +31,7 @@ export class IntegrationsService {
     private readonly backendService: BackendService,
     private readonly events: EventsGateway,
     private readonly moduleConfig: ModuleConfigRepository,
+    private readonly config: ConfigRepository,
     private readonly repositoryIntegrationImmich: RepositoryIntegrationImmichRepository,
     private readonly repositoryPath: RepositoryPathRepository,
     private readonly repositoryService: RepositoryService,
@@ -70,13 +72,15 @@ export class IntegrationsService {
       return {};
     }
 
-    const [{ repositories }, { backends }, schedule, latestBackupRun, databaseDump] = await Promise.all([
-      this.repositoryService.getRepositories(),
-      this.backendService.getBackends(),
-      this.schedule.get(integration.scheduleId),
-      this.runHistory.getLatest(integration.id, TaskType.Backup),
-      immichIntegration.hooks.getImmichDatabaseDumpConfig(),
-    ]);
+    const [{ repositories }, { backends }, schedule, latestBackupRun, databaseDump, databaseDumpWarningIgnored] =
+      await Promise.all([
+        this.repositoryService.getRepositories(),
+        this.backendService.getBackends(),
+        this.schedule.get(integration.scheduleId),
+        this.runHistory.getLatest(integration.id, TaskType.Backup),
+        immichIntegration.hooks.getImmichDatabaseDumpConfig(),
+        this.config.hasIgnoredImmichDatabaseDumpWarning(),
+      ]);
 
     const repository = repositories.find((entry) => entry.id === integration.id);
 
@@ -87,6 +91,7 @@ export class IntegrationsService {
       schedule,
       latestBackupRun,
       databaseDump,
+      databaseDumpWarningIgnored,
     };
   }
 
@@ -166,6 +171,10 @@ export class IntegrationsService {
         repositoryId,
       };
     });
+  }
+
+  async ignoreImmichDatabaseDumpWarning(): Promise<void> {
+    await this.config.ignoreImmichDatabaseDumpWarning();
   }
 
   async configureImmichDatabaseDump(dto: ConfigureImmichDatabaseDumpRequestDto): Promise<void> {

@@ -267,6 +267,20 @@
         ]
       }
     },
+    "/api/yucca/integrations/immich/database-dump/ignore-warning": {
+      "post": {
+        "operationId": "ignoreImmichDatabaseDumpWarning",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/api/yucca/integrations/immich/database-dump": {
       "post": {
         "operationId": "configureImmichDatabaseDump",
@@ -1893,6 +1907,9 @@
           },
           "databaseDump": {
             "$ref": "#/components/schemas/ImmichDatabaseDumpConfigDto"
+          },
+          "databaseDumpWarningIgnored": {
+            "type": "boolean"
           }
         }
       },

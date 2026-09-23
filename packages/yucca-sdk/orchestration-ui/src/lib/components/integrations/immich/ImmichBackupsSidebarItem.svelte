@@ -7,6 +7,7 @@
   } from "$lib/services/immich.integration.service";
   import { HStack, Icon, LoadingSpinner, Text } from "@immich/ui";
   import {
+    mdiAlertCircleOutline,
     mdiChevronRight,
     mdiCloudAlertOutline,
     mdiCloudCheckVariantOutline,
@@ -29,6 +30,10 @@
   const configured = $derived(status.kind !== "unconfigured");
 
   const appearance = $derived.by(() => {
+    if (backup.needsAttention) {
+      return { color: "warning", icon: mdiAlertCircleOutline } as const;
+    }
+
     switch (status.kind) {
       case "loading": {
         return { color: "secondary", icon: undefined } as const;
@@ -85,7 +90,9 @@
   {/if}
 
   <Text size="tiny" class="flex-1 leading-tight">
-    {#if status.kind === "loading"}
+    {#if backup.needsAttention}
+      Needs attention
+    {:else if status.kind === "loading"}
       Checking backup status
     {:else if status.kind === "offline"}
       Backup service is offline

@@ -61,6 +61,7 @@ const ImmichBackupStatusSchema = z
     schedule: ScheduleSchema.optional(),
     latestBackupRun: RunSchema.optional(),
     databaseDump: ImmichDatabaseDumpConfigSchema.optional(),
+    databaseDumpWarningIgnored: z.boolean().optional(),
   })
   .meta({ id: 'ImmichBackupStatusDto' });
 

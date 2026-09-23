@@ -37,6 +37,11 @@ export class IntegrationsController {
     return this.service.configureImmichIntegration(dto);
   }
 
+  @Post('immich/database-dump/ignore-warning')
+  ignoreImmichDatabaseDumpWarning(): Promise<void> {
+    return this.service.ignoreImmichDatabaseDumpWarning();
+  }
+
   @Post('immich/database-dump')
   configureImmichDatabaseDump(@Body() dto: ConfigureImmichDatabaseDumpRequestDto): Promise<void> {
     return this.service.configureImmichDatabaseDump(dto);
