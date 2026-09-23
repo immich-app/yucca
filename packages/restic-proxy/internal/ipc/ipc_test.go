@@ -72,7 +72,38 @@ func TestReportReadyFromConfig_RejectsNonTcpAddresses(t *testing.T) {
 	}
 }
 
-func TestWaitForParentExit_ReturnsWhenTheParentClosesThePipe(t *testing.T) {
+func TestReadControl_AppliesEveryUpdate(t *testing.T) {
+	read, write, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+
+	applied := make(chan Control, 2)
+	go ReadControl(read, func(control Control) { applied <- control })
+
+	for _, rate := range []int{1024, 0} {
+		message := Control{Type: ControlThrottle, Throttle: &ThrottleControl{BytesPerSec: rate}}
+		if err := json.NewEncoder(write).Encode(message); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+
+		select {
+		case control := <-applied:
+			if control.Type != ControlThrottle {
+				t.Errorf("expected a throttle control, got %q", control.Type)
+			}
+			if control.Throttle.BytesPerSec != rate {
+				t.Errorf("expected %d bytes per second, got %d", rate, control.Throttle.BytesPerSec)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("no update applied for %d bytes per second", rate)
+		}
+	}
+
+	write.Close()
+}
+
+func TestReadControl_ReturnsWhenTheParentClosesThePipe(t *testing.T) {
 	read, write, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
@@ -80,7 +111,7 @@ func TestWaitForParentExit_ReturnsWhenTheParentClosesThePipe(t *testing.T) {
 
 	exited := make(chan struct{})
 	go func() {
-		WaitForParentExit(read)
+		ReadControl(read, func(Control) {})
 		close(exited)
 	}()
 

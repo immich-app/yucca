@@ -52,6 +52,16 @@ export type CreateLocalBackendRequestDto = {
 export type BackendResponseDto = {
     backend: BackendDto;
 };
+export type BandwidthDto = {
+    bytesPerSec: number;
+    quietHours?: string;
+};
+export type ConfigResponseDto = {
+    bandwidth: BandwidthDto;
+};
+export type ConfigUpdateRequestDto = {
+    bandwidth: BandwidthDto;
+};
 export type FilesystemListingItemDto = {
     path: string;
     isDirectory: boolean;
@@ -361,6 +371,24 @@ export function createLocalBackend(createLocalBackendRequestDto: CreateLocalBack
         ...opts,
         method: "POST",
         body: createLocalBackendRequestDto
+    })));
+}
+export function getConfig(opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConfigResponseDto;
+    }>("/api/yucca/config", {
+        ...opts
+    }));
+}
+export function updateConfig(configUpdateRequestDto: ConfigUpdateRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ConfigResponseDto;
+    }>("/api/yucca/config", oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: configUpdateRequestDto
     })));
 }
 export function resetOrchestrator(opts?: Oazapfts.RequestOpts) {

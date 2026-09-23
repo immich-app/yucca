@@ -5,6 +5,7 @@ import { DatabaseRepository } from '../repositories/database.repository';
 import { LoggingRepository } from '../repositories/logging.repository';
 import { ModuleConfigRepository } from '../repositories/moduleConfig.repository';
 import { discardStateCacheDirectory } from '../utils/cache';
+import { ConfigService } from './config.service';
 import { RunHistoryService } from './runHistory.service';
 import { ScheduleService } from './schedule.service';
 
@@ -14,6 +15,7 @@ export class BootstrapService implements OnApplicationBootstrap {
     private readonly logger: LoggingRepository,
     private readonly database: DatabaseRepository,
     private readonly config: ConfigRepository,
+    private readonly configService: ConfigService,
     private readonly schedule: ScheduleService,
     private readonly bootstrap: BootstrapRepository,
     private readonly runHistory: RunHistoryService,
@@ -30,6 +32,7 @@ export class BootstrapService implements OnApplicationBootstrap {
 
       await this.database.runMigrations();
       await this.config.bootstrap();
+      await this.configService.bootstrap();
       await this.schedule.bootstrap();
       await this.runHistory.reconcileInterruptedRuns();
 

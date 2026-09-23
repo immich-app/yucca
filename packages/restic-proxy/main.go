@@ -61,6 +61,11 @@ func main() {
 
 	client := client.New(api)
 	proxy := proxy.New(client)
+	if err := proxy.Throttle(cfg.ThrottleBytesPerSec, cfg.ThrottleQuietHours); err != nil {
+		log.Error().Err(err).Msg("failed to apply the configured throttle")
+		os.Exit(5)
+	}
+
 	handler := hlog.NewHandler(log.Logger)(hlog.MethodHandler("method")(hlog.URLHandler("path")(hlog.RemoteAddrHandler("remote_addr")(proxy))))
 
 	server := &http.Server{
@@ -70,7 +75,15 @@ func main() {
 
 	if parent != nil {
 		go func() {
-			ipc.WaitForParentExit(parent)
+			ipc.ReadControl(parent, func(control ipc.Control) {
+				switch control.Type {
+				case ipc.ControlThrottle:
+					applyThrottle(proxy, control.Throttle)
+				default:
+					log.Warn().Str("type", string(control.Type)).Msg("Ignored an unknown control message")
+				}
+			})
+
 			log.Info().Msg("Parent process exited, shutting down")
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -85,4 +98,18 @@ func main() {
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal().Err(err).Msg("server stopped")
 	}
+}
+
+func applyThrottle(handler *proxy.Handler, throttle *ipc.ThrottleControl) {
+	if throttle == nil {
+		log.Warn().Msg("Ignored a throttle control message without a throttle")
+		return
+	}
+
+	if err := handler.Throttle(throttle.BytesPerSec, throttle.QuietHours); err != nil {
+		log.Error().Err(err).Msg("Ignored an unusable throttle update")
+		return
+	}
+
+	log.Info().Int("bytes_per_sec", throttle.BytesPerSec).Str("quiet_hours", throttle.QuietHours).Msg("Throttle updated")
 }

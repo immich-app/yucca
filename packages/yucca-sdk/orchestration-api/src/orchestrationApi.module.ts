@@ -11,6 +11,7 @@ import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { AuthController } from './controllers/auth.controller';
 import { BackendController } from './controllers/backend.controller';
+import { ConfigController } from './controllers/config.controller';
 import { DevelopmentController } from './controllers/development.controller';
 import { FilesystemController } from './controllers/filesystem.controller';
 import { IntegrationsController } from './controllers/integrations.controller';
@@ -43,6 +44,7 @@ import { StorageRepository } from './repositories/storage.repository';
 import { AuthService } from './services/auth.service';
 import { BackendService } from './services/backend.service';
 import { BootstrapService } from './services/bootstrap.service';
+import { ConfigService } from './services/config.service';
 import { DevelopmentService } from './services/development.service';
 import { FilesystemService } from './services/filesystem.service';
 import { IntegrationsService } from './services/integrations.service';
@@ -59,6 +61,7 @@ import { yuccaWellKnown } from './wellKnown';
 export const controllers = [
   AuthController,
   BackendController,
+  ConfigController,
   DevelopmentController,
   FilesystemController,
   IntegrationsController,
@@ -92,6 +95,7 @@ export const services = [
   AuthService,
   BackendService,
   BootstrapService,
+  ConfigService,
   DevelopmentService,
   FilesystemService,
   IntegrationsService,

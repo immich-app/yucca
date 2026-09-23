@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import { access, constants } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
 import { createInterface, Interface } from 'node:readline';
-import { Readable } from 'node:stream';
+import { Readable, Writable } from 'node:stream';
 
 const RESTIC_PROXY_BIN = 'restic-proxy';
 const RESTIC_PROXY_READY_FD = 3;
@@ -14,11 +14,19 @@ type ResticProxyReady = {
   port: number;
 };
 
+export type ResticProxyThrottle = {
+  bytesPerSec: number;
+  quietHours?: string;
+};
+
+export const UNTHROTTLED: ResticProxyThrottle = { bytesPerSec: 0 };
+
 export class ResticProxy {
   private constructor(
     readonly address: string,
     readonly port: number,
     readonly process: ChildProcess,
+    private readonly control: Writable,
   ) {}
 
   static async isAvailable(): Promise<boolean> {
@@ -34,20 +42,22 @@ export class ResticProxy {
     return false;
   }
 
-  static async create(apiUrl: string): Promise<ResticProxy> {
+  static async create(apiUrl: string, throttle: ResticProxyThrottle): Promise<ResticProxy> {
     const child = spawn(RESTIC_PROXY_BIN, {
       env: {
         ...process.env,
         RESTIC_PROXY_API_URL: apiUrl,
         RESTIC_PROXY_PORT: '0',
         RESTIC_PROXY_READY_FD: String(RESTIC_PROXY_READY_FD),
+        RESTIC_PROXY_THROTTLE_BYTES_PER_SEC: String(throttle.bytesPerSec),
+        RESTIC_PROXY_THROTTLE_QUIET_HOURS: throttle.quietHours ?? '',
       },
       stdio: ['ignore', 'inherit', 'inherit', 'pipe'],
     });
 
     try {
       const { address, port } = await readReady(child);
-      return new ResticProxy(address, port, child);
+      return new ResticProxy(address, port, child, child.stdio[RESTIC_PROXY_READY_FD] as Writable);
     } catch (error) {
       child.kill();
       throw error;
@@ -56,6 +66,11 @@ export class ResticProxy {
 
   createUrl(repositoryId: string, accessToken: string) {
     return `rest:http://${repositoryId}:${accessToken}@${this.address}`;
+  }
+
+  throttle({ bytesPerSec, quietHours }: ResticProxyThrottle) {
+    const control = { type: 'throttle', throttle: { bytesPerSec, quietHours: quietHours ?? '' } };
+    this.control.write(`${JSON.stringify(control)}\n`);
   }
 
   async stop() {

@@ -15,6 +15,9 @@ type Config struct {
 	ApiUrl    string `env:"RESTIC_PROXY_API_URL"`
 	ReadyFd   int    `env:"RESTIC_PROXY_READY_FD"`
 
+	ThrottleBytesPerSec int    `env:"RESTIC_PROXY_THROTTLE_BYTES_PER_SEC" envDefault:"0"`
+	ThrottleQuietHours  string `env:"RESTIC_PROXY_THROTTLE_QUIET_HOURS"`
+
 	LogLevel  LogLevelNewType  `env:"LOG_LEVEL" envDefault:"info"`
 	LogPretty LogPrettyNewType `env:"LOG_FORMAT" envDefault:"pretty"`
 }

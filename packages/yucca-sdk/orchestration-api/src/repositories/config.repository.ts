@@ -6,6 +6,7 @@ import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { ConfigurationKey } from '../enum';
 import { type ModuleConfig, ModuleConfigProvider } from '../moduleConfig';
+import type { ResticProxyThrottle } from '../proxy/resticProxy';
 import { DB } from '../schema';
 import { yuccaWellKnown } from '../wellKnown';
 import { LoggingRepository } from './logging.repository';
@@ -94,14 +95,15 @@ export class ConfigRepository {
   }
 
   private async set(key: ConfigurationKey, value: string) {
+    await this.setAll({ [key]: value });
+  }
+
+  private async setAll(values: Partial<Record<ConfigurationKey, string>>) {
     await this.db
       .insertInto('config')
-      .values({
-        key,
-        value,
-      })
-      .onConflict((oc) => oc.doUpdateSet({ value }))
-      .executeTakeFirstOrThrow();
+      .values(Object.entries(values).map(([key, value]) => ({ key, value })))
+      .onConflict((oc) => oc.column('key').doUpdateSet((eb) => ({ value: eb.ref('excluded.value') })))
+      .execute();
   }
 
   private async get(key: ConfigurationKey) {
@@ -192,6 +194,24 @@ export class ConfigRepository {
 
   async getSessionSecret(): Promise<Buffer> {
     return Buffer.from(await this.get(ConfigurationKey.SessionSecret), 'hex');
+  }
+
+  async getThrottle(): Promise<ResticProxyThrottle | undefined> {
+    const bytesPerSec = await this.getOptional(ConfigurationKey.ThrottleBytesPerSec);
+    if (bytesPerSec === undefined) {
+      return;
+    }
+
+    const quietHours = await this.getOptional(ConfigurationKey.ThrottleQuietHours);
+
+    return { bytesPerSec: Number.parseInt(bytesPerSec), quietHours: quietHours || undefined };
+  }
+
+  async setThrottle({ bytesPerSec, quietHours }: ResticProxyThrottle) {
+    await this.setAll({
+      [ConfigurationKey.ThrottleBytesPerSec]: String(bytesPerSec),
+      [ConfigurationKey.ThrottleQuietHours]: quietHours ?? '',
+    });
   }
 
   async getResticOptions(

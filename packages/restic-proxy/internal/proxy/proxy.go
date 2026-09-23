@@ -7,6 +7,7 @@ import (
 	"net/http/httputil"
 	"restic-proxy/internal/client"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/cornelk/hashmap"
@@ -31,6 +32,8 @@ type Handler struct {
 	grants  *hashmap.Map[string, client.Grant]
 	denials *hashmap.Map[string, denial]
 	minting singleflight.Group
+
+	throttle atomic.Pointer[throttle]
 }
 
 func New(cl client.Client) *Handler {
@@ -45,6 +48,16 @@ func New(cl client.Client) *Handler {
 	}
 
 	return handler
+}
+
+func (handler *Handler) Throttle(bytesPerSec int, quietHours string) error {
+	limit, err := newThrottle(bytesPerSec, quietHours)
+	if err != nil {
+		return err
+	}
+
+	handler.throttle.Store(limit)
+	return nil
 }
 
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -69,6 +82,8 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	}
 
 	log.Debug().Msg("handled request")
+	request.Body = pace(request.Context(), request.Body, &handler.throttle)
+
 	route := routed{key: repositoryId, grant: grant, path: path}
 	handler.reverse.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), contextKey{}, route)))
 }
