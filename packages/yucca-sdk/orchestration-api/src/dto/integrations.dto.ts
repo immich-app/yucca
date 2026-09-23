@@ -46,6 +46,13 @@ const IntegrationsResponseSchema = z
   })
   .meta({ id: 'IntegrationsResponseDto' });
 
+const ImmichDatabaseDumpConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    keepLastAmount: z.int().min(1),
+  })
+  .meta({ id: 'ImmichDatabaseDumpConfigDto' });
+
 const ImmichBackupStatusSchema = z
   .object({
     integration: ImmichIntegrationSchema.optional(),
@@ -53,6 +60,7 @@ const ImmichBackupStatusSchema = z
     backend: BackendSchema.optional(),
     schedule: ScheduleSchema.optional(),
     latestBackupRun: RunSchema.optional(),
+    databaseDump: ImmichDatabaseDumpConfigSchema.optional(),
   })
   .meta({ id: 'ImmichBackupStatusDto' });
 
@@ -76,6 +84,10 @@ const ConfigureImmichIntegrationResponseSchema = z
   })
   .meta({ id: 'ConfigureImmichIntegrationResponseDto' });
 
+const ConfigureImmichDatabaseDumpRequestSchema = ImmichDatabaseDumpConfigSchema.partial().meta({
+  id: 'ConfigureImmichDatabaseDumpRequestDto',
+});
+
 const ImmichRollbackRequestSchema = z
   .object({
     repositoryId: z.string(),
@@ -92,4 +104,6 @@ export class IntegrationsResponseDto extends createZodDto(IntegrationsResponseSc
 export class ImmichBackupStatusDto extends createZodDto(ImmichBackupStatusSchema) {}
 export class ConfigureImmichIntegrationRequestDto extends createZodDto(ConfigureImmichIntegrationRequestSchema) {}
 export class ConfigureImmichIntegrationResponseDto extends createZodDto(ConfigureImmichIntegrationResponseSchema) {}
+export class ImmichDatabaseDumpConfigDto extends createZodDto(ImmichDatabaseDumpConfigSchema) {}
+export class ConfigureImmichDatabaseDumpRequestDto extends createZodDto(ConfigureImmichDatabaseDumpRequestSchema) {}
 export class ImmichRollbackRequestDto extends createZodDto(ImmichRollbackRequestSchema) {}

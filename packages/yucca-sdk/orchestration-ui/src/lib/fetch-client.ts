@@ -151,12 +151,17 @@ export type RunDto = {
     status: RunStatus;
     "type": RunType;
 };
+export type ImmichDatabaseDumpConfigDto = {
+    enabled: boolean;
+    keepLastAmount: number;
+};
 export type ImmichBackupStatusDto = {
     integration?: ImmichIntegrationDto;
     repository?: LocalRepositoryDto;
     backend?: BackendDto;
     schedule?: ScheduleDto;
     latestBackupRun?: RunDto;
+    databaseDump?: ImmichDatabaseDumpConfigDto;
 };
 export type ConfigureImmichIntegrationRequestDto = {
     name: string;
@@ -171,6 +176,10 @@ export type ConfigureImmichIntegrationRequestDto = {
 };
 export type ConfigureImmichIntegrationResponseDto = {
     repositoryId: string;
+};
+export type ConfigureImmichDatabaseDumpRequestDto = {
+    enabled?: boolean;
+    keepLastAmount?: number;
 };
 export type ImmichRollbackRequestDto = {
     repositoryId: string;
@@ -405,6 +414,13 @@ export function configureImmichIntegration(configureImmichIntegrationRequestDto:
         ...opts,
         method: "POST",
         body: configureImmichIntegrationRequestDto
+    })));
+}
+export function configureImmichDatabaseDump(configureImmichDatabaseDumpRequestDto: ConfigureImmichDatabaseDumpRequestDto, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/api/yucca/integrations/immich/database-dump", oazapfts.json({
+        ...opts,
+        method: "POST",
+        body: configureImmichDatabaseDumpRequestDto
     })));
 }
 export function startImmichRollback(immichRollbackRequestDto: ImmichRollbackRequestDto, opts?: Oazapfts.RequestOpts) {

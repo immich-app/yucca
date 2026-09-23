@@ -24,6 +24,10 @@ async function bootstrap() {
               return 'dev-database-backup.sql';
             },
             async cleanupDatabaseBackups() {},
+            async getImmichDatabaseDumpConfig() {
+              return { enabled: true, keepLastAmount: 14 };
+            },
+            async configureImmichDatabaseDump() {},
             async enterMaintenanceRollback() {
               return {
                 jwt: 'abc',

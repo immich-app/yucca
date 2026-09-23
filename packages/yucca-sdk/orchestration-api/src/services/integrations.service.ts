@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { OnEvent } from '@nestjs/event-emitter';
 import { join } from 'node:path';
 import {
+  ConfigureImmichDatabaseDumpRequestDto,
   ConfigureImmichIntegrationRequestDto,
   ImmichBackupStatusDto,
   ImmichRollbackRequestDto,
@@ -63,16 +64,18 @@ export class IntegrationsService {
   }
 
   async getImmichBackupStatus(): Promise<ImmichBackupStatusDto> {
+    const { immichIntegration } = this.moduleConfig.get();
     const integration = await this.repositoryIntegrationImmich.get();
-    if (!integration) {
+    if (!integration || !immichIntegration) {
       return {};
     }
 
-    const [{ repositories }, { backends }, schedule, latestBackupRun] = await Promise.all([
+    const [{ repositories }, { backends }, schedule, latestBackupRun, databaseDump] = await Promise.all([
       this.repositoryService.getRepositories(),
       this.backendService.getBackends(),
       this.schedule.get(integration.scheduleId),
       this.runHistory.getLatest(integration.id, TaskType.Backup),
+      immichIntegration.hooks.getImmichDatabaseDumpConfig(),
     ]);
 
     const repository = repositories.find((entry) => entry.id === integration.id);
@@ -83,6 +86,7 @@ export class IntegrationsService {
       backend: backends.find((entry) => entry.id === repository?.backends?.primary.id),
       schedule,
       latestBackupRun,
+      databaseDump,
     };
   }
 
@@ -162,6 +166,15 @@ export class IntegrationsService {
         repositoryId,
       };
     });
+  }
+
+  async configureImmichDatabaseDump(dto: ConfigureImmichDatabaseDumpRequestDto): Promise<void> {
+    const { immichIntegration } = this.moduleConfig.get();
+    if (!immichIntegration) {
+      throw new BadRequestException('Immich integration is not enabled.');
+    }
+
+    await immichIntegration.hooks.configureImmichDatabaseDump(dto);
   }
 
   async enterImmichMaintenanceRollback(dto: ImmichRollbackRequestDto): Promise<{ jwt: string }> {

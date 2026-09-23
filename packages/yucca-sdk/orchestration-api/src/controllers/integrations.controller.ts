@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Res } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import {
+  ConfigureImmichDatabaseDumpRequestDto,
   ConfigureImmichIntegrationRequestDto,
   ConfigureImmichIntegrationResponseDto,
   ImmichBackupStatusDto,
@@ -34,6 +35,11 @@ export class IntegrationsController {
     @Body() dto: ConfigureImmichIntegrationRequestDto,
   ): Promise<ConfigureImmichIntegrationResponseDto> {
     return this.service.configureImmichIntegration(dto);
+  }
+
+  @Post('immich/database-dump')
+  configureImmichDatabaseDump(@Body() dto: ConfigureImmichDatabaseDumpRequestDto): Promise<void> {
+    return this.service.configureImmichDatabaseDump(dto);
   }
 
   @Post('immich/rollback')

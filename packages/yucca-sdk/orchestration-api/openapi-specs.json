@@ -267,6 +267,30 @@
         ]
       }
     },
+    "/api/yucca/integrations/immich/database-dump": {
+      "post": {
+        "operationId": "configureImmichDatabaseDump",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureImmichDatabaseDumpRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
     "/api/yucca/integrations/immich/rollback": {
       "post": {
         "operationId": "startImmichRollback",
@@ -1832,6 +1856,23 @@
           "forget"
         ]
       },
+      "ImmichDatabaseDumpConfigDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "keepLastAmount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "enabled",
+          "keepLastAmount"
+        ]
+      },
       "ImmichBackupStatusDto": {
         "type": "object",
         "properties": {
@@ -1849,6 +1890,9 @@
           },
           "latestBackupRun": {
             "$ref": "#/components/schemas/RunDto"
+          },
+          "databaseDump": {
+            "$ref": "#/components/schemas/ImmichDatabaseDumpConfigDto"
           }
         }
       },
@@ -1923,6 +1967,19 @@
         "required": [
           "repositoryId"
         ]
+      },
+      "ConfigureImmichDatabaseDumpRequestDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "keepLastAmount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
       },
       "ImmichRollbackRequestDto": {
         "type": "object",
