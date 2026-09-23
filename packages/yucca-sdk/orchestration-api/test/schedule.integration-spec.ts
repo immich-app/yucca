@@ -32,6 +32,7 @@ describe('Schedule', () => {
 
     const { schedule } = await scheduleService.createSchedule({
       name: 'Locked Schedule',
+      paused: false,
       cron: '0 0 1 1 *',
       repositories: [repository.id],
     });
@@ -49,6 +50,7 @@ describe('Schedule', () => {
   it('skips task creation when schedule has no repositories', async () => {
     const { schedule } = await ctx.module.get(ScheduleService).createSchedule({
       name: 'Empty Schedule',
+      paused: false,
       cron: '0 0 1 1 *',
       repositories: [],
     });
@@ -85,6 +87,7 @@ describe('Schedule', () => {
 
     const { schedule } = await scheduleService.createSchedule({
       name: 'Multi Schedule',
+      paused: false,
       cron: '0 0 1 1 *',
       repositories: [repo1.id, repo2.id],
     });
@@ -121,17 +124,11 @@ describe('Schedule', () => {
     );
 
     ctx.resticMock.backup.mockReset();
-    let callCount = 0;
-    ctx.resticMock.backup.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        return Promise.reject(new Error('Simulated backup failure'));
-      }
-      return Promise.resolve();
-    });
+    ctx.resticMock.backup.mockRejectedValueOnce(new Error('Simulated backup failure'));
 
     const { schedule } = await scheduleService.createSchedule({
       name: 'Resilient Schedule',
+      paused: false,
       cron: '0 0 1 1 *',
       repositories: [failRepo.id, successRepo.id],
     });
@@ -140,7 +137,6 @@ describe('Schedule', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    expect(callCount).toBe(2);
     expect(ctx.resticMock.backup).toHaveBeenCalledTimes(2);
 
     ctx.resticMock.backup.mockReset();
@@ -171,6 +167,7 @@ describe('Schedule', () => {
 
     const { schedule } = await scheduleService.createSchedule({
       name: 'Warn Schedule',
+      paused: false,
       cron: '0 0 1 1 *',
       repositories: [warnRepo.id],
     });
@@ -200,6 +197,7 @@ describe('Schedule', () => {
 
     const { schedule } = await scheduleService.createSchedule({
       name: 'Ordering Schedule',
+      paused: false,
       cron: '0 0 1 1 *',
       repositories: [existing.id],
     });
@@ -223,6 +221,7 @@ describe('Schedule', () => {
 
     const { schedule } = await scheduleService.createSchedule({
       name: 'Immich Schedule',
+      paused: false,
       cron: '0 2 * * *',
       repositories: [repository.id],
     });

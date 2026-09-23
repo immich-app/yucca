@@ -31,6 +31,7 @@ describe('Database', () => {
 
     const { schedule } = await scheduleService.createSchedule({
       name: 'Snapshot Schedule',
+      paused: false,
       cron: '0 0 * * *',
       repositories: [repository.id],
     });
@@ -43,6 +44,7 @@ describe('Database', () => {
 
     await scheduleService.createSchedule({
       name: 'Post-Snapshot Schedule',
+      paused: false,
       cron: '0 6 * * *',
       repositories: [],
     });
