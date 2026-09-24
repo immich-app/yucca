@@ -72,6 +72,6 @@ services:
     command: -storageDataPath=victoria-logs-data
 
   victoria-traces:
-    image: docker.io/victoriametrics/victoria-traces:latest@sha256:66e784a595c4a88e5b1dfab5d153dea442cf1caaeae4d67839c550414c33b3b0
+    image: docker.io/victoriametrics/victoria-traces:latest@sha256:b8e13852fa320debb9c1124f7987f62a1fd048c9de50a2ed840c390e21e232ed
     ports:
       - 10428:10428
