@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Run all end-to-end tests"
-#MISE depends=["test:e2e:wait"]
+#MISE depends=["test:e2e:wait", "//packages/restic-proxy:build"]
 set -e
 source "$(dirname "$0")/../../michael/env"
 source "$(dirname "$0")/../../yucca-api/env"
+export PATH="$(dirname "$0")/../../../../dist:$PATH"
 
 pnpm --filter e2e test "$@"

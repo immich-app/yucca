@@ -51,6 +51,10 @@ if [ -z "${YUCCA_E2E_PREBUILT:-}" ]; then
   mise run yucca-sdk:orchestration-ui:build >/dev/null
 fi
 
+echo "==> build restic-proxy (spawned by orchestration-api and the proxy suites)"
+mise run //packages/restic-proxy:build >/dev/null
+export PATH="$ROOT/dist:$PATH"
+
 echo "==> port-forward k3d services to the e2e host ports"
 kubectl port-forward -n yucca svc/yucca-michael   3010:3010  >/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
