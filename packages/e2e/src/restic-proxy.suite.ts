@@ -8,15 +8,16 @@ import { loginWithIdp, yuccaBaseUrl } from 'src/yucca-auth';
 
 const READY_FD = 3;
 
-type ResticProxy = { child: ChildProcess; address: string };
+export type ResticProxy = { child: ChildProcess; address: string };
 
-async function startResticProxy(): Promise<ResticProxy> {
+export async function startResticProxy(throttle: Record<string, string> = {}): Promise<ResticProxy> {
   const child = spawn('restic-proxy', {
     env: {
       ...process.env,
       RESTIC_PROXY_API_URL: `${yuccaBaseUrl}/api`,
       RESTIC_PROXY_PORT: '0',
       RESTIC_PROXY_READY_FD: String(READY_FD),
+      ...throttle,
     },
     stdio: ['ignore', 'inherit', 'inherit', 'pipe'],
   });
@@ -27,7 +28,7 @@ async function startResticProxy(): Promise<ResticProxy> {
   return { child, address };
 }
 
-async function createProxiedRepository(
+export async function createProxiedRepository(
   proxy: ResticProxy,
   accessToken: string | undefined,
   name: string,
