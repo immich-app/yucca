@@ -13,10 +13,8 @@ import {
   updateRepository,
 } from '@futo-org/backups-api-client';
 import { init } from '@futo-org/restic-wrapper';
-import { parse } from 'cookie';
-import { env } from 'src/env';
+import { yuccaBaseUrl as baseUrl, loginWithIdp } from 'src/yucca-auth';
 
-const baseUrl = `http://localhost:${env.YUCCA_API_PORT}`;
 const headers: Record<string, string> = {};
 const authDto: AuthDto = {} as AuthDto;
 
@@ -24,32 +22,13 @@ const requestOpts = { baseUrl, headers };
 
 describe('Auth', () => {
   it('should log us in using IdP', async () => {
-    const { headers: loginHeaders } = await fetch(`${baseUrl}/api/auth/oidc/login`, {
-      redirect: 'manual',
-    });
-
-    const redirectUrl = new URL(loginHeaders.get('Location')!);
-    redirectUrl.pathname = '/api/form';
     // Must differ from orchestration-api.spec's subject: these run in parallel,
     // and one subject means one user, one repository list — which that suite
     // enumerates and imports from.
-    redirectUrl.searchParams.set('sub', 'yucca-api-e2e');
+    const accessToken = await loginWithIdp('yucca-api-e2e');
+    expect(accessToken).toBeDefined();
 
-    const { headers: oidcHeaders } = await fetch(redirectUrl, {
-      redirect: 'manual',
-    });
-
-    const { headers: callbackHeaders } = await fetch(oidcHeaders.get('Location'), {
-      redirect: 'manual',
-      headers: {
-        Cookie: loginHeaders.getSetCookie().join('; '),
-      },
-    });
-
-    const cookies = parse(callbackHeaders.getSetCookie().join('; '));
-    expect(cookies['yucca-access-token']).toBeDefined();
-
-    headers['Cookie'] = `yucca-access-token=${cookies['yucca-access-token']}`;
+    headers['Cookie'] = `yucca-access-token=${accessToken}`;
   });
 
   it('should give us user information', async () => {
