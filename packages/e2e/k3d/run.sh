@@ -127,6 +127,9 @@ source .mise/tasks/yucca-api/env
 NODE_OPTIONS="--experimental-vm-modules --require $HERE/hostmap.cjs" \
   pnpm --filter e2e exec jest --maxWorkers=3
 
+grep -q "Minted a new token" /tmp/yucca-e2e-orch.log || {
+  echo "orchestration-api never routed restic through restic-proxy" >&2; exit 1; }
+
 echo "==> web e2e (playwright against the k3d web)"
 # Config lives in packages/web so @playwright/test resolves from web's deps.
 pnpm --filter web exec playwright test --config="$ROOT/packages/web/playwright.k3d.config.ts"
