@@ -26,6 +26,7 @@ import {
 } from '../dto/repository.dto';
 import { BackendType, ResticTagPrefix, TaskStatus, TaskType } from '../enum';
 import { EventsGateway } from '../events/events.gateway';
+import type { ImmichIntegration } from '../moduleConfig';
 import { BackendRepository } from '../repositories/backend.repository';
 import { ConfigRepository, ResticPlacement } from '../repositories/config.repository';
 import { DatabaseRepository } from '../repositories/database.repository';
@@ -584,16 +585,19 @@ export class RepositoryService {
         const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
         const tags = [];
 
+        let immichHooks: ImmichIntegration['hooks'] | undefined;
+
         const config = this.moduleConfig.get();
         if (config.immichIntegration) {
           const immichIntegration = await this.repositoryIntegrationImmich.get();
           if (id === immichIntegration?.id) {
+            immichHooks = config.immichIntegration.hooks;
             this.telemetry.submitStructuredLog('Creating Immich database backup', {
               repositoryId: id,
             });
 
             try {
-              const backupFileName = await config.immichIntegration.hooks.createDatabaseBackup();
+              const backupFileName = await immichHooks.createDatabaseBackup(taskSignal);
               tags.push(`${ResticTagPrefix.ImmichBackupFileName}=${backupFileName}`);
 
               this.telemetry.submitStructuredLog('Created Immich database backup', {
@@ -615,6 +619,17 @@ export class RepositoryService {
           repositoryId: id,
           summary,
         });
+
+        if (immichHooks) {
+          try {
+            await immichHooks.cleanupDatabaseBackups();
+          } catch (error) {
+            this.telemetry.submitStructuredLog('Failed to clean up Immich database backups', {
+              repositoryId: id,
+              error,
+            });
+          }
+        }
 
         if (retentionPolicy) {
           await this.runForgetAndPrune(endpoint, key, placement, retentionPolicy, logWriter, taskSignal);

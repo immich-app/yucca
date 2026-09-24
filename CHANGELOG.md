@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.46.0](https://github.com/immich-app/yucca/compare/v0.45.0...v0.46.0) (2026-09-23)
+
+
+### Features
+
+* throttle upload bandwidth (and disable during quiet hours) ([#700](https://github.com/immich-app/yucca/issues/700)) ([68a2023](https://github.com/immich-app/yucca/commit/68a20238c64a7fa53ddcdab69f1aa426b0b9a93f))
+* **yucca sdk:** hook db dump clean up for Immich ([#702](https://github.com/immich-app/yucca/issues/702)) ([d88d888](https://github.com/immich-app/yucca/commit/d88d888c01db566fc5dd31f8d696042c57ed8646))
+* **yucca sdk:** pass abort signal into immich db dump ([#707](https://github.com/immich-app/yucca/issues/707)) ([f5e9f80](https://github.com/immich-app/yucca/commit/f5e9f803fe632d2df142916fe8e960142050266a))
+* **yucca sdk:** warn users if immich db dumps enabled ([#703](https://github.com/immich-app/yucca/issues/703)) ([5efc366](https://github.com/immich-app/yucca/commit/5efc3664a40cff6372301e6cd1b19cb6071dea04))
+
+
+### Bug Fixes
+
+* **yucca sdk:** tsconfig for api ([c473a91](https://github.com/immich-app/yucca/commit/c473a911c40209bbf9f07ac5bac5446fd44fb28b))
+* **yucca sdk:** tsconfig for api tests ([#706](https://github.com/immich-app/yucca/issues/706)) ([c473a91](https://github.com/immich-app/yucca/commit/c473a911c40209bbf9f07ac5bac5446fd44fb28b))
+
 ## [0.45.0](https://github.com/immich-app/yucca/compare/v0.44.0...v0.45.0) (2026-09-18)
 
 

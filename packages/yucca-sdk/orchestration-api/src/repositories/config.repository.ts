@@ -188,6 +188,14 @@ export class ConfigRepository {
     return this.set(ConfigurationKey.SkippedOnboardingExtraConfig, '1');
   }
 
+  async hasIgnoredImmichDatabaseDumpWarning() {
+    return this.has(ConfigurationKey.IgnoredImmichDatabaseDumpWarning);
+  }
+
+  async ignoreImmichDatabaseDumpWarning() {
+    return this.set(ConfigurationKey.IgnoredImmichDatabaseDumpWarning, '1');
+  }
+
   async hasSessionSecret() {
     return this.has(ConfigurationKey.SessionSecret);
   }

@@ -50,6 +50,7 @@ export default typescriptEslint.config([
       'unicorn/import-style': 'off',
       'unicorn/prefer-structured-clone': 'off',
       'unicorn/no-for-loop': 'off',
+      'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       'require-await': 'off',

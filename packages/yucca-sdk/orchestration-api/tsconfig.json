@@ -22,7 +22,8 @@
     "noImplicitAny": true,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": { "src/*": ["src/*"] },
     "outDir": "dist",
     "types": ["@types/node", "@types/jest"]
   },

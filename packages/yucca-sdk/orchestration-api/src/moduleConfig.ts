@@ -7,6 +7,11 @@ export const ModuleConfigProvider = Symbol('ModuleConfig');
 export type AuthenticatedUser = { user: { isAdmin: boolean } };
 export type AuthenticateFn = (client: Socket) => Promise<AuthenticatedUser>;
 
+export type ImmichDatabaseDumpConfig = {
+  enabled: boolean;
+  keepLastAmount: number;
+};
+
 export type ImmichIntegration = {
   dataPath: string;
   dataFolders: string[];
@@ -17,7 +22,10 @@ export type ImmichIntegration = {
     exclusionPatterns: string[];
   }[];
   hooks: {
-    createDatabaseBackup(): Promise<string>;
+    createDatabaseBackup(signal: AbortSignal): Promise<string>;
+    cleanupDatabaseBackups(): Promise<void>;
+    getImmichDatabaseDumpConfig(): Promise<ImmichDatabaseDumpConfig>;
+    configureImmichDatabaseDump(config: Partial<ImmichDatabaseDumpConfig>): Promise<void>;
     enterMaintenanceRollback(
       repositoryId: string,
       snapshotId: string,

@@ -2,12 +2,16 @@ import BackupsRecoveryKeyModal from '$lib/components/onboarding/dialogs/BackupsR
 import { modalManager, type ActionItem } from '@immich/ui';
 import { mdiCloudUploadOutline, mdiCogOutline, mdiKeyOutline } from '@mdi/js';
 import {
+  configureImmichDatabaseDump,
+  type ConfigureImmichDatabaseDumpRequestDto,
   getImmichBackupStatus,
+  ignoreImmichDatabaseDumpWarning,
   type ImmichBackupStatusDto,
 } from '$lib/fetch-client';
 import { queryClient } from '$lib/query-client';
+import { handleError } from '$lib/utils/handle-error';
 import { getBackupOutcome } from '$lib/utils/backup-status';
-import { createQuery } from '@tanstack/svelte-query';
+import { createMutation, createQuery } from '@tanstack/svelte-query';
 import { handleCreateBackup } from './repository.service';
 
 export const getBackupPageActions = (
@@ -44,6 +48,14 @@ const invalidateImmichBackupStatus = () =>
   void queryClient.invalidateQueries({
     queryKey: immichBackupStatusKeys.all,
   });
+
+const updateImmichBackupStatus = (
+  update: (data: ImmichBackupStatusDto) => ImmichBackupStatusDto,
+) =>
+  queryClient.setQueryData<ImmichBackupStatusDto>(
+    immichBackupStatusKeys.all,
+    (data) => data && update(data),
+  );
 
 export const useImmichBackupStatusEventHandler = () => ({
   onIntegrationUpdate: invalidateImmichBackupStatus,
@@ -123,5 +135,45 @@ export const useImmichBackupStatus = () => {
     get status() {
       return toImmichBackupStatus(query.data, query.isLoading);
     },
+    get needsAttention() {
+      const usingImmichDbDump =
+        query.data?.databaseDump?.enabled === true &&
+        query.data.schedule !== undefined &&
+        !query.data.schedule.paused &&
+        query.data.databaseDumpWarningIgnored !== true;
+
+      return usingImmichDbDump;
+    },
   };
 };
+
+export const useConfigureImmichDatabaseDump = () =>
+  createMutation(
+    () => ({
+      mutationFn: (dto: ConfigureImmichDatabaseDumpRequestDto) =>
+        configureImmichDatabaseDump(dto),
+      onSuccess: (_, dto) =>
+        updateImmichBackupStatus((data) => ({
+          ...data,
+          databaseDump: data.databaseDump && { ...data.databaseDump, ...dto },
+        })),
+      onError: (error) =>
+        handleError(error, 'Failed to update Immich database dump settings'),
+    }),
+    () => queryClient,
+  );
+
+export const useIgnoreImmichDatabaseDumpWarning = () =>
+  createMutation(
+    () => ({
+      mutationFn: () => ignoreImmichDatabaseDumpWarning(),
+      onSuccess: () =>
+        updateImmichBackupStatus((data) => ({
+          ...data,
+          databaseDumpWarningIgnored: true,
+        })),
+      onError: (error) =>
+        handleError(error, 'Failed to ignore Immich database dump warning'),
+    }),
+    () => queryClient,
+  );
