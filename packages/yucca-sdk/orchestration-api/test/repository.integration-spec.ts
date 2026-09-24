@@ -1,7 +1,9 @@
+import { createRepository, createResticUrl, getRepository } from '@futo-org/backups-api-client';
 import { ResticBackupCommandCouldNotReadSourceDataError } from '@futo-org/restic-wrapper';
 import { randomUUID } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
-import { TaskStatus } from 'src/enum';
+import { mkdir, readdir } from 'node:fs/promises';
+import { BackendType, TaskStatus } from 'src/enum';
+import { ResticProxyPool } from 'src/proxy/resticProxyPool';
 import { BackendRepository } from 'src/repositories/backend.repository';
 import { ModuleConfigRepository } from 'src/repositories/moduleConfig.repository';
 import { RepositoryIntegrationImmichRepository } from 'src/repositories/repositoryIntegrationImmich.repository';
@@ -333,5 +335,79 @@ describe('Repository', () => {
 
     const { task } = await pendingBackup;
     await task;
+  });
+});
+
+const remoteRepository = (id: string, name: string) => ({
+  repository: {
+    id,
+    name,
+    worm: false,
+    siteCode: null,
+    storageClusterCode: null,
+    connectionId: '',
+    connectionType: 'restic',
+    metrics: { sizeBytes: 0 },
+  },
+});
+
+describe('Primary backend reconfiguration', () => {
+  beforeEach(() => {
+    ctx.resticMock.init.mockReset();
+    jest.spyOn(ResticProxyPool.prototype, 'isAvailable').mockResolvedValue(false);
+    (createResticUrl as jest.Mock).mockResolvedValue({ url: 'rest:http://yucca.test/restic' });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('keeps the repository name when moving to another backend', async () => {
+    const repositoryService = ctx.module.get(RepositoryService);
+    const yuccaBackendId = randomUUID();
+    await ctx.module.get(BackendRepository).updateBackend(yuccaBackendId, {
+      type: BackendType.Yucca,
+      url: 'http://yucca.test',
+      accessToken: 'test-token',
+    });
+
+    const remoteId = randomUUID();
+    (createRepository as jest.Mock).mockResolvedValueOnce(remoteRepository(remoteId, 'Family Photos'));
+    (getRepository as jest.Mock).mockResolvedValueOnce(remoteRepository(remoteId, 'Family Photos'));
+    const { repository } = await repositoryService.createRepository(
+      { name: 'Family Photos', worm: false },
+      yuccaBackendId,
+    );
+
+    const { repository: moved } = await repositoryService.reconfigureRepositoryPrimaryBackend(repository.id, {
+      backendId: ctx.backendId,
+    });
+
+    expect(getRepository).toHaveBeenCalledWith(remoteId, expect.any(Object));
+    expect(moved).toEqual(expect.objectContaining({ id: repository.id, name: 'Family Photos' }));
+  });
+
+  it('names the repository as restored when the old backend cannot report its name', async () => {
+    const repositoryService = ctx.module.get(RepositoryService);
+
+    const { repository } = await repositoryService.createRepository({ name: 'Local Only', worm: false }, ctx.backendId);
+
+    const { repository: moved } = await repositoryService.reconfigureRepositoryPrimaryBackend(repository.id, {
+      backendId: ctx.backendId,
+    });
+
+    expect(moved.name).toBe('Restored Repository');
+  });
+
+  it('rejects an unknown repository before creating anything on the new backend', async () => {
+    const repositoryService = ctx.module.get(RepositoryService);
+    const entriesBefore = await readdir(ctx.backendPath);
+
+    await expect(
+      repositoryService.reconfigureRepositoryPrimaryBackend(randomUUID(), { backendId: ctx.backendId }),
+    ).rejects.toThrow('Repository not found locally');
+
+    await expect(readdir(ctx.backendPath)).resolves.toEqual(entriesBefore);
+    expect(ctx.resticMock.init).not.toHaveBeenCalled();
   });
 });

@@ -329,6 +329,7 @@ describe('Repository', () => {
     await expect(sdk.reconfigureRepositoryPrimaryBackend(moved.id, { backendId: backend.id })).resolves.toEqual({
       repository: expect.objectContaining({
         id: moved.id,
+        name: 'Moved Repository',
         backends: { primary, secondary: [] },
       }),
     });

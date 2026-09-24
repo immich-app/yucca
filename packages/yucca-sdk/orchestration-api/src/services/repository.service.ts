@@ -856,10 +856,27 @@ export class RepositoryService {
     id: string,
     dto: RepositoryPrimaryBackendReconfigureRequestDto,
   ): Promise<RepositoryCreateResponseDto> {
+    const local = await this.repository.get(id);
+    if (!local) {
+      throw new NotFoundException('Repository not found locally');
+    }
+
     const { backend, configuration } = await this.getBackendOrThrow(dto.backendId);
 
+    let name = 'Restored Repository';
+    try {
+      const { backend: previous } = await this.getBackendOrThrow(local.backendId);
+      const { repository: previousRemote } = await previous.getRepository(local.remoteId);
+      name = previousRemote.name;
+    } catch (error) {
+      this.logger.warn(
+        `Could not read the name of repository ${local.remoteId} from backend ${local.backendId}`,
+        error,
+      );
+    }
+
     const { repository: remote } = await backend.createRepository({
-      name: 'Restored Repository',
+      name,
       worm: false,
     });
 
