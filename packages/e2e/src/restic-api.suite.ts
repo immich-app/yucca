@@ -73,13 +73,19 @@ async function createForgottenSnapshot(workingDir: string, pruneRepoUrl: string)
 // One spec file per mode rather than a `describe.each` here: jest parallelises
 // across files, never within one, so as a single suite the WORM pass could only
 // start once the plain pass had finished.
-export function describeResticApi(name: string, writeOnce: boolean) {
-  const { repoUrl } = generateCase(writeOnce);
+export function describeResticApi(
+  name: string,
+  writeOnce: boolean,
+  createRepoUrl = (worm: boolean) => Promise.resolve(generateCase(worm).repoUrl),
+) {
+  let repoUrl: string;
 
   describe(`${name} (e2e)`, () => {
     let workingDir: string;
 
     beforeAll(async () => {
+      repoUrl = await createRepoUrl(writeOnce);
+
       // Private to this suite: the two modes run as separate jest workers, and
       // a shared tmpdir has them overwriting each other's fixtures mid-backup.
       workingDir = await mkdtemp(join(tmpdir(), 'restic-e2e-'));
@@ -152,7 +158,7 @@ export function describeResticApi(name: string, writeOnce: boolean) {
       let otherRepoUrl: string;
 
       beforeEach(async () => {
-        otherRepoUrl = generateCase(writeOnce).repoUrl;
+        otherRepoUrl = await createRepoUrl(writeOnce);
         await init().repository(otherRepoUrl).password(password).run();
       }, 10_000);
 
@@ -414,7 +420,7 @@ export function describeResticApi(name: string, writeOnce: boolean) {
 
     describe('prune', () => {
       async function createPruneRepo() {
-        const { repoUrl: pruneRepoUrl } = generateCase(writeOnce);
+        const pruneRepoUrl = await createRepoUrl(writeOnce);
         await init().repository(pruneRepoUrl).password(password).run();
         return pruneRepoUrl;
       }

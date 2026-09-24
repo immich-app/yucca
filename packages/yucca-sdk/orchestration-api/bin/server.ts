@@ -3,6 +3,8 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { LoggingRepository, ORCHESTRATION_PORT, OrchestrationApiModule } from '../src';
 
 async function bootstrap() {
+  const databaseDumpConfig = { enabled: true, keepLastAmount: 14 };
+
   const app = await NestFactory.create(
     OrchestrationApiModule.forRootAsync({
       useFactory: () => ({
@@ -25,12 +27,14 @@ async function bootstrap() {
             },
             async cleanupDatabaseBackups() {},
             async getImmichDatabaseDumpConfig() {
-              return { enabled: true, keepLastAmount: 14 };
+              return databaseDumpConfig;
             },
-            async configureImmichDatabaseDump() {},
-            async enterMaintenanceRollback() {
+            async configureImmichDatabaseDump(config) {
+              Object.assign(databaseDumpConfig, config);
+            },
+            async enterMaintenanceRollback(repositoryId, snapshotId, backupFileName) {
               return {
-                jwt: 'abc',
+                jwt: [repositoryId, snapshotId, backupFileName].join(':'),
               };
             },
           },

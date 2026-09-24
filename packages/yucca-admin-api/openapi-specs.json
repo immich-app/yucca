@@ -1705,7 +1705,8 @@
           "incomplete",
           "complete",
           "warn",
-          "failed"
+          "failed",
+          "cancelled"
         ]
       },
       "RepositoryListResponseDto": {

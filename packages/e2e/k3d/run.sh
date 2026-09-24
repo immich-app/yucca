@@ -51,6 +51,10 @@ if [ -z "${YUCCA_E2E_PREBUILT:-}" ]; then
   mise run yucca-sdk:orchestration-ui:build >/dev/null
 fi
 
+echo "==> build restic-proxy (spawned by orchestration-api and the proxy suites)"
+mise run //packages/restic-proxy:build >/dev/null
+export PATH="$ROOT/dist:$PATH"
+
 echo "==> port-forward k3d services to the e2e host ports"
 kubectl port-forward -n yucca svc/yucca-michael   3010:3010  >/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
 kubectl port-forward -n yucca svc/yucca-mock-oidc 8092:8092 >>/tmp/yucca-e2e-pf.log 2>&1 & PF_PIDS+=($!)
@@ -122,6 +126,9 @@ source .mise/tasks/yucca-api/env
 # runner that is already hosting the cluster these suites drive.
 NODE_OPTIONS="--experimental-vm-modules --require $HERE/hostmap.cjs" \
   pnpm --filter e2e exec jest --maxWorkers=3
+
+grep -q "Minted a new token" /tmp/yucca-e2e-orch.log || {
+  echo "orchestration-api never routed restic through restic-proxy" >&2; exit 1; }
 
 echo "==> web e2e (playwright against the k3d web)"
 # Config lives in packages/web so @playwright/test resolves from web's deps.

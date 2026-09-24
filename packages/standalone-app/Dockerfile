@@ -64,6 +64,11 @@ COPY --from=proxy /restic-proxy /usr/local/bin/
 COPY --from=builder /deploy ./
 COPY --chmod=0755 packages/standalone-app/docker-entrypoint.sh /usr/local/bin/
 
+# orchestration-api silently falls back to direct restic when restic-proxy is
+# not an executable on PATH. An invalid LOG_LEVEL exits 3 before binding, so
+# this proves the binary runs on this platform without starting the proxy.
+RUN LOG_LEVEL=invalid restic-proxy; [ $? -eq 3 ]
+
 RUN mkdir -p /data /cache && chown node:node /data /cache /app
 VOLUME /data
 VOLUME /cache

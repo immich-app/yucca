@@ -1,6 +1,7 @@
 import * as sdk from '@futo-org/backups-orchestrator-ui/sdk';
-import { createEventSource } from 'eventsource-client';
-import { randomBytes } from 'node:crypto';
+import { parse } from 'cookie';
+import { createEventSource, type EventSourceClient } from 'eventsource-client';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
@@ -11,8 +12,8 @@ const baseUrl = `http://localhost:22676`;
 sdk.defaults.baseUrl = baseUrl;
 let socket: Socket;
 
-const startDeviceFlow = async () => {
-  const events = createEventSource(`${baseUrl}/api/yucca/auth/oidc/device`);
+const startDeviceFlow = async (path = 'oidc/device') => {
+  const events = createEventSource(`${baseUrl}/api/yucca/auth/${path}`);
 
   for await (const { data } of events) {
     const message = JSON.parse(data);
@@ -24,22 +25,46 @@ const startDeviceFlow = async () => {
   throw new Error('Device flow ended before it started');
 };
 
-const login = async () => {
-  const backendCreated = waitForMessage('BackendCreate');
+const nextDeviceFlowEvent = async (events: EventSourceClient) => {
+  for await (const { data } of events) {
+    return JSON.parse(data);
+  }
 
-  const { events, userCode, verificationUri } = await startDeviceFlow();
+  throw new Error('Device flow ended without an event');
+};
 
+const approveDeviceCode = async (userCode: string, verificationUri: string, sub: string) => {
   const approveUrl = new URL('/api/form/device', verificationUri);
   approveUrl.searchParams.set('user_code', userCode);
-  approveUrl.searchParams.set('sub', 'bar');
+  approveUrl.searchParams.set('sub', sub);
 
   const response = await fetch(approveUrl);
   if (!response.ok) {
     throw new Error(`Failed to approve device code: ${response.status} ${await response.text()}`);
   }
+};
+
+const login = async () => {
+  const backendCreated = waitForMessage('BackendCreate');
+
+  const { events, userCode, verificationUri } = await startDeviceFlow();
+  await approveDeviceCode(userCode, verificationUri, 'bar');
 
   await backendCreated;
   events.close();
+};
+
+const completeSessionDeviceFlow = async (sub: string) => {
+  const { events, userCode, verificationUri } = await startDeviceFlow('session/device');
+  const result = nextDeviceFlowEvent(events);
+
+  await approveDeviceCode(userCode, verificationUri, sub);
+
+  try {
+    return await result;
+  } finally {
+    events.close();
+  }
 };
 
 beforeAll(async () => {
@@ -96,9 +121,38 @@ describe('Auth', () => {
     expect(verificationUri).toEqual(expect.any(String));
   });
 
+  it('fails the session device flow before a backend is connected', async () => {
+    const events = createEventSource(`${baseUrl}/api/yucca/auth/session/device`);
+
+    await expect(nextDeviceFlowEvent(events)).resolves.toEqual({ type: 'FAILURE', reason: 'NOT_CONNECTED' });
+
+    events.close();
+  });
+
   it('should log us in using IdP', async () => {
     await login();
   }, 30_000);
+
+  it('confirms the connected account through the session device flow', async () => {
+    await expect(completeSessionDeviceFlow('bar')).resolves.toEqual({ type: 'SUCCESS' });
+  }, 30_000);
+
+  it('rejects a different account in the session device flow', async () => {
+    await expect(completeSessionDeviceFlow('orchestration-api-intruder')).resolves.toEqual({
+      type: 'FAILURE',
+      reason: 'WRONG_ACCOUNT',
+    });
+  }, 30_000);
+
+  it('rejects an invalid session token', async () => {
+    await expect(sdk.createSession({ token: 'not-a-session-token' })).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('returns 404 when creating a ticket for an unknown repository', async () => {
+    await expect(sdk.createTicket({ action: 'repository.delete', repositoryId: randomUUID() })).rejects.toMatchObject({
+      status: 404,
+    });
+  });
 });
 
 describe('Backend', () => {
@@ -211,6 +265,19 @@ describe('Onboarding', () => {
       hasSkippedExtraConfig: true,
     });
   });
+
+  it('reports a bootstrap error to VictoriaLogs', async () => {
+    const reportedAt = Date.now();
+
+    await expect(sdk.reportError()).resolves.toEqual('');
+
+    const record = await waitForLog(
+      (entry: Record<string, unknown>) =>
+        JSON.stringify(entry).includes('Bootstrap error') && Date.parse(String(entry._time)) >= reportedAt,
+    );
+
+    expect(JSON.stringify(record)).toContain('Bootstrap error');
+  }, 60_000);
 });
 
 describe('Repository', () => {
@@ -250,6 +317,63 @@ describe('Repository', () => {
         name: 'Renamed Repository',
       }),
     });
+  });
+
+  it('reconfigures the primary backend of a repository', async () => {
+    const { repository: moved } = await sdk.createRepository({ name: 'Moved Repository', worm: false });
+    const { backend } = await sdk.createLocalBackend({ path: await mkdtemp(join(tmpdir(), 'reconfigure-')) });
+    const primary = { id: backend.id, online: true, type: 'local' };
+
+    const event = waitForMessage('RepositoryUpdate');
+
+    await expect(sdk.reconfigureRepositoryPrimaryBackend(moved.id, { backendId: backend.id })).resolves.toEqual({
+      repository: expect.objectContaining({
+        id: moved.id,
+        name: 'Moved Repository',
+        backends: { primary, secondary: [] },
+      }),
+    });
+
+    await expect(event).resolves.toEqual({
+      type: 'RepositoryUpdate',
+      repositoryId: moved.id,
+      repository: expect.objectContaining({ backends: { primary, secondary: [] } }),
+    });
+
+    await expect(sdk.getRepositories()).resolves.toEqual({
+      repositories: expect.arrayContaining([
+        expect.objectContaining({
+          id: moved.id,
+          backends: expect.objectContaining({ primary: expect.objectContaining({ id: backend.id }) }),
+        }),
+      ]),
+    });
+  });
+
+  it('returns 404 when reconfiguring onto an unknown backend', async () => {
+    await expect(
+      sdk.reconfigureRepositoryPrimaryBackend(repository.id, { backendId: randomUUID() }),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('returns 404 when reconfiguring an unknown repository', async () => {
+    const { backend } = await sdk.createLocalBackend({ path: await mkdtemp(join(tmpdir(), 'reconfigure-')) });
+
+    await expect(
+      sdk.reconfigureRepositoryPrimaryBackend(randomUUID(), { backendId: backend.id }),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('creates a ticket that redirects to the identity provider', async () => {
+    const { redirectTo } = await sdk.createTicket({ action: 'repository.delete', repositoryId: repository.id });
+
+    expect(Object.fromEntries(new URL(redirectTo).searchParams)).toEqual(
+      expect.objectContaining({
+        state: expect.any(String),
+        prompt: 'login',
+        max_age: '0',
+      }),
+    );
   });
 
   it('creates a repository', async () => {
@@ -372,6 +496,30 @@ describe('Repository', () => {
         type: 'backup',
       }),
     });
+  });
+
+  it('downloads a run log', async () => {
+    const {
+      runs: [{ id }],
+    } = await sdk.getRunHistory(repository.id);
+
+    const response = await fetch(`${baseUrl}/api/yucca/logs/${id}/download`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toMatch(/^application\/jsonl/);
+    expect(response.headers.get('content-disposition')).toBe(`attachment; filename="${id}.jsonl"`);
+
+    const body = await response.text();
+    const lines = body
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line));
+
+    expect(lines).toEqual(expect.arrayContaining([expect.objectContaining({ message_type: 'summary' })]));
+  });
+
+  it('returns 404 when downloading the log of an unknown run', async () => {
+    await expect(sdk.downloadRunLog('does-not-exist')).rejects.toMatchObject({ status: 404 });
   });
 
   it('list snapshots', async () => {
@@ -890,6 +1038,62 @@ describe('Immich integration', () => {
         }),
       }),
     );
+  });
+
+  it('reports the immich backup status', async () => {
+    const { immichIntegration } = await sdk.getIntegrations();
+
+    await expect(sdk.getImmichBackupStatus()).resolves.toEqual(
+      expect.objectContaining({
+        integration: immichIntegration,
+        repository: expect.objectContaining({ id: immichIntegration!.id }),
+        backend: expect.objectContaining({ type: 'yucca' }),
+        schedule: expect.objectContaining({ id: immichIntegration!.scheduleId }),
+        databaseDump: { enabled: expect.any(Boolean), keepLastAmount: expect.any(Number) },
+        databaseDumpWarningIgnored: false,
+      }),
+    );
+  });
+
+  it('configures the immich database dump', async () => {
+    await sdk.configureImmichDatabaseDump({ enabled: false, keepLastAmount: 3 });
+
+    await expect(sdk.getImmichBackupStatus()).resolves.toEqual(
+      expect.objectContaining({ databaseDump: { enabled: false, keepLastAmount: 3 } }),
+    );
+  });
+
+  it('rejects a database dump retention below one', async () => {
+    await expect(sdk.configureImmichDatabaseDump({ keepLastAmount: 0 })).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('ignores the database dump warning', async () => {
+    await sdk.ignoreImmichDatabaseDumpWarning();
+
+    await expect(sdk.getImmichBackupStatus()).resolves.toEqual(
+      expect.objectContaining({ databaseDumpWarningIgnored: true }),
+    );
+  });
+
+  it('starts an immich rollback and sets the maintenance token cookie', async () => {
+    const { immichIntegration } = await sdk.getIntegrations();
+
+    const response = await fetch(`${baseUrl}/api/yucca/integrations/immich/rollback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        repositoryId: immichIntegration!.id,
+        snapshotId: 'rollback-snapshot',
+        backupFileName: 'rollback.sql',
+      }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.headers.getSetCookie().map((header) => parse(header))).toEqual([
+      expect.objectContaining({
+        immich_maintenance_token: `${immichIntegration!.id}:rollback-snapshot:rollback.sql`,
+      }),
+    ]);
   });
 });
 
