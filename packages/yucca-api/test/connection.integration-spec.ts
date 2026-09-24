@@ -1,6 +1,7 @@
 import { MetricService } from '@common/server/otel';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { controllers, imports, providers } from '../src/app.module';
@@ -103,6 +104,65 @@ describe('ConnectionController (e2e)', () => {
         .set('Cookie', cookie())
         .send({ type: 'winamp', name: 'nope' })
         .expect(400);
+    });
+  });
+
+  describe('PATCH /connections/:id', () => {
+    it('renames a connection', async () => {
+      const instance = await testUtils.createConnection(user.id, 'immich', 'laptop');
+
+      await request(app.getHttpServer())
+        .patch(`/api/connections/${instance.id}`)
+        .set('Cookie', cookie())
+        .send({ name: 'desktop' })
+        .expect(204);
+
+      const { body } = await request(app.getHttpServer()).get('/api/connections').set('Cookie', cookie()).expect(200);
+      expect(body.connections).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: instance.id, type: 'immich', name: 'desktop' })]),
+      );
+    });
+
+    it.each([{}, { name: 42 }, { name: 'x'.repeat(121) }])('rejects an invalid body %j', async (dto) => {
+      await request(app.getHttpServer())
+        .patch(`/api/connections/${connection.id}`)
+        .set('Cookie', cookie())
+        .send(dto)
+        .expect(400);
+
+      const { body } = await request(app.getHttpServer()).get('/api/connections').set('Cookie', cookie()).expect(200);
+      expect(body.connections[0].name).toBe('Immich');
+    });
+
+    it('404s for a missing connection', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/connections/${randomUUID()}`)
+        .set('Cookie', cookie())
+        .send({ name: 'desktop' })
+        .expect(404);
+    });
+
+    it("refuses to rename other users' connections", async () => {
+      const other = await testUtils.createUser('other', 'other@example.com', 'other-sub');
+
+      await request(app.getHttpServer())
+        .patch(`/api/connections/${other.connection.id}`)
+        .set('Cookie', cookie())
+        .send({ name: 'hijacked' })
+        .expect(401);
+
+      const { body } = await request(app.getHttpServer())
+        .get('/api/connections')
+        .set('Cookie', `yucca-access-token=${other.session.accessToken}`)
+        .expect(200);
+      expect(body.connections[0].name).toBe('Immich');
+    });
+
+    it('rejects unauthenticated requests', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/connections/${connection.id}`)
+        .send({ name: 'desktop' })
+        .expect(401);
     });
   });
 

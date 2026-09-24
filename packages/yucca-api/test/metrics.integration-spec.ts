@@ -1,4 +1,4 @@
-import { MetricService } from '@common/server/otel';
+import { LoggerRepository, MetricService } from '@common/server/otel';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -36,6 +36,54 @@ describe('MetricsController (e2e)', () => {
     await testUtils.resetDatabase();
     ({ user, session } = await testUtils.createUser());
     repository = await testUtils.createRepository(user.id);
+  });
+
+  describe('POST /metrics/submit/log', () => {
+    let loggerInfo: jest.SpyInstance;
+
+    beforeEach(() => {
+      loggerInfo = jest.spyOn(app.get(LoggerRepository), 'info');
+    });
+
+    afterEach(() => {
+      loggerInfo.mockRestore();
+    });
+
+    it('forwards a structured log to the logger', async () => {
+      await request(app.getHttpServer())
+        .post('/api/metrics/submit/log')
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .send({ summary: 'backup finished', data: { files: 3 } })
+        .expect(204);
+
+      expect(loggerInfo).toHaveBeenCalledWith({
+        _msg: '[telemetry] backup finished',
+        customerId: user.id,
+        data: { files: 3 },
+      });
+    });
+
+    it.each([{}, { summary: 'backup finished' }, { summary: 'backup finished', data: 'files' }])(
+      'rejects an invalid body %j',
+      async (dto) => {
+        await request(app.getHttpServer())
+          .post('/api/metrics/submit/log')
+          .set('Cookie', `yucca-access-token=${session.accessToken}`)
+          .send(dto)
+          .expect(400);
+
+        expect(loggerInfo).not.toHaveBeenCalledWith(expect.objectContaining({ customerId: user.id }));
+      },
+    );
+
+    it('rejects unauthenticated requests', async () => {
+      await request(app.getHttpServer())
+        .post('/api/metrics/submit/log')
+        .send({ summary: 'backup finished', data: {} })
+        .expect(401);
+
+      expect(loggerInfo).not.toHaveBeenCalledWith(expect.objectContaining({ _msg: '[telemetry] backup finished' }));
+    });
   });
 
   describe('GET /metrics/:repositoryId/history', () => {
@@ -82,6 +130,31 @@ describe('MetricsController (e2e)', () => {
             sizeBytes: '4096',
           }),
         ]),
+        nextCursor: null,
+      });
+    });
+
+    it('records a cancelled backup in history', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/metrics/submit/${repository.id}/backup/end`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .send({ status: 'cancelled', durationMs: 1234 })
+        .expect(204);
+
+      const { body } = await request(app.getHttpServer())
+        .get(`/api/metrics/${repository.id}/history`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(200);
+
+      expect(body).toEqual({
+        items: [
+          expect.objectContaining({
+            repositoryId: repository.id,
+            backup: expect.any(String),
+            backupStatus: 'cancelled',
+            backupDuration: 1234,
+          }),
+        ],
         nextCursor: null,
       });
     });
@@ -153,6 +226,27 @@ describe('MetricsController (e2e)', () => {
           meter: expect.any(Object),
         },
       });
+    });
+
+    it('reflects a cancelled backup on the repository', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/metrics/submit/${repository.id}/backup/end`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .send({ status: 'cancelled', durationMs: 1234 })
+        .expect(204);
+
+      const { body } = await request(app.getHttpServer())
+        .get(`/api/repository/${repository.id}`)
+        .set('Cookie', `yucca-access-token=${session.accessToken}`)
+        .expect(200);
+
+      expect(body.repository.metrics).toEqual(
+        expect.objectContaining({
+          lastBackup: expect.any(String),
+          lastBackupStatus: 'cancelled',
+          lastBackupDuration: 1234,
+        }),
+      );
     });
   });
 });

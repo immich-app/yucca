@@ -1,6 +1,14 @@
 <script lang="ts">
   import Accordion from "$lib/components/ui/Accordion.svelte";
-  import { useConfig, useUpdateConfig } from "$lib/services/config.service";
+  import {
+    defaultQuietHoursEnd,
+    defaultQuietHoursStart,
+    toBandwidthDto,
+    toBandwidthForm,
+    unlimitedBandwidth,
+    useConfig,
+    useUpdateConfig,
+  } from "$lib/services/config.service";
   import {
     Button,
     Field,
@@ -14,10 +22,9 @@
   import { mdiSpeedometerSlow } from "@mdi/js";
 
   const bytesPerMegabyte = 1_000_000;
-  const unlimited = "0";
 
   const speeds = [
-    { value: unlimited, label: "No limit" },
+    { value: unlimitedBandwidth, label: "No limit" },
     ...[0.5, 1, 2, 5, 10, 20, 50, 100].map((megabytes) => ({
       value: String(megabytes * bytesPerMegabyte),
       label: `${megabytes} MB/s`,
@@ -29,13 +36,10 @@
     label: `${String(hour).padStart(2, "0")}:00`,
   }));
 
-  const defaultQuietHoursStart = "22:00";
-  const defaultQuietHoursEnd = "06:00";
-
   const config = useConfig();
   const mutation = useUpdateConfig();
 
-  let speed = $state(unlimited);
+  let speed = $state(unlimitedBandwidth);
   let quiet = $state(false);
   let quietStart = $state(defaultQuietHoursStart);
   let quietEnd = $state(defaultQuietHoursEnd);
@@ -46,14 +50,9 @@
       return;
     }
 
-    const { bytesPerSec, quietHours } = config.data.bandwidth;
-    const [start = defaultQuietHoursStart, end = defaultQuietHoursEnd] =
-      quietHours?.split("-") ?? [];
-
-    speed = String(bytesPerSec);
-    quiet = Boolean(quietHours);
-    quietStart = start;
-    quietEnd = end;
+    ({ speed, quiet, quietStart, quietEnd } = toBandwidthForm(
+      config.data.bandwidth,
+    ));
   };
 
   $effect(() => {
@@ -65,14 +64,11 @@
     load();
   });
 
-  const limited = $derived(speed !== unlimited);
+  const limited = $derived(speed !== unlimitedBandwidth);
 
   const onSave = () => {
     mutation.mutate({
-      bandwidth: {
-        bytesPerSec: Number(speed),
-        quietHours: limited && quiet ? `${quietStart}-${quietEnd}` : undefined,
-      },
+      bandwidth: toBandwidthDto({ speed, quiet, quietStart, quietEnd }),
     });
   };
 </script>
