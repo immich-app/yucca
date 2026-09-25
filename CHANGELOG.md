@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/immich-app/yucca/compare/v0.46.0...v0.47.0) (2026-09-25)
+
+
+### Features
+
+* **restic proxy:** auto create repositories & cfg session token ([#710](https://github.com/immich-app/yucca/issues/710)) ([894414a](https://github.com/immich-app/yucca/commit/894414a15a844597ef633f55610cadb4bc650bf9))
+
 ## [0.46.0](https://github.com/immich-app/yucca/compare/v0.45.0...v0.46.0) (2026-09-23)
 
 
