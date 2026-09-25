@@ -66,6 +66,7 @@
             variant="ghost"
             size="medium"
             aria-label="Main menu"
+            aria-expanded={open}
             icon={mdiMenu}
             onclick={() => (open = !open)}
             class="md:hidden"
