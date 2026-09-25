@@ -60,6 +60,17 @@ path regexes remain the fallback for older entries in retention). The
 catalog is maintained by hand in `investigateSystemPrompt`; update it when a
 service adds or renames per-user telemetry.
 
+It also covers the **Ceph gateway access log** behind `query_rgw_logs`: the
+storage tier's own record of the requests michael makes on the user's behalf,
+one parsed line per S3 request (`op`, `bucket`, Ceph's internal `status`,
+`http_status`, `latency`, `request_id`). Its value is separating "michael
+failed" from "Ceph failed" — michael 5xx with matching gateway 5xx or high
+latency is storage-side, michael failing with no gateway request at all puts
+the fault in michael or the network between them. Only the prod fsn1
+gateways (`cluster="spice"`) ship these logs, so an empty result can mean the
+account lives elsewhere rather than that nothing happened; the prompt says so,
+because "no rows" is otherwise an easy thing to misread as an all-clear.
+
 The catalog also covers **client-side telemetry**: the user's own backup
 client (yucca-sdk's orchestration-api) ships structured logs home, and
 yucca-api records them as `_msg:"[telemetry] <summary>"` with the payload
@@ -90,8 +101,9 @@ The split is **harness vs. model**, not "the agent service is trusted":
 - **Harness (trusted, holds the secrets)**: the Go process. It owns the
   OpenRouter key and the internal secret, executes every tool call itself,
   and posts the final note. The model only ever sees tool *results*.
-- **Model (untrusted)**: fills the parameters of four typed tools —
-  `query_metrics` (PromQL), `query_logs` (LogsQL), `query_health` (a probe
+- **Model (untrusted)**: fills the parameters of five typed tools —
+  `query_metrics` (PromQL), `query_logs` (LogsQL), `query_rgw_logs` (LogsQL
+  over the Ceph gateway access log, see below), `query_health` (a probe
   name from a fixed registry, see below), `jq` (in-process gojq over
   stored results, no shell, no subprocess). No tool takes a URL, header, or
   credential. There is no command execution and no filesystem access.
@@ -112,6 +124,22 @@ filter is the only wall between the agent and other users' telemetry —
 which is why it lives in `internal/o11y` with tests asserting a query that
 names another user still comes back scoped.
 
+`query_rgw_logs` needs a **second scoping mode**, because radosgw logs to
+journald with no `user` or `customerId` field at all — the customerId
+wrapper above would match nothing on those lines. What scopes them instead
+is the account's own bucket set: michael names one S3 bucket per repository,
+after the repository id, so the harness resolves this account's repository
+ids from the metrics label endpoint (`/api/v1/label/repositoryId/values`
+under the same `extra_label` scope) and ANDs `(_msg:"bucket=<id>" or …)`
+ahead of anything the model supplied. The model's own filter runs as a
+`filter` pipe *after* an `extract` that parses the line into `op`, `bucket`,
+`status`, `http_status`, `latency` and `request_id`, so it can name those
+fields while still only narrowing rows the bucket scope already selected;
+`join`/`union` are refused here too. Two properties matter and are tested:
+an account with **no** buckets is refused outright rather than queried
+unscoped, and a failed bucket lookup fails the tool closed instead of
+falling back. The bucket set is resolved once per investigation.
+
 `query_health` is the one deliberate exception: fleet-wide platform health
 (michael error rates and latency, storage-backend health, Ceph/RGW health,
 pool capacity), so a user's 5xx errors can be correlated with a platform
@@ -130,7 +158,7 @@ as AI-generated with the executed queries listed — so the worst case is a
 misleading note that staff are told to verify.
 
 Hard limits per investigation: tool-call budget (`COLUMBO_MAX_TOOL_CALLS`,
-20), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 600), model calls retried on
+30), wall clock (`COLUMBO_TIMEOUT_SECONDS`, 900), model calls retried on
 transport errors/timeouts/5xx with per-attempt deadlines
 (`COLUMBO_MODEL_TIMEOUT_SECONDS` 120 × `COLUMBO_MODEL_ATTEMPTS` 3 — the
 response body is buffered per attempt so a mid-body stall retries instead of

@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -110,13 +112,28 @@ func TestJqRejectsUnknownRef(t *testing.T) {
 	}
 }
 
+func toolNamed(t *testing.T, tools []tool.BaseTool, name string) tool.BaseTool {
+	t.Helper()
+	for _, candidate := range tools {
+		info, err := candidate.Info(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Name == name {
+			return candidate
+		}
+	}
+	t.Fatalf("no tool named %q", name)
+	return nil
+}
+
 func TestToolErrorsBecomeToolResults(t *testing.T) {
 	box := testBox(4, 1024)
 	tools, err := box.tools()
 	if err != nil {
 		t.Fatal(err)
 	}
-	jq := tools[3].(interface {
+	jq := toolNamed(t, tools, "jq").(interface {
 		InvokableRun(ctx context.Context, argumentsInJSON string, opts ...tool.Option) (string, error)
 	})
 	out, err := jq.InvokableRun(context.Background(), `{"program":".","ref":"r99"}`)
@@ -186,5 +203,36 @@ func TestClientTelemetryBlock(t *testing.T) {
 	}
 	if strings.Contains(got, "status=  ") {
 		t.Fatalf("events without a status must omit the field: %q", got)
+	}
+}
+
+func TestRGWToolFailsClosedWhenBucketLookupFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	box := newToolbox(o11y.NewClient(srv.URL, srv.URL, "user-1"), NewResultStore(), 4, 1024)
+	_, err := box.queryRGWLogs(context.Background(), rgwLogsArgs{})
+	if err == nil {
+		t.Fatal("a failed bucket lookup must not fall through to an unscoped gateway query")
+	}
+	if !strings.Contains(err.Error(), "refusing to query the gateway log unscoped") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRGWToolIsRegistered(t *testing.T) {
+	box := testBox(4, 1024)
+	tools, err := box.tools()
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := toolNamed(t, tools, "query_rgw_logs").Info(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(info.Desc, "buckets") {
+		t.Fatalf("desc = %q", info.Desc)
 	}
 }
