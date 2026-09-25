@@ -18,6 +18,9 @@ type Config struct {
 	ThrottleBytesPerSec int    `env:"RESTIC_PROXY_THROTTLE_BYTES_PER_SEC" envDefault:"0"`
 	ThrottleQuietHours  string `env:"RESTIC_PROXY_THROTTLE_QUIET_HOURS"`
 
+	SessionToken        string `env:"RESTIC_PROXY_DEFAULT_SESSION_TOKEN"`
+	SmartAutoRepository bool   `env:"RESTIC_PROXY_SMART_AUTO_REPOSITORY" envDefault:"false"`
+
 	LogLevel  LogLevelNewType  `env:"LOG_LEVEL" envDefault:"info"`
 	LogPretty LogPrettyNewType `env:"LOG_FORMAT" envDefault:"pretty"`
 }

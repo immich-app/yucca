@@ -29,7 +29,7 @@ func (s *sink) WriteHeader(int) {}
 func warmHandler(b *testing.B, backendURL string) *Handler {
 	b.Helper()
 
-	handler := New(client.New(meta.Api{Url: "http://unused.example"}))
+	handler := New(client.New(meta.Api{Url: "http://unused.example"}), "", false)
 	handler.grants.Set(testRepository, client.Grant{
 		SessionToken: testToken,
 		Scheme:       "http",
@@ -105,7 +105,7 @@ func BenchmarkDownload16MiB(b *testing.B) { benchmarkDownload(b, 16<<20) }
 func BenchmarkDownload64KiB(b *testing.B) { benchmarkDownload(b, 64<<10) }
 
 func BenchmarkGrantCacheHit(b *testing.B) {
-	handler := New(client.New(meta.Api{Url: "http://unused.example"}))
+	handler := New(client.New(meta.Api{Url: "http://unused.example"}), "", false)
 	handler.grants.Set(testRepository, client.Grant{SessionToken: testToken, ExpiresAt: time.Now().Add(time.Hour)})
 
 	b.ReportAllocs()
