@@ -5,14 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json/v2"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 )
 
-var accessTokenCookie = "yucca-access-token"
+var AccessTokenCookie = "yucca-access-token"
 
 type StatusError struct {
 	Code   int
@@ -20,7 +19,7 @@ type StatusError struct {
 }
 
 func (err *StatusError) Error() string {
-	return fmt.Sprintf("could not generate restic URL: %s", err.Status)
+	return fmt.Sprintf("yucca API responded %s", err.Status)
 }
 
 type Grant struct {
@@ -35,34 +34,12 @@ type Grant struct {
 }
 
 func (client *Client) Grant(ctx context.Context, token string, repositoryId string) (Grant, error) {
-	request, err := http.NewRequestWithContext(ctx, "POST", client.api.Url+"/repository/"+repositoryId+"/restic", nil)
-	if err != nil {
-		return Grant{}, err
-	}
-
-	request.AddCookie(&http.Cookie{Name: accessTokenCookie, Value: token})
-
-	response, err := client.http.Do(request)
-	if err != nil {
-		return Grant{}, err
-	}
-
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusCreated {
-		return Grant{}, &StatusError{Code: response.StatusCode, Status: response.Status}
-	}
-
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return Grant{}, err
-	}
-
 	var repositoryGrant struct {
 		URL string `json:"url"`
 	}
 
-	if err := json.Unmarshal(body, &repositoryGrant); err != nil {
+	err := client.send(ctx, http.MethodPost, "/repository/"+repositoryId+"/restic", token, nil, http.StatusCreated, &repositoryGrant)
+	if err != nil {
 		return Grant{}, err
 	}
 
@@ -90,7 +67,8 @@ func (client *Client) Grant(ctx context.Context, token string, repositoryId stri
 		Exp int64 `json:"exp"`
 	}
 
-	if err := json.Unmarshal(payload, &claims); err != nil {
+	err = json.Unmarshal(payload, &claims)
+	if err != nil {
 		return Grant{}, err
 	}
 
