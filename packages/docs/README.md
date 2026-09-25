@@ -7,10 +7,10 @@ This site is a SvelteKit app, published at [docs.futo.cloud](https://docs.futo.c
 ## Running the site
 
 ```bash
-mise docs:dev      # dev server with hot reload on http://localhost:36034
-mise docs:check    # svelte-check
-mise docs:test     # unit tests for the page index
-mise docs:build    # static build into packages/docs/build
+mise //packages/docs:dev    # dev server with hot reload on http://localhost:36034
+mise //packages/docs:check  # svelte-check
+mise //packages/docs:test   # unit tests for the page index
+mise //packages/docs:build  # static build into packages/docs/build
 ```
 
 `mise check` and `mise build` include the docs, so CI builds the site on every pull request.

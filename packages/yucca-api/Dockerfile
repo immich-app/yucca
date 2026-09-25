@@ -66,7 +66,7 @@ RUN npm install -g pnpm@10.28.1
 RUN curl https://mise.run | sh
 RUN mise trust
 RUN pnpm i --frozen-lockfile
-RUN mise yucca-api:build
+RUN mise //packages/yucca-api:build
 RUN pnpm --filter yucca-api deploy /deploy --prod --legacy
 
 FROM ${ALPINE_IMAGE}

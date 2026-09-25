@@ -1,7 +1,23 @@
 monorepo_root = true
 
 [monorepo]
-config_roots = ["ansible/ceph", "ansible/talos", "packages/restic-proxy"]
+config_roots = [
+  "ansible/ceph",
+  "ansible/talos",
+  "packages/common",
+  "packages/docs",
+  "packages/emails",
+  "packages/futo-backups-bot",
+  "packages/restic-proxy",
+  "packages/standalone-app",
+  "packages/web",
+  "packages/yucca-admin-api",
+  "packages/yucca-api",
+  "packages/yucca-api-client",
+  "packages/yucca-metrics-worker",
+  "packages/yucca-sdk/orchestration-api",
+  "packages/yucca-sdk/orchestration-ui",
+]
 
 [tools]
 node = "25.9.0"
@@ -38,34 +54,44 @@ opentofu = "1.12.6"
 terragrunt = "0.99.5"
 # ansible/mgmt convergence (mgmt:ansible task, run from CI on prod apply).
 "pipx:ansible-core" = "2.21.4"
+
 [tasks.dev]
 description = "Start all services in development mode"
 depends = ["install:deps", "common:build", "docker:start"]
-run = [{ task = "*:dev" }]
+run = [
+  { tasks = [
+    "michael:dev",
+    "//packages/restic-proxy:dev",
+    "//packages/web:dev",
+    "//packages/yucca-admin-api:dev",
+    "//packages/yucca-api:dev",
+    "//packages/yucca-metrics-worker:dev",
+    "//packages/yucca-sdk/orchestration-api:dev",
+    "//packages/yucca-sdk/orchestration-ui:dev",
+  ] },
+]
 
 [tasks.build]
 description = "Build all packages"
-depends = ["*:build"]
+depends = ["*:build", "//packages/...:build"]
 
 [tasks."common:build"]
 description = "Build all common packages"
-run = [{ task = "install:deps" }, { task = "common:*:build" }]
+run = [{ task = "install:deps" }, { tasks = ["//packages/common:build", "//packages/emails:build"] }]
 
 [tasks.test]
 description = "Run all unit tests"
-depends = ["*:test"]
+depends = ["*:test", "//packages/...:test"]
 
 [tasks."test:integration"]
 description = "Run all integration tests"
 # NB: mise flags must precede the task pattern — anything after it is forwarded
 # to the tasks themselves (jest/go test choke on a stray --jobs).
-# Both depths: `*` does not cross `:`, so the first pattern alone silently
-# skipped yucca-sdk:orchestration-api:test:integration.
-run = "mise run --jobs 1 '*:test:integration' ::: '*:*:test:integration'"
+run = "mise run --jobs 1 '*:test:integration' ::: '//packages/...:test:integration'"
 
 [tasks."test:e2e:web"]
 description = "Run all web e2e tests"
-run = [{ task = "test:e2e:wait" }, { task = "*:test:e2e:web" }]
+run = [{ task = "test:e2e:wait" }, { task = "//packages/...:test:e2e:web" }]
 
 [tasks."prepare"]
 description = "Install and build packages"
@@ -73,11 +99,11 @@ run = [{ task = "install:frozen" }, { task = "build" }]
 
 [tasks."check"]
 description = "Run checks & unit tests"
-run = [{ tasks = ["lint", "lint:go", "*:check"] }, { task = "format" }, { task = "test" }]
+run = [{ tasks = ["lint", "lint:go", "//packages/...:check"] }, { task = "format" }, { task = "test" }]
 
 [tasks.fix]
 description = "Run all possible code fixes"
-run = [{ task = "*:fix" }, { task = "web:lingui" }]
+run = [{ task = "*:fix" }, { task = "//packages/web:lingui" }]
 
 [tasks."o11y:render"]
 description = "Render the o11y bundle"

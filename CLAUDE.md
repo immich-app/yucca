@@ -51,8 +51,8 @@ Yucca is a multi-tenant **backup service**: OIDC-authenticated users get S3-back
 
 ```bash
 mise dev                  # compose-based dev: deps, docker infra (postgres/minio/mock-oidc/victoria-*), all *:dev
-mise <pkg>:dev            # one service, e.g. mise web:dev, mise yucca-api:dev
-mise docs:dev             # docs site (packages/docs) on :36034
+mise //packages/<pkg>:dev # one service, e.g. mise //packages/web:dev; Go services stay mise michael:dev
+mise //packages/docs:dev  # docs site (packages/docs) on :36034
 
 mise check                # lint + format check + svelte-check + unit tests (= the `checks` CI job)
 mise fix                  # autofix lint/format + lingui extract
@@ -62,9 +62,9 @@ mise test                 # all unit tests (jest per NestJS pkg, vitest for web)
 mise test:integration     # integration tests (--jobs 1; needs infra up)
 mise test:integration:k3d # CI split: the database-backed suites; :s3 = the Ceph-backed ones
 mise test:e2e             # e2e (needs the stack running); mise test:e2e:web = Playwright
-mise <pkg>:test           # one package; args after -- go to jest: mise yucca-api:test -- -t "name"
+mise //packages/<pkg>:test # one package; args after -- go to jest: mise //packages/yucca-api:test -- -t "name"
 
-mise yucca-api:migrations <args>   # DB migrations (@immich/sql-tools; yucca-api owns the schema)
+mise //packages/yucca-api:migrations <args>   # DB migrations (@immich/sql-tools; yucca-api owns the schema)
 ```
 
 ### k3d + Tilt (prod-shaped dev)
@@ -117,7 +117,7 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `emails` (`@common/emails`) | Svelte lib | Transactional email templates (better-svelte-email, web theme), prebuilt to JS for the NestJS apps. See `docs/email.md`. |
 
 **Frontend** (`packages/web`): SvelteKit 5 + Tailwind 4, `@immich/ui`, lingui i18n
-(`mise web:lingui:*`; compiled locales are generated, not edited), generated API client.
+(`mise //packages/web:lingui:*`; compiled locales are generated, not edited), generated API client.
 **Docs** (`packages/docs`, https://docs.futo.cloud): the **end-user** documentation site (beta setup
 guides for Immich and the standalone container). SvelteKit + `adapter-static`; every page is a
 `src/routes/<section>/<slug>/+page.md` compiled by `@immich/svelte-markdown-preprocess` (front matter
@@ -127,8 +127,8 @@ in `docs/` and the per-directory READMEs — do not move them onto the site.
 **`packages/yucca-sdk/`** (orchestration-api + orchestration-ui) is separately versioned and
 added explicitly in `pnpm-workspace.yaml`.
 
-**API client generation**: yucca-api DTOs → `mise yucca-api:sync-openapi` →
-`mise yucca-api-client:build` (oazapfts) → `packages/yucca-api-client/src/fetch-client.ts`.
+**API client generation**: yucca-api DTOs → `mise //packages/yucca-api:sync-openapi` →
+`mise //packages/yucca-api-client:build` (oazapfts) → `packages/yucca-api-client/src/fetch-client.ts`.
 Generated — regenerate on contract changes, never hand-edit.
 
 **Database**: PostgreSQL via **Kysely**. Schema in `packages/yucca-api/src/schema/`
