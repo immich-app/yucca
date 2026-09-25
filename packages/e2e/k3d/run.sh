@@ -120,7 +120,7 @@ echo "==> jest e2e (it-works, restic, yucca-api, orchestration-api)"
 # shellcheck disable=SC1091
 source .mise/tasks/michael/env
 # shellcheck disable=SC1091
-source .mise/tasks/yucca-api/env
+source packages/yucca-api/.mise/tasks/env
 # Three, not one per suite: orchestration-api alone runs ~105s and gates the
 # phase, so a fourth worker adds no wall-clock — only a fourth CPU consumer on a
 # runner that is already hosting the cluster these suites drive.

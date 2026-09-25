@@ -3,7 +3,7 @@
 #MISE depends=["test:e2e:wait", "//packages/restic-proxy:build"]
 set -e
 source "$(dirname "$0")/../../michael/env"
-source "$(dirname "$0")/../../yucca-api/env"
+source "$(dirname "$0")/../../../../packages/yucca-api/.mise/tasks/env"
 export PATH="$(dirname "$0")/../../../../dist:$PATH"
 
 pnpm --filter e2e test "$@"
