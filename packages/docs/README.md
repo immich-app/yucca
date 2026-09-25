@@ -93,7 +93,7 @@ Because the page is compiled as Svelte, curly braces and tag-like text such as `
 
 ## Previews and deployment
 
-The Docs workflow publishes the site to Cloudflare Pages. Every pull request that touches the documentation gets its own preview at `docs.pr-<number>.dev.futo.cloud`, linked from a comment on the pull request and removed when it closes; merging to `main` deploys [docs.futo.cloud](https://docs.futo.cloud). The Pages project and its domains are Terraform under `tf/pages/docs`, and `mise docs:deploy` and `mise docs:destroy` are the tasks behind the workflow.
+The Docs workflow publishes the site to Cloudflare Pages. Every pull request that touches the documentation gets its own preview at `docs.pr-<number>.dev.futo.cloud`, linked from a comment on the pull request and removed when it closes; merging to `main` deploys [docs.futo.cloud](https://docs.futo.cloud). The Pages project and its domains are Terraform under `tf/pages/docs`, and `mise //packages/docs:deploy` and `mise //packages/docs:destroy` are the tasks behind the workflow.
 
 ## Search
 
