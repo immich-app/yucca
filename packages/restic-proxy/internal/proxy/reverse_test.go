@@ -57,12 +57,12 @@ func TestReverse_BackendUnreachable(t *testing.T) {
 	backend.Close()
 
 	handler.grants.Set(testRepository, client.Grant{
-		SessionToken:     testToken,
-		Scheme:    "http",
-		Host:      host,
-		Path:      "/" + testRepository,
-		Password:  "some-jwt",
-		ExpiresAt: time.Now().Add(time.Hour),
+		SessionToken: testToken,
+		Scheme:       "http",
+		Host:         host,
+		Path:         "/" + testRepository,
+		Password:     "some-jwt",
+		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	response := do(t, proxy, "/config", testRepository, testToken)
