@@ -43,7 +43,7 @@ func newAPI(t *testing.T, status int, body string, seen *request) Client {
 		if seen != nil {
 			seen.method = r.Method
 			seen.path = r.URL.Path
-			if cookie, err := r.Cookie(accessTokenCookie); err == nil {
+			if cookie, err := r.Cookie(AccessTokenCookie); err == nil {
 				seen.cookie = cookie.Value
 			}
 		}
@@ -91,11 +91,12 @@ func TestGrant_SendsAccessTokenCookie(t *testing.T) {
 	var seen request
 	client := newAPI(t, http.StatusCreated, resticURL(t, "backend.example:8000"), &seen)
 
-	if _, err := client.Grant(context.Background(), testToken, "repo-1"); err != nil {
+	_, err := client.Grant(context.Background(), testToken, "repo-1")
+	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if seen.cookie != testToken {
-		t.Errorf("expected the access token in the %s cookie, got %q", accessTokenCookie, seen.cookie)
+		t.Errorf("expected the access token in the %s cookie, got %q", AccessTokenCookie, seen.cookie)
 	}
 	if seen.method != http.MethodPost {
 		t.Errorf("expected POST, got %s", seen.method)
@@ -207,7 +208,7 @@ func TestGrant_ContextCancelled(t *testing.T) {
 func TestStatusError_Error(t *testing.T) {
 	err := &StatusError{Code: http.StatusNotFound, Status: "404 Not Found"}
 
-	if got := err.Error(); got != "could not generate restic URL: 404 Not Found" {
+	if got := err.Error(); got != "yucca API responded 404 Not Found" {
 		t.Errorf("unexpected message: %s", got)
 	}
 }

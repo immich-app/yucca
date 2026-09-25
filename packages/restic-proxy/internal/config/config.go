@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"net"
 	"reflect"
 
 	"github.com/caarlos0/env/v11"
@@ -18,6 +20,11 @@ type Config struct {
 	ThrottleBytesPerSec int    `env:"RESTIC_PROXY_THROTTLE_BYTES_PER_SEC" envDefault:"0"`
 	ThrottleQuietHours  string `env:"RESTIC_PROXY_THROTTLE_QUIET_HOURS"`
 
+	SessionToken           string `env:"RESTIC_PROXY_DEFAULT_SESSION_TOKEN"`
+	AllowInsecureBehaviour bool   `env:"RESTIC_PROXY_ALLOW_INSECURE_BEHAVIOUR" envDefault:"false"`
+
+	SmartAutoRepository bool `env:"RESTIC_PROXY_SMART_AUTO_REPOSITORY" envDefault:"false"`
+
 	LogLevel  LogLevelNewType  `env:"LOG_LEVEL" envDefault:"info"`
 	LogPretty LogPrettyNewType `env:"LOG_FORMAT" envDefault:"pretty"`
 }
@@ -31,7 +38,7 @@ type LogPrettyNewType struct {
 }
 
 func LoadConfig() (Config, error) {
-	return env.ParseAsWithOptions[Config](env.Options{
+	cfg, err := env.ParseAsWithOptions[Config](env.Options{
 		FuncMap: map[reflect.Type]env.ParserFunc{
 			reflect.TypeOf(LogLevelNewType{}): func(v string) (any, error) {
 				parsed, err := zerolog.ParseLevel(v)
@@ -46,4 +53,15 @@ func LoadConfig() (Config, error) {
 			},
 		},
 	})
+
+	if err != nil {
+		return Config{}, err
+	}
+
+	host := net.ParseIP(cfg.Host)
+	if cfg.SessionToken != "" && (host == nil || !host.IsLoopback()) && !cfg.AllowInsecureBehaviour {
+		return Config{}, errors.New("RESTIC_PROXY_DEFAULT_SESSION_TOKEN requires a loopback RESTIC_PROXY_HOST or RESTIC_PROXY_ALLOW_INSECURE_BEHAVIOUR=true")
+	}
+
+	return cfg, nil
 }

@@ -60,7 +60,7 @@ func main() {
 	}
 
 	client := client.New(api)
-	proxy := proxy.New(client)
+	proxy := proxy.New(client, cfg.SessionToken, cfg.SmartAutoRepository)
 	if err := proxy.Throttle(cfg.ThrottleBytesPerSec, cfg.ThrottleQuietHours); err != nil {
 		log.Error().Err(err).Msg("failed to apply the configured throttle")
 		os.Exit(5)

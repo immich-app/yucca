@@ -9,7 +9,7 @@ import (
 
 func clearEnv(t *testing.T) {
 	t.Helper()
-	for _, key := range []string{"RESTIC_PROXY_HOST", "RESTIC_PROXY_PORT", "RESTIC_PROXY_WELL_KNOWN", "LOG_LEVEL", "LOG_FORMAT"} {
+	for _, key := range []string{"RESTIC_PROXY_HOST", "RESTIC_PROXY_PORT", "RESTIC_PROXY_WELL_KNOWN", "RESTIC_PROXY_DEFAULT_SESSION_TOKEN", "RESTIC_PROXY_ALLOW_INSECURE_BEHAVIOUR", "LOG_LEVEL", "LOG_FORMAT"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
 			t.Fatalf("unset %s: %v", key, err)
@@ -132,5 +132,41 @@ func TestLoadConfig_PortInvalid(t *testing.T) {
 
 	if _, err := LoadConfig(); err == nil {
 		t.Fatal("expected an error for a non-numeric port")
+	}
+}
+
+func TestLoadConfig_DefaultSessionTokenListener(t *testing.T) {
+	cases := []struct {
+		name     string
+		host     string
+		insecure string
+		wantErr  bool
+	}{
+		{name: "loopback ipv4", host: "127.0.0.1", wantErr: false},
+		{name: "loopback ipv6", host: "::1", wantErr: false},
+		{name: "all interfaces", host: "0.0.0.0", wantErr: true},
+		{name: "hostname", host: "localhost", wantErr: true},
+		{name: "all interfaces allowed insecure", host: "0.0.0.0", insecure: "true", wantErr: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			clearEnv(t)
+			t.Setenv("RESTIC_PROXY_DEFAULT_SESSION_TOKEN", "configured-token")
+			t.Setenv("RESTIC_PROXY_HOST", tc.host)
+
+			if tc.insecure != "" {
+				t.Setenv("RESTIC_PROXY_ALLOW_INSECURE_BEHAVIOUR", tc.insecure)
+			}
+
+			_, err := LoadConfig()
+			if tc.wantErr && err == nil {
+				t.Fatal("expected an error for a default session token on a non-loopback host")
+			}
+
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
 	}
 }

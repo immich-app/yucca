@@ -23,7 +23,7 @@ import (
 
 const (
 	testToken      = "user-access-token"
-	testRepository = "repo-1"
+	testRepository = "0b1c8f2e-5d4a-4c3b-9e7f-1a2b3c4d5e6f"
 )
 
 func TestMain(m *testing.M) {
@@ -90,7 +90,7 @@ func hostOf(t *testing.T, rawURL string) string {
 
 func newProxy(t *testing.T, cl client.Client) (*Handler, *httptest.Server) {
 	t.Helper()
-	handler := New(cl)
+	handler := New(cl, "", false)
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 	return handler, server
@@ -371,7 +371,7 @@ func TestGrant_DeniedSessionIsPerCredential(t *testing.T) {
 
 	do(t, proxy, "/config", testRepository, testToken)
 	do(t, proxy, "/config", testRepository, "another-session-token")
-	do(t, proxy, "/config", "repo-2", testToken)
+	do(t, proxy, "/config", "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a", testToken)
 
 	if mints.Load() != 3 {
 		t.Errorf("expected each credential to be checked once, got %d mints", mints.Load())
@@ -404,8 +404,8 @@ func TestGrant_SeparateGrantPerRepository(t *testing.T) {
 	backend := newBackend(t, http.StatusOK, nil)
 	_, proxy := newProxy(t, newAPI(t, backend.URL, http.StatusCreated, &mints))
 
-	do(t, proxy, "/config", "repo-a", testToken)
-	do(t, proxy, "/config", "repo-b", testToken)
+	do(t, proxy, "/config", "1a1a1a1a-2b2b-4c3c-8d4d-5e5e5e5e5e5e", testToken)
+	do(t, proxy, "/config", "6f6f6f6f-7a7a-4b8b-9c9c-0d0d0d0d0d0d", testToken)
 
 	if mints.Load() != 2 {
 		t.Errorf("expected a mint per repository, got %d", mints.Load())
