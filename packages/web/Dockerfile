@@ -69,7 +69,7 @@ RUN npm install -g pnpm@10.28.1
 RUN curl https://mise.run | sh
 RUN mise trust
 RUN pnpm i --frozen-lockfile
-RUN NODE_ENV=production mise web:build
+RUN NODE_ENV=production mise //packages/web:build
 RUN pnpm --filter web deploy /deploy --prod --legacy
 
 FROM ${ALPINE_IMAGE}

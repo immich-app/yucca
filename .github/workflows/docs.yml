@@ -12,7 +12,6 @@ on:
       - 'pnpm-workspace.yaml'
       - '.npmrc'
       - '.mise/config.toml'
-      - '.mise/tasks/docs/**'
       - 'tf/pages/**'
       - 'tf/op-run.sh'
       - '.github/workflows/docs.yml'
@@ -45,7 +44,7 @@ jobs:
 
       - run: mise run install:frozen
 
-      - run: mise run docs:build
+      - run: mise run //packages/docs:build
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -83,7 +82,7 @@ jobs:
           path: packages/docs/build
 
       - id: deploy
-        run: mise run docs:deploy
+        run: mise run //packages/docs:deploy
 
       - name: Preview comment
         if: ${{ github.event_name == 'pull_request' }}

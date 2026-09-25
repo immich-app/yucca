@@ -11,6 +11,7 @@ e2e
 **/.env*
 Dockerfile
 packages/**/build
+!packages/**/.mise/tasks/**
 .dev
 .mise/data
 **/tmp

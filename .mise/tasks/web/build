@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Build web"
-#MISE depends=["yucca-api-client:build", "web:lingui", "yucca-sdk:orchestration-ui:build"]
-set -e
-
-NODE_ENV=production pnpm --filter web build

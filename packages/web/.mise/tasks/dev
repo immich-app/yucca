@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Run web in development mode"
+#MISE depends=["//packages/yucca-api-client:build", "//:common:build", ":lingui:compile", "//packages/yucca-sdk/orchestration-ui:build"]
+set -e
+source "$(dirname "$0")/../../../yucca-api/.mise/tasks/env"
+export WEB_PORT=${WEB_PORT:-36033}
+
+pnpm --filter web dev --host --port $WEB_PORT

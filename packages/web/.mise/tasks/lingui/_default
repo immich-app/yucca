@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Extract and compile i18n catalogs"
+mise //packages/web:lingui:extract
+mise //packages/web:lingui:compile
