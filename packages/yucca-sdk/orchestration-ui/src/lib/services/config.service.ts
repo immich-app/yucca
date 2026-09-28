@@ -12,12 +12,12 @@ export const configKeys = {
   all: ['config'] as const,
 };
 
-export const unlimitedBandwidth = '0';
+const bytesPerSecPerMbps = 125_000;
 export const defaultQuietHoursStart = '22:00';
 export const defaultQuietHoursEnd = '06:00';
 
 export type BandwidthForm = {
-  speed: string;
+  mbps?: number;
   quiet: boolean;
   quietStart: string;
   quietEnd: string;
@@ -31,25 +31,29 @@ export const toBandwidthForm = ({
     quietHours?.split('-') ?? [];
 
   return {
-    speed: String(bytesPerSec),
+    mbps: bytesPerSec ? bytesPerSec / bytesPerSecPerMbps : undefined,
     quiet: Boolean(quietHours),
     quietStart,
     quietEnd,
   };
 };
 
+export const toBytesPerSec = (mbps = 0) =>
+  Math.max(0, Math.ceil(mbps)) * bytesPerSecPerMbps;
+
 export const toBandwidthDto = ({
-  speed,
+  mbps,
   quiet,
   quietStart,
   quietEnd,
-}: BandwidthForm): BandwidthDto => ({
-  bytesPerSec: Number(speed),
-  quietHours:
-    speed !== unlimitedBandwidth && quiet
-      ? `${quietStart}-${quietEnd}`
-      : undefined,
-});
+}: BandwidthForm): BandwidthDto => {
+  const bytesPerSec = toBytesPerSec(mbps);
+
+  return {
+    bytesPerSec,
+    quietHours: bytesPerSec && quiet ? `${quietStart}-${quietEnd}` : undefined,
+  };
+};
 
 export const useConfig = () =>
   createQuery(
