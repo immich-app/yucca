@@ -66,17 +66,6 @@ describe('toBandwidthDto', () => {
     ).toEqual({ bytesPerSec: 0, quietHours: undefined });
   });
 
-  it('accepts fractional speeds', () => {
-    expect(
-      toBandwidthDto({
-        mbps: 2.5,
-        quiet: false,
-        quietStart: '22:00',
-        quietEnd: '06:00',
-      }),
-    ).toEqual({ bytesPerSec: 312_500, quietHours: undefined });
-  });
-
   it('treats an empty speed as no limit', () => {
     expect(
       toBandwidthDto({

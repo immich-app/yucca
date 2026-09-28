@@ -81,7 +81,7 @@
         <NumberInput
           bind:value={mbps}
           min={0}
-          step="any"
+          step={1}
           placeholder="No limit"
           trailingText="Mbps"
         />

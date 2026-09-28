@@ -38,8 +38,8 @@ export const toBandwidthForm = ({
   };
 };
 
-export const toBytesPerSec = (mbps?: number) =>
-  Math.max(0, Math.round((mbps ?? 0) * bytesPerSecPerMbps));
+export const toBytesPerSec = (mbps = 0) =>
+  Math.max(0, Math.ceil(mbps)) * bytesPerSecPerMbps;
 
 export const toBandwidthDto = ({
   mbps,
