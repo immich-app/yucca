@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"POT-Creation-Date: 2026-09-29 12:28+0100\n"
+"POT-Creation-Date: 2026-09-29 11:51+0100\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -140,8 +140,32 @@ msgstr ""
 msgid "Add path"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "After 15 days"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "After 30 days"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "After 60 days"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "After 90 days"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Albums, people, tags, favorites and other library details. Required to restore."
+msgstr ""
+
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
 msgid "All attempts"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "All libraries"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
@@ -180,9 +204,14 @@ msgstr ""
 msgid "Back"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 #: src/lib/services/immich.integration.service.ts
 #: src/lib/services/repository.service.ts
 msgid "Back up now"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Back up your library on a recurring schedule."
 msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
@@ -191,11 +220,16 @@ msgid "Backed up"
 msgstr ""
 
 #: src/lib/components/dashboard/DashboardRecentBackups.svelte
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
 msgid "Backed up with warnings"
 msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Backing up"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Backing up now"
 msgstr ""
 
 #: src/lib/components/backups/dialogs/ViewStatusModal.svelte
@@ -215,12 +249,25 @@ msgstr ""
 msgid "Backup cancelled"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/utils/format.ts
 msgid "Backup configuration"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte
 msgid "Backup contents"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Backup Contents"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Backup did not complete"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Backup failed"
 msgstr ""
 
 #: src/lib/components/settings/SettingsNotifications.svelte
@@ -238,12 +285,32 @@ msgstr ""
 msgid "Backup Health"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Backup in progress"
+msgstr ""
+
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
 msgid "Backup includes"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Backup incomplete"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Backup is missing on the service."
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Backup is yet to run."
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Backup missing on service"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Backup name"
 msgstr ""
 
 #: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
@@ -255,14 +322,27 @@ msgstr ""
 msgid "Backup Paths"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Backup service is offline"
+msgstr ""
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Backup started"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Backup storage is offline."
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Backup was cancelled"
 msgstr ""
 
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
 msgid "Backup your photos, videos, albums, metadata, database, configuration, and external libraries together."
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichBackupsAdminNavButton.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupPage.svelte
 msgid "Backups"
 msgstr ""
@@ -273,6 +353,19 @@ msgstr ""
 
 #: src/lib/components/backups/BackupsList.svelte
 msgid "Backups on this machine"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Backups paused"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Backups will run"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Bandwidth"
 msgstr ""
 
 #: ../../web/src/routes/dashboard/connections/+page.svelte
@@ -314,12 +407,20 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Cancel backup"
+msgstr ""
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Cancelled"
 msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Cancelled {noun}"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Checking backup status"
 msgstr ""
 
 #: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
@@ -331,12 +432,20 @@ msgstr ""
 msgid "Choose folder"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Choose libraries"
+msgstr ""
+
 #: src/lib/components/ui/PathListField.svelte
 msgid "Choose paths"
 msgstr ""
 
 #: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
 msgid "Choose target folder"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Choose what Immich includes in each backup."
 msgstr ""
 
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
@@ -372,6 +481,10 @@ msgstr ""
 #: src/lib/services/schedule.service.ts
 msgid "Configure"
 msgstr ""
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+#~ msgid "Configure {0}"
+#~ msgstr ""
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 #: src/lib/i18n.spec.ts
@@ -467,8 +580,16 @@ msgstr ""
 msgid "Current Usage"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Daily"
+msgstr ""
+
 #: src/lib/components/dashboard/DashboardDailyBackupTime.svelte
 msgid "Daily Backup Time"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Database and metadata"
 msgstr ""
 
 #: src/lib/utils/format.ts
@@ -480,6 +601,10 @@ msgstr ""
 #: src/lib/services/snapshot.service.ts
 #: src/lib/services/snapshot.service.ts
 msgid "Delete"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Delete old backups"
 msgstr ""
 
 #: src/lib/services/repository.service.ts
@@ -506,6 +631,10 @@ msgstr ""
 msgid "Deleting snapshot"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Disable write-only"
+msgstr ""
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Discord account linked. You can head back to Discord."
 msgstr ""
@@ -526,6 +655,7 @@ msgstr ""
 msgid "Edit {name}"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/utils/format.ts
 msgid "Encoded videos"
 msgstr ""
@@ -547,6 +677,7 @@ msgid "Enter an invite code to continue."
 msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Estimated"
 msgstr ""
 
@@ -564,6 +695,10 @@ msgstr ""
 
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 msgid "Existing Local Storage"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "External libraries"
 msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
@@ -748,12 +883,28 @@ msgstr ""
 msgid "Finalizing restore"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Finish setting up backups"
+msgstr ""
+
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
 msgid "Finish setting up FUTO Backups"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Frequency"
+msgstr ""
+
 #: src/lib/components/onboarding/upsell/UpsellFrequentlyAskedQuestions.svelte
 msgid "Frequently Asked Questions"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "From"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Full speed during quiet hours"
 msgstr ""
 
 #: src/lib/components/backends/BackendItem.svelte
@@ -771,6 +922,18 @@ msgstr ""
 
 #: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
 msgid "FUTO Backups adds hosted cloud backup storage to your existing Immich setup, so you have another copy if something happens locally."
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
+msgid "FUTO Backups already creates the same database backups as Immich."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Generated photo previews, can be recreated later."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Generated video previews, can be recreated later."
 msgstr ""
 
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
@@ -806,8 +969,24 @@ msgstr ""
 msgid "How much storage your backups are using."
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "How often backups should run."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "How this backup is labelled across FUTO Backups."
+msgstr ""
+
 #: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
 msgid "I saved my recovery key somewhere safe."
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
+msgid "Ignore"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
+msgid "Immich database backups are still enabled"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte
@@ -847,6 +1026,14 @@ msgstr ""
 msgid "In-progress or incomplete"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Include these backup settings, so they survive a restore."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Included: {names}"
+msgstr ""
+
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
 msgid "Includes {includedStorage} of backup storage. Additional storage billed by usage."
 msgstr ""
@@ -865,8 +1052,16 @@ msgstr ""
 msgid "Invite code"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "It is highly recommended you back this up!"
+msgstr ""
+
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Join the beta"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Keep latest two backups"
 msgstr ""
 
 #: src/lib/components/onboarding/dialogs/BackupsRecoveryKeyModal.svelte
@@ -877,12 +1072,44 @@ msgstr ""
 msgid "Keep your Immich library safe with our secure, hosted backups solution."
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Last backup"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Last backup did not complete"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Last backup failed"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Last backup finished with warnings"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Last backup successful"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Last backup was cancelled"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
 msgid "Last backup: {date}"
 msgstr ""
 
 #: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
 msgid "Learn More"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Lift the limit while you are asleep."
 msgstr ""
 
 #: ../../web/src/routes/link/discord/+page.svelte
@@ -908,6 +1135,7 @@ msgstr ""
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
 msgid "Local Storage"
 msgstr ""
@@ -962,13 +1190,25 @@ msgstr ""
 msgid "Manage billing"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Manage how fast backups upload."
+msgstr ""
+
 #: src/lib/components/ui/PathListField.svelte
 #: src/lib/components/ui/PathListField.svelte
 msgid "Manage paths"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Manage the backup name, where it is stored, and how long backups are kept."
+msgstr ""
+
 #: src/lib/components/settings/SettingsBackends.svelte
 msgid "Manage the storage services your backups can be sent to."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Manage when backups run."
 msgstr ""
 
 #: src/lib/components/settings/SettingsBilling.svelte
@@ -985,6 +1225,14 @@ msgstr ""
 
 #: src/lib/components/backends/BackendItem.svelte
 msgid "Missing on service"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Monthly"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
+msgid "Most users should select \"use FUTO Backups only\"."
 msgstr ""
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
@@ -1004,6 +1252,14 @@ msgstr ""
 
 #: src/lib/services/log.service.svelte.ts
 msgid "Nearly done."
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Needs attention"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Never (keep all backups)"
 msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
@@ -1070,8 +1326,20 @@ msgstr ""
 msgid "No changes were made to your existing backups."
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "No external libraries found."
+msgstr ""
+
 #: src/lib/services/integrations.service.ts
 msgid "No Immich instance detected."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "No libraries"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "No limit"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
@@ -1108,6 +1376,10 @@ msgstr ""
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow2SelectSnapshot.svelte
 msgid "No snapshots in this repository."
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Not backed up"
 msgstr ""
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
@@ -1148,11 +1420,19 @@ msgstr ""
 msgid "Old backups were pruned, with warnings"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Older snapshots are pruned automatically."
+msgstr ""
+
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
 msgid "Oldest first"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Once written, backups can't be removed."
 msgstr ""
 
 #: src/lib/components/backends/BackendItem.svelte
@@ -1188,6 +1468,7 @@ msgstr ""
 msgid "Paused schedule \"{name}\""
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/utils/format.ts
 #: src/lib/utils/format.ts
 #: src/lib/utils/format.ts
@@ -1310,6 +1591,12 @@ msgstr ""
 msgid "Repository is readable and accessible!"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Reset"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 msgid "Restart the server during rollback"
 msgstr ""
@@ -1407,6 +1694,10 @@ msgstr ""
 msgid "Rollback to this snapshot?"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Run backups automatically"
+msgstr ""
+
 #: src/lib/components/backups/run-history/RunHistoryModal.svelte
 msgid "Run History for {name}"
 msgstr ""
@@ -1416,6 +1707,10 @@ msgstr ""
 msgid "S3 Server"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
 #: src/lib/components/settings/SettingsNotifications.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
@@ -1432,6 +1727,7 @@ msgstr ""
 msgid "Save your recovery key"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte
 #: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
 #: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
@@ -1483,6 +1779,14 @@ msgstr ""
 msgid "Selected paths"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+msgid "Set up"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichBackupsAdminNavButton.svelte
+msgid "Set up Backups"
+msgstr ""
+
 #: src/lib/components/dashboard/DashboardInstall.svelte
 msgid "Setup on Immich"
 msgstr ""
@@ -1498,6 +1802,10 @@ msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Size updated"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Slow down backup uploads without affecting restores."
 msgstr ""
 
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
@@ -1520,6 +1828,10 @@ msgstr ""
 #: src/lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "Start backup"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Start time"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
@@ -1550,6 +1862,10 @@ msgstr ""
 
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "Status"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Storage"
 msgstr ""
 
 #: src/lib/components/settings/SettingsBackends.svelte
@@ -1630,6 +1946,7 @@ msgstr ""
 msgid "This will:"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/utils/format.ts
 msgid "Thumbnails and previews"
 msgstr ""
@@ -1649,6 +1966,18 @@ msgstr ""
 
 #: src/lib/services/log.service.svelte.ts
 msgid "Unknown error"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Until"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Upload speed"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
+msgid "Use FUTO Backups only"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
@@ -1706,6 +2035,19 @@ msgstr ""
 msgid "We ran into an error setting up backups..."
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "Weekly"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "When restoring, you will see broken previews. Use the admin panel to regenerate them."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
+msgid "When the scheduled backup starts."
+msgstr ""
+
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "When your next FUTO Backups charge will occur."
 msgstr ""
@@ -1722,6 +2064,10 @@ msgstr ""
 msgid "Where your backup is stored"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "With the same start and end time, the limit never applies."
+msgstr ""
+
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
 msgid "With warnings"
 msgstr ""
@@ -1736,6 +2082,10 @@ msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
 msgid "write-only"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Write-only"
 msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
@@ -1756,6 +2106,10 @@ msgstr ""
 
 #: src/lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte
 msgid "You may reset and reconfigure your backups by selecting one of the following."
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "You will need to reconfigure backups from scratch after restoring."
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
@@ -1791,6 +2145,10 @@ msgstr ""
 msgid "Your instance will return to how it was when this snapshot was taken."
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Your library"
+msgstr ""
+
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Your library could not be backed up"
 msgstr ""
@@ -1817,6 +2175,10 @@ msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Your library was restored, with warnings"
+msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
+msgid "Your media uploaded directly to Immich."
 msgstr ""
 
 #: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte

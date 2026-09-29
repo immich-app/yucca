@@ -5,6 +5,7 @@
     useImmichBackupStatus,
   } from "$lib/services/immich.integration.service";
   import { Alert, Button, HStack, Stack, Text } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
 
   const backup = useImmichBackupStatus();
   const configure = useConfigureImmichDatabaseDump();
@@ -12,12 +13,12 @@
 </script>
 
 {#if backup.needsAttention}
-  <Alert color="warning" title="Immich database backups are still enabled">
+  <Alert color="warning" title={$t`Immich database backups are still enabled`}>
     <Stack gap={3}>
       <Text size="small">
-        FUTO Backups already creates the same database backups as Immich.
+        {$t`FUTO Backups already creates the same database backups as Immich.`}
         <br />
-        Most users should select "use FUTO Backups only".
+        {$t`Most users should select "use FUTO Backups only".`}
       </Text>
       <HStack gap={2}>
         <Button
@@ -26,7 +27,7 @@
           loading={configure.isPending}
           onclick={() => configure.mutate({ enabled: false })}
         >
-          Use FUTO Backups only
+          {$t`Use FUTO Backups only`}
         </Button>
         <Button
           size="small"
@@ -34,7 +35,7 @@
           loading={ignore.isPending}
           onclick={() => ignore.mutate()}
         >
-          Ignore
+          {$t`Ignore`}
         </Button>
       </HStack>
     </Stack>

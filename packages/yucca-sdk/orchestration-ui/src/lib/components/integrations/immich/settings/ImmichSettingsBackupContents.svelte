@@ -27,6 +27,7 @@
   } from "@immich/ui";
   import { mdiImageMultiple } from "@mdi/js";
   import { SvelteSet } from "svelte/reactivity";
+  import { msg, t } from "svelte-i18n-lingui";
 
   type Group = {
     key: string;
@@ -41,36 +42,33 @@
   const groups: Group[] = [
     {
       key: "media",
-      label: "Photos and videos",
-      description: "Your media uploaded directly to Immich.",
+      label: msg`Photos and videos`,
+      description: msg`Your media uploaded directly to Immich.`,
       folders: ["upload", "profile", "library"],
-      warning: "It is highly recommended you back this up!",
+      warning: msg`It is highly recommended you back this up!`,
       warningColor: "danger",
     },
     {
       key: "database",
-      label: "Database and metadata",
-      description:
-        "Albums, people, tags, favorites and other library details. Required to restore.",
+      label: msg`Database and metadata`,
+      description: msg`Albums, people, tags, favorites and other library details. Required to restore.`,
       folders: ["backups"],
       required: true,
     },
     {
       key: "thumbs",
-      label: "Thumbnails and previews",
-      description: "Generated photo previews, can be recreated later.",
+      label: msg`Thumbnails and previews`,
+      description: msg`Generated photo previews, can be recreated later.`,
       folders: ["thumbs"],
-      warning:
-        "When restoring, you will see broken previews. Use the admin panel to regenerate them.",
+      warning: msg`When restoring, you will see broken previews. Use the admin panel to regenerate them.`,
       warningColor: "warning",
     },
     {
       key: "encoded",
-      label: "Encoded videos",
-      description: "Generated video previews, can be recreated later.",
+      label: msg`Encoded videos`,
+      description: msg`Generated video previews, can be recreated later.`,
       folders: ["encoded-video"],
-      warning:
-        "When restoring, you will see broken previews. Use the admin panel to regenerate them.",
+      warning: msg`When restoring, you will see broken previews. Use the admin panel to regenerate them.`,
       warningColor: "warning",
     },
   ];
@@ -107,9 +105,9 @@
   type LibrariesMode = "all" | "none" | "some";
 
   const libraryModes = [
-    { value: "all", label: "All libraries" },
-    { value: "none", label: "No libraries" },
-    { value: "some", label: "Choose libraries" },
+    { value: "all", label: msg`All libraries` },
+    { value: "none", label: msg`No libraries` },
+    { value: "some", label: msg`Choose libraries` },
   ];
 
   const folders = new SvelteSet<string>();
@@ -216,8 +214,8 @@
 />
 
 <Accordion
-  title="Backup Contents"
-  subtitle="Choose what Immich includes in each backup."
+  title={$t`Backup Contents`}
+  subtitle={$t`Choose what Immich includes in each backup.`}
   icon={mdiImageMultiple}
 >
   <Stack gap={4} class="pt-2">
@@ -228,8 +226,8 @@
         {#if applicable(group).length > 0}
           <Stack gap={1}>
             <Field
-              label={group.label}
-              description={group.description}
+              label={$t(group.label)}
+              description={$t(group.description)}
               readOnly={group.required}
               required={group.required ? "indicator" : undefined}
             >
@@ -244,7 +242,7 @@
 
             {#if group.warning && !group.required && !isChecked(group)}
               <Text size="small" color={group.warningColor}>
-                {group.warning}
+                {$t(group.warning)}
               </Text>
             {/if}
           </Stack>
@@ -253,25 +251,25 @@
 
       <Stack gap={1}>
         <Field
-          label="Backup configuration"
-          description="Include these backup settings, so they survive a restore."
+          label={$t`Backup configuration`}
+          description={$t`Include these backup settings, so they survive a restore.`}
         >
           <Switch bind:checked={backupConfiguration} />
         </Field>
 
         {#if !backupConfiguration}
           <Text size="small" color="warning">
-            You will need to reconfigure backups from scratch after restoring.
+            {$t`You will need to reconfigure backups from scratch after restoring.`}
           </Text>
         {/if}
       </Stack>
 
       <Field
-        label="External libraries"
-        description="Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones."
+        label={$t`External libraries`}
+        description={$t`Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones.`}
       >
         <Select
-          options={libraryModes}
+          options={libraryModes.map((mode) => ({ ...mode, label: $t(mode.label) }))}
           value={librariesMode}
           onChange={(value) => (librariesMode = value as LibrariesMode)}
         />
@@ -279,7 +277,7 @@
 
       {#if librariesMode === "some"}
         {#if libraries.length === 0}
-          <Text size="small" color="muted">No external libraries found.</Text>
+          <Text size="small" color="muted">{$t`No external libraries found.`}</Text>
         {:else}
           <Stack gap={2} class="ps-1">
             {#each libraries as library (library.id)}
@@ -295,7 +293,10 @@
         {/if}
       {:else if librariesMode === "all" && libraries.length > 0}
         <Text size="small" color="muted">
-          Included: {libraries.map((library) => library.name).join(", ")}
+          {$t({
+            message: "Included: {names}",
+            values: { names: libraries.map((library) => library.name).join(", ") },
+          })}
         </Text>
       {/if}
 
@@ -305,7 +306,7 @@
           loading={mutation.isPending}
           onclick={onSave}
         >
-          Save
+          {$t`Save`}
         </Button>
       </HStack>
     {/if}
