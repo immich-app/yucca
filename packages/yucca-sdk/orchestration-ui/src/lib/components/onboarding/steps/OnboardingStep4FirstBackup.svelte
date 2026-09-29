@@ -4,6 +4,7 @@
   import OnboardingStepLayout, {
     type OnboardingStepAction,
   } from "./OnboardingStepLayout.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     schedule: string;
@@ -22,30 +23,29 @@
   const settings = $derived([
     {
       icon: mdiImageMultiple,
-      title: "Backup contents",
-      value:
-        "Photos, videos, metadata, database, configuration, and external libraries.",
+      title: $t`Backup contents`,
+      value: $t`Photos, videos, metadata, database, configuration, and external libraries.`,
     },
     {
       icon: mdiClock,
-      title: "Schedule",
+      title: $t`Schedule`,
       value: schedule,
     },
     {
       icon: mdiDownloadBox,
-      title: "Storage location",
+      title: $t`Storage location`,
       value: storageLocation,
     },
   ]);
 
   const actions = $derived<OnboardingStepAction[]>([
-    { label: "Start backup", onClick: onStartBackup, loading },
+    { label: $t`Start backup`, onClick: onStartBackup, loading },
   ]);
 </script>
 
 <OnboardingStepLayout
-  title="Start your first backup"
-  description="Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard."
+  title={$t`Start your first backup`}
+  description={$t`Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard.`}
   {actions}
 >
   <Stack gap={4}>

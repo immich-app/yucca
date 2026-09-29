@@ -6,6 +6,7 @@
     mdiDownloadOutline,
     mdiPrinterOutline,
   } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     code: string;
@@ -83,7 +84,7 @@
     leadingIcon={mdiContentCopy}
     onclick={copyToClipboard}
   >
-    Copy recovery key
+    {$t`Copy recovery key`}
   </Button>
 
   <HStack>
@@ -93,7 +94,7 @@
       shape="round"
       onclick={saveFile}
     >
-      Download
+      {$t`Download`}
     </Button>
     <Button
       leadingIcon={mdiPrinterOutline}
@@ -101,7 +102,7 @@
       shape="round"
       onclick={print}
     >
-      Print
+      {$t`Print`}
     </Button>
   </HStack>
   {#if PasswordCredential}
@@ -111,7 +112,7 @@
       shape="round"
       onclick={storeCredentials}
     >
-      Save to password manager
+      {$t`Save to password manager`}
     </Button>
   {/if}
 </VStack>

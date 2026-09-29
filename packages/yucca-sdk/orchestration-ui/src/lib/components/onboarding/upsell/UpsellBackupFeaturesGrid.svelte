@@ -6,33 +6,30 @@
     mdiLayersTripleOutline,
     mdiShieldKey,
   } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
-  const features = [
+  const features = $derived([
     {
       icon: mdiLayersTripleOutline,
-      title: "Built for Immich",
-      description:
-        "Backup your photos, videos, albums, metadata, database, configuration, and external libraries together.",
+      title: $t`Built for Immich`,
+      description: $t`Backup your photos, videos, albums, metadata, database, configuration, and external libraries together.`,
     },
     {
       icon: mdiShieldKey,
-      title: "Encrypted by design",
-      description:
-        "Your backups are protected with E2EE encryption, so only your recovery key can restore them.",
+      title: $t`Encrypted by design`,
+      description: $t`Your backups are protected with E2EE encryption, so only your recovery key can restore them.`,
     },
     {
       icon: mdiImageRefreshOutline,
-      title: "Snapshot restore",
-      description:
-        "Restore your photos, videos, metadata, database, and configuration from a backup snapshot.",
+      title: $t`Snapshot restore`,
+      description: $t`Restore your photos, videos, metadata, database, and configuration from a backup snapshot.`,
     },
     {
       icon: mdiHistory,
-      title: "Automatic backups",
-      description:
-        "Your library is backed up in the background without managing a separate backup tool.",
+      title: $t`Automatic backups`,
+      description: $t`Your library is backed up in the background without managing a separate backup tool.`,
     },
-  ];
+  ]);
 </script>
 
 <div class="grid gap-x-12 gap-y-8 sm:grid-cols-2">

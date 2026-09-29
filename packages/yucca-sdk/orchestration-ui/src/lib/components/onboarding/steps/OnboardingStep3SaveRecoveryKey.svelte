@@ -4,6 +4,7 @@
   import OnboardingStepLayout, {
     type OnboardingStepAction,
   } from "./OnboardingStepLayout.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     code: string;
@@ -17,7 +18,7 @@
 
   const actions = $derived<OnboardingStepAction[]>([
     {
-      label: "Continue",
+      label: $t`Continue`,
       onClick: onContinue,
       disabled: !saved,
       loading,
@@ -26,8 +27,8 @@
 </script>
 
 <OnboardingStepLayout
-  title="Save your recovery key"
-  description="You'll need this key to restore your encrypted backups. Save it somewhere safe before continuing. FUTO cannot recover this key if it is lost."
+  title={$t`Save your recovery key`}
+  description={$t`You'll need this key to restore your encrypted backups. Save it somewhere safe before continuing. FUTO cannot recover this key if it is lost.`}
   {actions}
 >
   <Stack gap={4}>
@@ -37,7 +38,7 @@
       <Checkbox bind:checked={saved} id="recovery-key-saved" />
       <Text size="small">
         <label for="recovery-key-saved">
-          I saved my recovery key somewhere safe.
+          {$t`I saved my recovery key somewhere safe.`}
         </label>
       </Text>
     </HStack>

@@ -17,6 +17,7 @@
     Text,
   } from "@immich/ui";
   import RestorePointFlow3ConfirmRestore from "./RestorePointFlow3ConfirmRestore.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onBack: () => void;
@@ -41,7 +42,10 @@
   />
 {:else}
   <Modal
-    title={`Restore from ${repository.name}`}
+    title={$t({
+      message: "Restore from {name}",
+      values: { name: repository.name },
+    })}
     size="medium"
     onClose={onBack}
   >
@@ -65,20 +69,20 @@
               >
             </Stack>
             <Button onclick={() => (selectedSnapshot = snapshot)}>
-              Restore
+              {$t`Restore`}
             </Button>
           </HStack>
         {/each}
         {#if snapshots.length === 0}
           <Text class="text-center py-6" color="muted">
-            No snapshots in this repository.
+            {$t`No snapshots in this repository.`}
           </Text>
         {/if}
       </StackList>
     </ModalBody>
     <ModalFooter>
       <HStack>
-        <Button variant="ghost" onclick={onBack}>Back</Button>
+        <Button variant="ghost" onclick={onBack}>{$t`Back`}</Button>
       </HStack>
     </ModalFooter>
   </Modal>

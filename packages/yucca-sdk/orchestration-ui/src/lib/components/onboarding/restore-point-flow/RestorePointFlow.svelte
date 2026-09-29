@@ -3,6 +3,7 @@
   import { useInspectRepositories } from "$lib/services/repository.service";
   import { Button } from "@immich/ui";
   import RestorePointFlow2SelectSnapshot from "./RestorePointFlow2SelectSnapshot.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onCancel: () => void;
@@ -34,7 +35,7 @@
   >
     {#snippet footerContent()}
       <Button variant="ghost" onclick={onImportKey}>
-        Import a different key
+        {$t`Import a different key`}
       </Button>
     {/snippet}
   </SelectRepositoryModal>

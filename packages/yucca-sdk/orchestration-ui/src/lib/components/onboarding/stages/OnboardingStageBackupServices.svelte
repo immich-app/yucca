@@ -16,6 +16,7 @@
     Text,
   } from "@immich/ui";
   import { mdiHarddisk, mdiShieldCheck } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     restore?: boolean;
@@ -38,31 +39,33 @@
 
 <Modal
   size="small"
-  title={restore ? "Where would you like to restore from?" : "Backup options"}
+  title={restore
+    ? $t`Where would you like to restore from?`
+    : $t`Backup options`}
   onClose={onCancel}
   icon={false}
 >
   <ModalBody>
     <StackList>
-      <StackListOption title="FUTO Backups" onclick={onFutoBackups}>
+      <StackListOption title={$t`FUTO Backups`} onclick={onFutoBackups}>
         {#snippet icon()}
           <Icon icon={mdiShieldCheck} />
         {/snippet}
 
-        Simple, hosted backups.
+        {$t`Simple, hosted backups.`}
       </StackListOption>
-      <StackListOption title="Local Storage" onclick={onLocalBackups}>
+      <StackListOption title={$t`Local Storage`} onclick={onLocalBackups}>
         {#snippet icon()}
           <Icon icon={mdiHarddisk} />
         {/snippet}
 
-        A folder on this computer.
+        {$t`A folder on this computer.`}
       </StackListOption>
     </StackList>
   </ModalBody>
   <ModalFooter>
     <HStack>
-      <Button variant="ghost" onclick={onCancel}>Cancel</Button>
+      <Button variant="ghost" onclick={onCancel}>{$t`Cancel`}</Button>
     </HStack>
   </ModalFooter>
 </Modal>

@@ -11,6 +11,7 @@
     Text,
   } from "@immich/ui";
   import RecoveryKeyDisplay from "../RecoveryKeyDisplay.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onClose: () => void;
@@ -21,11 +22,11 @@
   const query = useRecoveryKey();
 </script>
 
-<Modal size="small" title="Recovery key" {onClose} icon={false}>
+<Modal size="small" title={$t`Recovery key`} {onClose} icon={false}>
   <ModalBody>
     <Stack gap={4}>
       <Text size="small" class="text-muted text-left">
-        Keep this key somewhere safe. It is required to restore your backups.
+        {$t`Keep this key somewhere safe. It is required to restore your backups.`}
       </Text>
 
       <Suspense {query}>
@@ -37,7 +38,7 @@
   </ModalBody>
   <ModalFooter>
     <HStack>
-      <Button onclick={onClose}>Close</Button>
+      <Button onclick={onClose}>{$t`Close`}</Button>
     </HStack>
   </ModalFooter>
 </Modal>

@@ -13,6 +13,7 @@
     Text,
   } from "@immich/ui";
   import { onDestroy } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onAuthenticated: () => void;
@@ -30,15 +31,14 @@
   onDestroy(flow.stop);
 </script>
 
-<Modal title="Log in to FUTO Backups" icon={false} onClose={() => {}}>
+<Modal title={$t`Log in to FUTO Backups`} icon={false} onClose={() => {}}>
   <ModalBody>
     {#if flow.state.userCode}
       <DeviceFlowCode {flow} />
     {:else}
       <Stack gap={4}>
         <Text>
-          This instance is connected to a FUTO Backups account. Log in with that
-          account to manage it.
+          {$t`This instance is connected to a FUTO Backups account. Log in with that account to manage it.`}
         </Text>
 
         {#if flow.state.error}
@@ -56,7 +56,7 @@
           shape="round"
           fullWidth
           loading={flow.state.pending}
-          onclick={flow.start}>Log in with FUTO</Button
+          onclick={flow.start}>{$t`Log in with FUTO`}</Button
         >
       {/if}
     </HStack>
