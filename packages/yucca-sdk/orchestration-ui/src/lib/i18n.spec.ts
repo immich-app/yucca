@@ -18,6 +18,6 @@ describe('loadMessages', () => {
     locale.set('en-XA', await loadMessages('en-XA'));
     expect(
       gt({ message: 'Configure {name}', values: { name: 'Photos' } }),
-    ).toBe('Ćōńƒĩĝũŕē Photos');
+    ).toBe('Test String Photos');
   });
 });

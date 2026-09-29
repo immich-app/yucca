@@ -489,7 +489,7 @@ msgstr ""
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 #: src/lib/i18n.spec.ts
 msgid "Configure {name}"
-msgstr ""
+msgstr "Test String {name}"
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
 msgid "Confirm restore from snapshot"
