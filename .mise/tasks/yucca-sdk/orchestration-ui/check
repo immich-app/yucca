@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Run Svelte checks for yucca-sdk/orchestration-ui"
+#MISE depends=["yucca-sdk:orchestration-ui:lingui:compile"]
 set -e
 
 pnpm --filter @futo-org/backups-orchestrator-ui check

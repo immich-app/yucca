@@ -16,12 +16,9 @@
     "test:unit": "vitest run",
     "test": "npm run test:unit -- --run && npm run test:e2e",
     "test:e2e": "playwright test",
-    "test:e2e:create": "playwright codegen http://localhost:36033",
-    "lingui:extract": "lingui extract",
-    "lingui:compile": "lingui compile --typescript"
+    "test:e2e:create": "playwright codegen http://localhost:36033"
   },
   "devDependencies": {
-    "@lingui/cli": "catalog:",
     "@playwright/test": "catalog:",
     "@sveltejs/adapter-node": "catalog:",
     "@sveltejs/kit": "catalog:",

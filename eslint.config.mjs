@@ -20,7 +20,7 @@ export default typescriptEslint.config([
       'packages/**/build',
       '**/.svelte-kit',
       '**/fetch-client.ts',
-      'packages/web/src/locales',
+      'packages/yucca-sdk/orchestration-ui/src/lib/locales',
     ],
   },
   {

@@ -117,7 +117,8 @@ Zod-validated `env.ts`, JWT auth guards via `@AuthRoute()`, OTel from `@common/s
 | `emails` (`@common/emails`) | Svelte lib | Transactional email templates (better-svelte-email, web theme), prebuilt to JS for the NestJS apps. See `docs/email.md`. |
 
 **Frontend** (`packages/web`): SvelteKit 5 + Tailwind 4, `@immich/ui`, lingui i18n
-(`mise web:lingui:*`; compiled locales are generated, not edited), generated API client.
+(catalogue owned by orchestration-ui, one `.po` per language shared with the SDK: `mise yucca-sdk:orchestration-ui:lingui:*`;
+compiled locales are generated, not edited), generated API client.
 **Docs** (`packages/docs`, https://docs.futo.cloud): the **end-user** documentation site (beta setup
 guides for Immich and the standalone container). SvelteKit + `adapter-static`; every page is a
 `src/routes/<section>/<slug>/+page.md` compiled by `@immich/svelte-markdown-preprocess` (front matter
@@ -191,7 +192,7 @@ staging → prod is promoted by merging the release-please PR (stamps both prod 
   detail; neither the PR body nor the commit message restates it.
 - ESLint is strict on promises (`no-floating-promises`, `no-misused-promises`, `require-await`,
   `await-thenable` are errors). Prettier: single quotes, trailing commas, width 120.
-- Generated files are eslint-ignored: `**/fetch-client.ts`, `packages/web/src/locales`, `dist`,
+- Generated files are eslint-ignored: `**/fetch-client.ts`, `packages/yucca-sdk/orchestration-ui/src/lib/locales`, `dist`,
   `build`, `.svelte-kit`.
 - **Match the package you are in.** Read the surrounding code first; write code that looks like
   what is already there, not your own conventions. (And remember the life-or-death rule at the

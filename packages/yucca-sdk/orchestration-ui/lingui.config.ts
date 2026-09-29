@@ -1,12 +1,13 @@
 import { jstsExtractor, svelteExtractor } from 'svelte-i18n-lingui/extractor';
 
 export default {
-  locales: ['en', 'ja'],
+  locales: ['en', 'en-XA'],
+  pseudoLocale: 'en-XA',
   sourceLocale: 'en',
   catalogs: [
     {
-      path: 'src/locales/{locale}',
-      include: ['src/lib', 'src/routes'],
+      path: 'src/lib/locales/{locale}',
+      include: ['src/lib', '../../web/src/lib', '../../web/src/routes'],
     },
   ],
   formatOptions: {

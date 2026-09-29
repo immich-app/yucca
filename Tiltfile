@@ -179,7 +179,6 @@ docker_build(
         run('cd /app && pnpm --filter @common/server build', trigger=['./packages/common/src']),
         run('cd /app && pnpm --filter @futo-org/backups-api-client build', trigger=['./packages/yucca-api-client/src']),
         run('cd /app && pnpm --filter @futo-org/backups-orchestrator-ui build', trigger=['./packages/yucca-sdk/orchestration-ui/src']),
-        run('cd /app && pnpm --filter web lingui:compile', trigger=['./packages/web/src/locales']),
     ],
 )
 

@@ -1,11 +1,11 @@
 msgid ""
 msgstr ""
-"POT-Creation-Date: 2026-01-21 14:47+0000\n"
+"POT-Creation-Date: 2026-01-21 14:41+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
-"Language: test\n"
+"Language: en\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: \n"
@@ -15,349 +15,349 @@ msgstr ""
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "{0} objects"
-#~ msgstr ""
+#~ msgstr "{0} objects"
 
-#: src/routes/dashboard/connections/+page.svelte
+#: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "{0} repositories"
-msgstr ""
+msgstr "{0} repositories"
 
 #: src/routes/+page.svelte
 #~ msgid "{num, plural, one {# item} other {# items}}"
-#~ msgstr "{num, plural, one {# hello} other {# hellos}}"
+#~ msgstr "{num, plural, one {# item} other {# items}}"
 
-#: src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
 msgid "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
-msgstr ""
+msgstr "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "1 year"
-#~ msgstr ""
+#~ msgstr "1 year"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "30 days"
-#~ msgstr ""
+#~ msgstr "30 days"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "90 days"
-#~ msgstr ""
+#~ msgstr "90 days"
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "A connection is a client that backs up this account — an Immich instance or a restic repository."
-#~ msgstr ""
+#~ msgstr "A connection is a client that backs up this account — an Immich instance or a restic repository."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "A label for this repository."
-#~ msgstr ""
+#~ msgstr "A label for this repository."
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Access key"
-#~ msgstr ""
+#~ msgstr "Access key"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Access key lifetime"
-#~ msgstr ""
+#~ msgstr "Access key lifetime"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Access key revoked"
-#~ msgstr ""
+#~ msgstr "Access key revoked"
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "Access keys"
-#~ msgstr ""
+#~ msgstr "Access keys"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Access keys — {0}"
-#~ msgstr ""
+#~ msgstr "Access keys — {0}"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Access keys: {0}"
-#~ msgstr ""
+#~ msgstr "Access keys: {0}"
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "Add {0} connection"
-#~ msgstr ""
+#~ msgstr "Add {0} connection"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "Automatic"
-#~ msgstr ""
+#~ msgstr "Automatic"
 
-#: src/routes/dashboard/connections/+page.svelte
+#: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "billed"
-msgstr ""
+msgstr "billed"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "Cancel"
-#~ msgstr ""
+#~ msgstr "Cancel"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Choose a strong repository password"
-#~ msgstr ""
+#~ msgstr "Choose a strong repository password"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Close"
-#~ msgstr ""
+#~ msgstr "Close"
 
-#: src/routes/dashboard/connections/+page.svelte
-#: src/routes/dashboard/connections/+page.svelte
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+#: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "Connections"
-msgstr ""
+msgstr "Connections"
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "Connections are the sources of data that back up to us — right now, that's mostly Immich."
-#~ msgstr ""
+#~ msgstr "Connections are the sources of data that back up to us — right now, that's mostly Immich."
 
-#: src/routes/dashboard/connections/+page.svelte
+#: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
-msgstr ""
+msgstr "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
 
-#: src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
 msgid "Continue"
-msgstr ""
+msgstr "Continue"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Copied"
-#~ msgstr ""
+#~ msgstr "Copied"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Copied to clipboard"
-#~ msgstr ""
+#~ msgstr "Copied to clipboard"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Copy"
-#~ msgstr ""
+#~ msgstr "Copy"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Copy command"
-#~ msgstr ""
+#~ msgstr "Copy command"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Copy URL"
-#~ msgstr ""
+#~ msgstr "Copy URL"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Couldn't copy — select the text manually"
-#~ msgstr ""
+#~ msgstr "Couldn't copy — select the text manually"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Couldn't copy. Select the text manually"
-#~ msgstr ""
+#~ msgstr "Couldn't copy. Select the text manually"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Create"
-#~ msgstr ""
+#~ msgstr "Create"
 
 #: src/routes/dashboard/backups/+page.svelte
 #~ msgid "Create new backup"
-#~ msgstr ""
+#~ msgstr "Create new backup"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Created {0} · expires {1}"
-#~ msgstr ""
+#~ msgstr "Created {0} · expires {1}"
 
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "Discord account linked. You can head back to Discord."
-msgstr ""
+msgstr "Discord account linked. You can head back to Discord."
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Done"
-#~ msgstr ""
+#~ msgstr "Done"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "e.g. laptop"
-#~ msgstr ""
+#~ msgstr "e.g. laptop"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "e.g. my laptop"
-#~ msgstr ""
+#~ msgstr "e.g. my laptop"
 
-#: src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
-msgstr ""
+msgstr "Enter an invite code to continue."
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Expired"
-#~ msgstr ""
+#~ msgstr "Expired"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Failed to create restic backup"
-#~ msgstr ""
+#~ msgstr "Failed to create restic backup"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Failed to load access keys"
-#~ msgstr ""
+#~ msgstr "Failed to load access keys"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Failed to mint a new access key"
-#~ msgstr ""
+#~ msgstr "Failed to mint a new access key"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Failed to revoke access key"
-#~ msgstr ""
+#~ msgstr "Failed to revoke access key"
 
 #: src/routes/+page.svelte
 #~ msgid "From the {0}: {1}"
-#~ msgstr "{0}! {1}?"
+#~ msgstr "From the {0}: {1}"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
-#~ msgstr ""
+#~ msgstr "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "How long the URL stays valid, e.g. 90d. Blank uses the default."
-#~ msgstr ""
+#~ msgstr "How long the URL stays valid, e.g. 90d. Blank uses the default."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
-#~ msgstr ""
+#~ msgstr "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Initialize the repository"
-#~ msgstr ""
+#~ msgstr "Initialize the repository"
 
-#: src/routes/login/invite/+page.svelte
-#: src/routes/login/invite/+page.svelte
-#: src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
 msgid "Invite code"
-msgstr ""
+msgstr "Invite code"
 
-#: src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
 msgid "Join the beta"
-msgstr ""
+msgstr "Join the beta"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Key label"
-#~ msgstr ""
+#~ msgstr "Key label"
 
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "Link account"
-msgstr ""
+msgstr "Link account"
 
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "Link Discord"
-msgstr ""
+msgstr "Link Discord"
 
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "Link Discord account @{0} to {1}?"
-msgstr ""
+msgstr "Link Discord account @{0} to {1}?"
 
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "Log in to link your Discord account."
-msgstr ""
+msgstr "Log in to link your Discord account."
 
-#: src/routes/+page.svelte
-#: src/routes/+page.svelte
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/+page.svelte
+#: ../../web/src/routes/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "Login"
-msgstr ""
+msgstr "Login"
 
-#: src/routes/dashboard/+layout.svelte
+#: ../../web/src/routes/dashboard/+layout.svelte
 msgid "Logout"
-msgstr ""
+msgstr "Logout"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Name"
-#~ msgstr ""
+#~ msgstr "Name"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "New access key"
-#~ msgstr ""
+#~ msgstr "New access key"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "New connection"
-#~ msgstr ""
+#~ msgstr "New connection"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "New restic backup"
-#~ msgstr ""
+#~ msgstr "New restic backup"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "New restic repository"
-#~ msgstr ""
+#~ msgstr "New restic repository"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "No access keys yet."
-#~ msgstr ""
+#~ msgstr "No access keys yet."
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "No connections yet."
-#~ msgstr ""
+#~ msgstr "No connections yet."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "No expiry"
-#~ msgstr ""
+#~ msgstr "No expiry"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "Pick what you want to back up. Each connection type works a little differently."
-#~ msgstr ""
+#~ msgstr "Pick what you want to back up. Each connection type works a little differently."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Prevent this repository from being deleted or overwritten."
-#~ msgstr ""
+#~ msgstr "Prevent this repository from being deleted or overwritten."
 
 #: src/routes/+page.svelte
 #~ msgid "Purchase Immich"
-#~ msgstr "Hello Immich"
+#~ msgstr "Purchase Immich"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Repository"
-#~ msgstr ""
+#~ msgstr "Repository"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Repository URL"
-#~ msgstr ""
+#~ msgstr "Repository URL"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Restic backup ready"
-#~ msgstr ""
+#~ msgstr "Restic backup ready"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "restic will ask you to set a password when you initialize. Keep it safe — it encrypts your backups and cannot be recovered."
-#~ msgstr ""
+#~ msgstr "restic will ask you to set a password when you initialize. Keep it safe — it encrypts your backups and cannot be recovered."
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
-#~ msgstr ""
+#~ msgstr "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Revoke"
-#~ msgstr ""
+#~ msgstr "Revoke"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Revoked"
-#~ msgstr ""
+#~ msgstr "Revoked"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Shown in the access-key list."
-#~ msgstr ""
+#~ msgstr "Shown in the access-key list."
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "This connection type can't be added from here — see the note above."
-#~ msgstr ""
+#~ msgstr "This connection type can't be added from here — see the note above."
 
-#: src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
 msgid "This invite link has expired. Go back to Discord and claim it again to get a fresh one."
-msgstr ""
+msgstr "This invite link has expired. Go back to Discord and claim it again to get a fresh one."
 
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "This link is invalid or has expired. Click the support button in Discord to get a new one."
-msgstr ""
+msgstr "This link is invalid or has expired. Click the support button in Discord to get a new one."
 
-#: src/routes/link/discord/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
 msgid "Unable to link your Discord account."
-msgstr ""
+msgstr "Unable to link your Discord account."
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Write-once (WORM)"
-#~ msgstr ""
+#~ msgstr "Write-once (WORM)"
 
-#: src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
 msgid "Your email isn't part of the beta yet."
-msgstr ""
+msgstr "Your email isn't part of the beta yet."
 
 #: src/routes/+page.svelte
 #~ msgid "yucca API"
-#~ msgstr "the API"
+#~ msgstr "yucca API"

@@ -2,4 +2,4 @@
 #MISE description="Compile i18n catalogs"
 set -e
 
-pnpm --filter web lingui:compile
+pnpm --filter @futo-org/backups-orchestrator-ui lingui:compile

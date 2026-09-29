@@ -77,7 +77,7 @@ run = [{ tasks = ["lint", "lint:go", "*:check"] }, { task = "format" }, { task =
 
 [tasks.fix]
 description = "Run all possible code fixes"
-run = [{ task = "*:fix" }, { task = "web:lingui" }]
+run = [{ task = "*:fix" }, { task = "yucca-sdk:orchestration-ui:lingui" }]
 
 [tasks."o11y:render"]
 description = "Render the o11y bundle"

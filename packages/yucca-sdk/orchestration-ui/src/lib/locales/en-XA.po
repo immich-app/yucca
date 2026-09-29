@@ -1,0 +1,93 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-09-29 12:28+0100\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-XA\n"
+
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+msgid "{0} repositories"
+msgstr ""
+
+#: ../../web/src/routes/login/invite/+page.svelte
+msgid "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
+msgstr ""
+
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+msgid "billed"
+msgstr ""
+
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+msgid "Connections"
+msgstr ""
+
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+msgid "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
+msgstr ""
+
+#: ../../web/src/routes/login/invite/+page.svelte
+msgid "Continue"
+msgstr ""
+
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "Discord account linked. You can head back to Discord."
+msgstr ""
+
+#: ../../web/src/routes/login/invite/+page.svelte
+msgid "Enter an invite code to continue."
+msgstr ""
+
+#: ../../web/src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
+#: ../../web/src/routes/login/invite/+page.svelte
+msgid "Invite code"
+msgstr ""
+
+#: ../../web/src/routes/login/invite/+page.svelte
+msgid "Join the beta"
+msgstr ""
+
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "Link account"
+msgstr ""
+
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "Link Discord"
+msgstr ""
+
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "Link Discord account @{0} to {1}?"
+msgstr ""
+
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "Log in to link your Discord account."
+msgstr ""
+
+#: ../../web/src/routes/+page.svelte
+#: ../../web/src/routes/+page.svelte
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "Login"
+msgstr ""
+
+#: ../../web/src/routes/dashboard/+layout.svelte
+msgid "Logout"
+msgstr ""
+
+#: ../../web/src/routes/login/invite/+page.svelte
+msgid "This invite link has expired. Go back to Discord and claim it again to get a fresh one."
+msgstr ""
+
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "This link is invalid or has expired. Click the support button in Discord to get a new one."
+msgstr ""
+
+#: ../../web/src/routes/link/discord/+page.svelte
+msgid "Unable to link your Discord account."
+msgstr ""
+
+#: ../../web/src/routes/login/invite/+page.svelte
+msgid "Your email isn't part of the beta yet."
+msgstr ""

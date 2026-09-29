@@ -39,3 +39,4 @@ export * from './services/task.service';
 
 export { events, SocketEvent } from './events';
 export { queryClient } from './query-client';
+export { defaultMessages, loadMessages } from './i18n';
