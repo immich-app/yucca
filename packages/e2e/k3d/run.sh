@@ -47,8 +47,8 @@ trap cleanup EXIT
 # CI has already built the workspace by this point.
 if [ -z "${YUCCA_E2E_PREBUILT:-}" ]; then
   echo "==> build workspace libs (sdk consumed by orchestration-api + the e2e)"
-  mise run common:build >/dev/null
-  mise run yucca-sdk:orchestration-ui:build >/dev/null
+  mise run //:common:build >/dev/null
+  mise run //packages/yucca-sdk/orchestration-ui:build >/dev/null
 fi
 
 echo "==> build restic-proxy (spawned by orchestration-api and the proxy suites)"
@@ -98,7 +98,7 @@ echo "==> launch orchestration-api as a separate local process (:22676)"
 # setsid gives it a process group cleanup can reap whole.
 FUTO_BACKUPS_WELL_KNOWN_URL="http://localhost:8080/.well-known/yucca.json" \
 NODE_OPTIONS="--require $HERE/hostmap.cjs" \
-  setsid mise run yucca-sdk:orchestration-api:dev >/tmp/yucca-e2e-orch.log 2>&1 &
+  setsid mise run //packages/yucca-sdk/orchestration-api:dev >/tmp/yucca-e2e-orch.log 2>&1 &
 ORCH_PGID="$(ps -o pgid= -p $! 2>/dev/null | tr -d ' ')"
 
 wait_for_http() {
@@ -120,7 +120,7 @@ echo "==> jest e2e (it-works, restic, yucca-api, orchestration-api)"
 # shellcheck disable=SC1091
 source .mise/tasks/michael/env
 # shellcheck disable=SC1091
-source .mise/tasks/yucca-api/env
+source packages/yucca-api/.mise/tasks/env
 # Three, not one per suite: orchestration-api alone runs ~105s and gates the
 # phase, so a fourth worker adds no wall-clock — only a fourth CPU consumer on a
 # runner that is already hosting the cluster these suites drive.

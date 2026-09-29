@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Ensure i18n catalogs are up to date"
-#MISE depends=["yucca-sdk:orchestration-ui:lingui"]
-set -e
-
-git status --porcelain -- "packages/yucca-sdk/orchestration-ui/src/lib/locales" | grep -q . && exit 1 || exit 0

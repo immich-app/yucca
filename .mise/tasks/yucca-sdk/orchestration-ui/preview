@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run yucca-sdk/orchestration-ui in preview mode"
-#MISE depends=["yucca-sdk:orchestration-ui:build"]
-set -e
-
-pnpm --filter @futo-org/backups-orchestrator-ui preview --host

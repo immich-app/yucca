@@ -66,7 +66,7 @@ RUN npm install -g pnpm@10.28.1
 RUN curl https://mise.run | sh
 RUN mise trust
 RUN pnpm i --frozen-lockfile
-RUN mise futo-backups-bot:build
+RUN mise //packages/futo-backups-bot:build
 RUN pnpm --filter futo-backups-bot deploy /deploy --prod --legacy
 
 FROM ${ALPINE_IMAGE}

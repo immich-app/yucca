@@ -27,7 +27,7 @@ jobs:
       # that goes stale after a migration re-date on main slips past it; the
       # deploy workflow's gate is the authoritative check.
       - name: Migration ordering vs main
-        run: .mise/tasks/yucca-api/check-migration-order origin/main
+        run: packages/yucca-api/.mise/tasks/check-migration-order origin/main
 
       - name: Setup Mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
@@ -80,8 +80,8 @@ jobs:
           ( mise k3d:up && mise tilt:ci-infra ) > /tmp/k3d-infra.log 2>&1 &
           infra=$!
           mise run install:frozen
-          mise run common:server:build
-          mise run common:emails:build
+          mise run //packages/common:build
+          mise run //packages/emails:build
           wait "$infra" || { echo "::error::k3d infra failed"; cat /tmp/k3d-infra.log; exit 1; }
           echo "::group::k3d infra log"; cat /tmp/k3d-infra.log; echo "::endgroup::"
 

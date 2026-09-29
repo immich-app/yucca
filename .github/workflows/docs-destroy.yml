@@ -12,7 +12,6 @@ on:
       - 'pnpm-workspace.yaml'
       - '.npmrc'
       - '.mise/config.toml'
-      - '.mise/tasks/docs/**'
       - 'tf/pages/**'
       - 'tf/op-run.sh'
       - '.github/workflows/docs.yml'
@@ -49,7 +48,7 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@a5215d3a7f75c1629216c465ea9ab3ab399c4b71 # v4.0.0
 
-      - run: mise run docs:destroy
+      - run: mise run //packages/docs:destroy
 
       - name: Remove preview comment
         if: ${{ github.event_name == 'pull_request_target' }}

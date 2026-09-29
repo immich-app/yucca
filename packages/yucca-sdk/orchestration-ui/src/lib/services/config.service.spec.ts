@@ -15,7 +15,7 @@ describe('toBandwidthForm', () => {
     expect(
       toBandwidthForm({ bytesPerSec: 5_000_000, quietHours: '23:00-07:00' }),
     ).toEqual({
-      speed: '5000000',
+      mbps: 40,
       quiet: true,
       quietStart: '23:00',
       quietEnd: '07:00',
@@ -24,7 +24,7 @@ describe('toBandwidthForm', () => {
 
   it('falls back to the default quiet hours when none are saved', () => {
     expect(toBandwidthForm({ bytesPerSec: 0 })).toEqual({
-      speed: '0',
+      mbps: undefined,
       quiet: false,
       quietStart: '22:00',
       quietEnd: '06:00',
@@ -33,10 +33,10 @@ describe('toBandwidthForm', () => {
 });
 
 describe('toBandwidthDto', () => {
-  it('converts the selected speed to bytes per second with quiet hours', () => {
+  it('converts megabits per second to bytes per second with quiet hours', () => {
     expect(
       toBandwidthDto({
-        speed: '500000',
+        mbps: 4,
         quiet: true,
         quietStart: '22:00',
         quietEnd: '06:00',
@@ -47,7 +47,7 @@ describe('toBandwidthDto', () => {
   it('clears quiet hours when they are switched off', () => {
     expect(
       toBandwidthDto({
-        speed: '2000000',
+        mbps: 16,
         quiet: false,
         quietStart: '22:00',
         quietEnd: '06:00',
@@ -58,7 +58,18 @@ describe('toBandwidthDto', () => {
   it('disables the limit and drops quiet hours when set to no limit', () => {
     expect(
       toBandwidthDto({
-        speed: '0',
+        mbps: 0,
+        quiet: true,
+        quietStart: '22:00',
+        quietEnd: '06:00',
+      }),
+    ).toEqual({ bytesPerSec: 0, quietHours: undefined });
+  });
+
+  it('treats an empty speed as no limit', () => {
+    expect(
+      toBandwidthDto({
+        mbps: undefined,
         quiet: true,
         quietStart: '22:00',
         quietEnd: '06:00',
@@ -87,7 +98,7 @@ describe('useUpdateConfig', () => {
 
     useUpdateConfig().mutate({
       bandwidth: toBandwidthDto({
-        speed: '1000000',
+        mbps: 8,
         quiet: true,
         quietStart: '22:00',
         quietEnd: '06:00',
@@ -106,7 +117,7 @@ describe('useUpdateConfig', () => {
 
     useUpdateConfig().mutate({
       bandwidth: toBandwidthDto({
-        speed: '0',
+        mbps: 0,
         quiet: true,
         quietStart: '22:00',
         quietEnd: '06:00',

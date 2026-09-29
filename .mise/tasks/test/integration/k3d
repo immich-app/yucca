@@ -61,5 +61,5 @@ echo "==> run the database-backed integration suites"
 # same tables between tests. orchestration-api needs no infrastructure at all
 # and rides along here because this is where integration suites are expected to
 # run — the glob in `mise test:integration` had never matched its task name.
-mise run --jobs 1 yucca-api:test:integration ::: yucca-admin-api:test:integration
-mise run yucca-sdk:orchestration-api:test:integration
+mise run --jobs 1 //packages/yucca-api:test:integration ::: //packages/yucca-admin-api:test:integration
+mise run //packages/yucca-sdk/orchestration-api:test:integration

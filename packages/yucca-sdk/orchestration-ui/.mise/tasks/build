@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Build yucca-sdk/orchestration-ui"
+#MISE depends=[":generate-fetch-client"]
+set -e
+
+NODE_ENV=production pnpm --filter @futo-org/backups-orchestrator-ui build

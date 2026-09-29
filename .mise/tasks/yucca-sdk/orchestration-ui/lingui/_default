@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Extract and compile i18n catalogs"
-mise yucca-sdk:orchestration-ui:lingui:extract
-mise yucca-sdk:orchestration-ui:lingui:compile

@@ -45,7 +45,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2
-      - run: .mise/tasks/yucca-api/check-migration-order HEAD^
+      - run: packages/yucca-api/.mise/tasks/check-migration-order HEAD^
 
   # == Build + push every app image (the ONLY delivery action CI performs) ==
   # Release commits build like any other. v<version> image tags are published

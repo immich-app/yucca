@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Build standalone-app"
+#MISE depends=["//packages/yucca-sdk/orchestration-api:build", "//packages/yucca-sdk/orchestration-ui:build"]
+set -e
+
+NODE_ENV=production pnpm --filter @futo-org/backups-standalone build

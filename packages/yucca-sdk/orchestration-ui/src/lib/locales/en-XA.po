@@ -1805,7 +1805,11 @@ msgid "Size updated"
 msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
-msgid "Slow down backup uploads without affecting restores."
+#~ msgid "Slow down backup uploads without affecting restores."
+#~ msgstr ""
+
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
+msgid "Slow down backup uploads without affecting restores. Leave empty for no limit."
 msgstr ""
 
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte

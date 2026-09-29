@@ -5,7 +5,7 @@
     defaultQuietHoursStart,
     toBandwidthDto,
     toBandwidthForm,
-    unlimitedBandwidth,
+    toBytesPerSec,
     useConfig,
     useUpdateConfig,
   } from "$lib/services/config.service";
@@ -14,6 +14,7 @@
     Field,
     HStack,
     LoadingSpinner,
+    NumberInput,
     Select,
     Stack,
     Switch,
@@ -22,29 +23,15 @@
   import { mdiSpeedometerSlow } from "@mdi/js";
   import { t } from "svelte-i18n-lingui";
 
-  const bytesPerMegabyte = 1_000_000;
-
-  const speeds = [
-    ...[0.5, 1, 2, 5, 10, 20, 50, 100].map((megabytes) => ({
-      value: String(megabytes * bytesPerMegabyte),
-      label: `${megabytes} MB/s`,
-    })),
-  ];
-
   const hours = Array.from({ length: 24 }, (_, hour) => ({
     value: `${String(hour).padStart(2, "0")}:00`,
     label: `${String(hour).padStart(2, "0")}:00`,
   }));
 
   const config = useConfig();
-
-  const speedOptions = $derived([
-    { value: unlimitedBandwidth, label: $t`No limit` },
-    ...speeds,
-  ]);
   const mutation = useUpdateConfig();
 
-  let speed = $state(unlimitedBandwidth);
+  let mbps = $state<number>();
   let quiet = $state(false);
   let quietStart = $state(defaultQuietHoursStart);
   let quietEnd = $state(defaultQuietHoursEnd);
@@ -55,7 +42,7 @@
       return;
     }
 
-    ({ speed, quiet, quietStart, quietEnd } = toBandwidthForm(
+    ({ mbps, quiet, quietStart, quietEnd } = toBandwidthForm(
       config.data.bandwidth,
     ));
   };
@@ -69,11 +56,11 @@
     load();
   });
 
-  const limited = $derived(speed !== unlimitedBandwidth);
+  const limited = $derived(toBytesPerSec(mbps) > 0);
 
   const onSave = () => {
     mutation.mutate({
-      bandwidth: toBandwidthDto({ speed, quiet, quietStart, quietEnd }),
+      bandwidth: toBandwidthDto({ mbps, quiet, quietStart, quietEnd }),
     });
   };
 </script>
@@ -89,13 +76,15 @@
     {:else}
       <Field
         label={$t`Upload speed`}
-        description={$t`Slow down backup uploads without affecting restores.`}
+        description={$t`Slow down backup uploads without affecting restores. Leave empty for no limit.`}
         color="primary"
       >
-        <Select
-          options={speedOptions}
-          value={speed}
-          onChange={(value) => (speed = value)}
+        <NumberInput
+          bind:value={mbps}
+          min={0}
+          step={1}
+          placeholder={$t`No limit`}
+          trailingText="Mbps"
         />
       </Field>
 

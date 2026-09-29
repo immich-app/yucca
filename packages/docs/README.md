@@ -7,10 +7,10 @@ This site is a SvelteKit app, published at [docs.futo.cloud](https://docs.futo.c
 ## Running the site
 
 ```bash
-mise docs:dev      # dev server with hot reload on http://localhost:36034
-mise docs:check    # svelte-check
-mise docs:test     # unit tests for the page index
-mise docs:build    # static build into packages/docs/build
+mise //packages/docs:dev    # dev server with hot reload on http://localhost:36034
+mise //packages/docs:check  # svelte-check
+mise //packages/docs:test   # unit tests for the page index
+mise //packages/docs:build  # static build into packages/docs/build
 ```
 
 `mise check` and `mise build` include the docs, so CI builds the site on every pull request.
@@ -93,7 +93,7 @@ Because the page is compiled as Svelte, curly braces and tag-like text such as `
 
 ## Previews and deployment
 
-The Docs workflow publishes the site to Cloudflare Pages. Every pull request that touches the documentation gets its own preview at `docs.pr-<number>.dev.futo.cloud`, linked from a comment on the pull request and removed when it closes; merging to `main` deploys [docs.futo.cloud](https://docs.futo.cloud). The Pages project and its domains are Terraform under `tf/pages/docs`, and `mise docs:deploy` and `mise docs:destroy` are the tasks behind the workflow.
+The Docs workflow publishes the site to Cloudflare Pages. Every pull request that touches the documentation gets its own preview at `docs.pr-<number>.dev.futo.cloud`, linked from a comment on the pull request and removed when it closes; merging to `main` deploys [docs.futo.cloud](https://docs.futo.cloud). The Pages project and its domains are Terraform under `tf/pages/docs`, and `mise //packages/docs:deploy` and `mise //packages/docs:destroy` are the tasks behind the workflow.
 
 ## Search
 

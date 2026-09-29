@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Generate fetch client for yucca-sdk/orchestration-ui"
+#MISE depends=["//packages/yucca-sdk/orchestration-api:build"]
+set -e
+
+pnpm --filter @futo-org/backups-orchestrator-api sync:openapi
+pnpm --filter @futo-org/backups-orchestrator-ui generate:fetch-client

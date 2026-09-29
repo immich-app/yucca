@@ -24,7 +24,7 @@ previews; `TF_VAR_stage` is empty on main and `pr-<n>` for a preview.
   `docs/site` stage (custom domain + CNAME). The Pages project and the uploaded
   preview deployment itself are left in place.
 
-Both run `mise run docs:deploy` / `mise run docs:destroy`, so an operator can
+Both run `mise run //packages/docs:deploy` / `mise run //packages/docs:destroy`, so an operator can
 do the same locally.
 
 ## Prerequisites
@@ -45,9 +45,9 @@ CI uses the existing `OP_TF_YUCCA_PROD_ENV` (main) and `OP_TF_YUCCA_STAGING_ENV`
 ## Running locally
 
 ```bash
-mise docs:build
-ENVIRONMENT=dev TF_VAR_stage=pr-0 mise docs:deploy    # https://docs.pr-0.dev.futo.cloud
-ENVIRONMENT=dev TF_VAR_stage=pr-0 mise docs:destroy
+mise //packages/docs:build
+ENVIRONMENT=dev TF_VAR_stage=pr-0 mise //packages/docs:deploy    # https://docs.pr-0.dev.futo.cloud
+ENVIRONMENT=dev TF_VAR_stage=pr-0 mise //packages/docs:destroy
 
 OP_ENV_FILE=tf/pages/.env ENVIRONMENT=prod tf/op-run.sh terragrunt run --all plan --working-dir tf/pages/docs
 ```

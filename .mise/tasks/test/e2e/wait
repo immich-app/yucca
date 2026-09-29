@@ -4,7 +4,7 @@
 # handling in packages/e2e/k3d/run.sh and does not use this task).
 set -e
 source "$(dirname "$0")/../../michael/env"
-source "$(dirname "$0")/../../yucca-api/env"
+source "$(dirname "$0")/../../../../packages/yucca-api/.mise/tasks/env"
 
 echo Ensure dev environment is running before invoking tests.
 

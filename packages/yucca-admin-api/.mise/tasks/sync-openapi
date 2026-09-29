@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="yucca-admin-api: sync OpenAPI specification"
+#MISE depends=[":build"]
+set -e
+source "$(dirname "$0")/env"
+
+node dist/bin/sync-openapi.js

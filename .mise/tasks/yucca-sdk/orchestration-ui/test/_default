@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run unit tests for yucca-sdk/orchestration-ui"
-#MISE depends=["yucca-sdk:orchestration-ui:lingui:compile"]
-set -e
-
-pnpm --filter @futo-org/backups-orchestrator-ui test:unit "$@"

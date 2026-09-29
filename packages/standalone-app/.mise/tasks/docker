@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Build the standalone-app Docker image"
+#MISE dir="{{config_root}}/../.."
+set -e
+TAG=${STANDALONE_IMAGE_TAG:-yucca-standalone:dev}
+
+docker build -f packages/standalone-app/Dockerfile -t "$TAG" .
+echo "built $TAG"
