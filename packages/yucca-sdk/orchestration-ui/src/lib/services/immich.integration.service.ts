@@ -13,25 +13,27 @@ import { handleError } from '$lib/utils/handle-error';
 import { getBackupOutcome } from '$lib/utils/backup-status';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
 import { handleCreateBackup } from './repository.service';
+import { gt, msg } from 'svelte-i18n-lingui';
 
 export const getBackupPageActions = (
   repositoryId: string | undefined,
   onConfigure: () => void,
+  t: typeof gt,
 ) => {
   const Configure: ActionItem = {
-    title: 'Configure',
+    title: t(msg`Configure`),
     icon: mdiCogOutline,
     onAction: onConfigure,
   };
 
   const ViewRecoveryKey: ActionItem = {
-    title: 'View recovery key',
+    title: t(msg`View recovery key`),
     icon: mdiKeyOutline,
     onAction: () => void modalManager.show(BackupsRecoveryKeyModal, {}),
   };
 
   const BackUpNow: ActionItem = {
-    title: 'Back up now',
+    title: t(msg`Back up now`),
     icon: mdiCloudUploadOutline,
     onAction: () => void handleCreateBackup(repositoryId!),
     $if: () => typeof repositoryId === 'string',
@@ -158,7 +160,7 @@ export const useConfigureImmichDatabaseDump = () =>
           databaseDump: data.databaseDump && { ...data.databaseDump, ...dto },
         })),
       onError: (error) =>
-        handleError(error, 'Failed to update Immich database dump settings'),
+        handleError(error, gt`Failed to update Immich database dump settings`),
     }),
     () => queryClient,
   );
@@ -173,7 +175,7 @@ export const useIgnoreImmichDatabaseDumpWarning = () =>
           databaseDumpWarningIgnored: true,
         })),
       onError: (error) =>
-        handleError(error, 'Failed to ignore Immich database dump warning'),
+        handleError(error, gt`Failed to ignore Immich database dump warning`),
     }),
     () => queryClient,
   );

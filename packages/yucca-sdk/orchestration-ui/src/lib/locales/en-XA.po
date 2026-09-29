@@ -6,17 +6,110 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
 "Language: en-XA\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
 
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "{0} repositories"
+msgstr ""
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
+msgid "{count} changed"
+msgstr ""
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
+msgid "{count} new"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "{done} with warnings"
+msgstr ""
+
+#: src/lib/services/log.service.svelte.ts
+msgid "{duration} remaining"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "{name} (primary)"
+msgstr ""
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
+msgid "{num, plural, one {# file} other {# files}}"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "{running} in progress"
 msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
 msgstr ""
 
+#: src/lib/components/backends/BackendItem.svelte
+msgid "A folder on this computer"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Active"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "An S3-compatible server"
+msgstr ""
+
+#: src/lib/utils/handle-error.ts
+msgid "An unknown error occurred"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Attempted"
+msgstr ""
+
+#: src/lib/services/immich.integration.service.ts
+#: src/lib/services/repository.service.ts
+msgid "Back up now"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Backed up"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "backup"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Backup"
+msgstr ""
+
+#: src/lib/utils/format.ts
+msgid "Backup configuration"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupPage.svelte
+msgid "Backups"
+msgstr ""
+
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "billed"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Cancelled {noun}"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Cleaning up old backups"
+msgstr ""
+
+#: src/lib/services/immich.integration.service.ts
+#: src/lib/services/repository.service.ts
+#: src/lib/services/schedule.service.ts
+msgid "Configure"
 msgstr ""
 
 #: ../../web/src/routes/dashboard/connections/+page.svelte
@@ -32,12 +125,226 @@ msgstr ""
 msgid "Continue"
 msgstr ""
 
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "Could not reach FUTO Backups. Check your connection."
+msgstr ""
+
+#: src/lib/utils/format.ts
+msgid "Database backups"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+#: src/lib/services/schedule.service.ts
+#: src/lib/services/snapshot.service.ts
+#: src/lib/services/snapshot.service.ts
+msgid "Delete"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Delete repository"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Delete Schedule"
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Delete Snapshot"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Deleted schedule \"{name}\""
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Deleted snapshot"
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Deleting snapshot"
+msgstr ""
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Discord account linked. You can head back to Discord."
 msgstr ""
 
+#: src/lib/services/runHistory.service.ts
+msgid "Download Full Log"
+msgstr ""
+
+#: src/lib/utils/format.ts
+msgid "Encoded videos"
+msgstr ""
+
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
+msgstr ""
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Estimated"
+msgstr ""
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Failed"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Failed {noun}"
+msgstr ""
+
+#: src/lib/services/task.service.ts
+msgid "Failed to cancel task"
+msgstr ""
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to confirm recovery key"
+msgstr ""
+
+#: src/lib/services/integrations.service.ts
+msgid "Failed to create backup"
+msgstr ""
+
+#: src/lib/services/backend.service.ts
+msgid "Failed to create local backend"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to create repository"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to create schedule"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to delete schedule"
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to delete snapshot"
+msgstr ""
+
+#: src/lib/services/immich.integration.service.ts
+msgid "Failed to ignore Immich database dump warning"
+msgstr ""
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to import recovery key"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to import repository"
+msgstr ""
+
+#: src/lib/services/filesystem.service.ts
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to load directory listing"
+msgstr ""
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to load onboarding status"
+msgstr ""
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to load recovery key"
+msgstr ""
+
+#: src/lib/services/runHistory.service.ts
+msgid "Failed to load run history"
+msgstr ""
+
+#: src/lib/services/task.service.ts
+msgid "Failed to load running tasks"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to load schedules"
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to load snapshots"
+msgstr ""
+
+#: src/lib/services/session.service.ts
+msgid "Failed to log in"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to pause schedule"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to reconfigure backend"
+msgstr ""
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to report error"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to resume schedule"
+msgstr ""
+
+#: src/lib/services/integrations.service.ts
+msgid "Failed to save backup settings"
+msgstr ""
+
+#: src/lib/services/onboarding.service.ts
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to save preferences"
+msgstr ""
+
+#: src/lib/services/config.service.ts
+msgid "Failed to save settings"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start backup"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start cleanup"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start deletion"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start disable write-only process"
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to start restore"
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to start rollback"
+msgstr ""
+
+#: src/lib/services/immich.integration.service.ts
+msgid "Failed to update Immich database dump settings"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to update repository"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to update schedule"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "FUTO Backups"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Hosted cloud backup storage"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Import"
 msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
@@ -62,6 +369,11 @@ msgstr ""
 msgid "Link Discord account @{0} to {1}?"
 msgstr ""
 
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Local Storage"
+msgstr ""
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Log in to link your Discord account."
 msgstr ""
@@ -72,8 +384,160 @@ msgstr ""
 msgid "Login"
 msgstr ""
 
+#: src/lib/services/backend.service.ts
+msgid "Login again"
+msgstr ""
+
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "Login was cancelled or timed out."
+msgstr ""
+
 #: ../../web/src/routes/dashboard/+layout.svelte
 msgid "Logout"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Logs"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Metrics history"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Missing on service"
+msgstr ""
+
+#: src/lib/services/log.service.svelte.ts
+msgid "Nearly done."
+msgstr ""
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Never backed up"
+msgstr ""
+
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "Never run"
+msgstr ""
+
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "No backups in this schedule."
+msgstr ""
+
+#: src/lib/services/integrations.service.ts
+msgid "No Immich instance detected."
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Offline"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Online"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Pause"
+msgstr ""
+
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "Paused"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Paused schedule \"{name}\""
+msgstr ""
+
+#: src/lib/utils/format.ts
+#: src/lib/utils/format.ts
+#: src/lib/utils/format.ts
+msgid "Photos and videos"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "prune"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Prune"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Pruned"
+msgstr ""
+
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "Ran"
+msgstr ""
+
+#: src/lib/services/backend.service.ts
+msgid "Reconfigure"
+msgstr ""
+
+#: src/lib/services/backend.service.ts
+msgid "Remove"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "restore"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Restore"
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Restore files"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Restored"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Resume"
+msgstr ""
+
+#: src/lib/services/schedule.service.ts
+msgid "Resumed schedule \"{name}\""
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Rollback snapshot"
+msgstr ""
+
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "S3 Server"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Snapshots"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Started"
+msgstr ""
+
+#: src/lib/services/repository.service.ts
+msgid "Started backup"
+msgstr ""
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Successful"
+msgstr ""
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Successful {noun}"
+msgstr ""
+
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "That account does not own this instance. Log in with the account it was connected with."
+msgstr ""
+
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "This instance is not connected to a FUTO Backups account yet."
 msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
@@ -84,8 +548,40 @@ msgstr ""
 msgid "This link is invalid or has expired. Click the support button in Discord to get a new one."
 msgstr ""
 
+#: src/lib/services/schedule.service.ts
+msgid "This schedule will be removed."
+msgstr ""
+
+#: src/lib/services/snapshot.service.ts
+msgid "This snapshot will be permanently removed."
+msgstr ""
+
+#: src/lib/utils/format.ts
+msgid "Thumbnails and previews"
+msgstr ""
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Unable to link your Discord account."
+msgstr ""
+
+#: src/lib/services/log.service.svelte.ts
+msgid "Unknown error"
+msgstr ""
+
+#: src/lib/services/runHistory.service.ts
+msgid "View Log"
+msgstr ""
+
+#: src/lib/services/immich.integration.service.ts
+msgid "View recovery key"
+msgstr ""
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Warnings"
+msgstr ""
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "write-only"
 msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte

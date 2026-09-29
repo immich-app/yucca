@@ -21,9 +21,37 @@ msgstr ""
 msgid "{0} repositories"
 msgstr "{0} repositories"
 
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
+msgid "{count} changed"
+msgstr "{count} changed"
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
+msgid "{count} new"
+msgstr "{count} new"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "{done} with warnings"
+msgstr "{done} with warnings"
+
+#: src/lib/services/log.service.svelte.ts
+msgid "{duration} remaining"
+msgstr "{duration} remaining"
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "{name} (primary)"
+msgstr "{name} (primary)"
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
+msgid "{num, plural, one {# file} other {# files}}"
+msgstr "{num, plural, one {# file} other {# files}}"
+
 #: src/routes/+page.svelte
 #~ msgid "{num, plural, one {# item} other {# items}}"
 #~ msgstr "{num, plural, one {# item} other {# items}}"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "{running} in progress"
+msgstr "{running} in progress"
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
@@ -44,6 +72,10 @@ msgstr "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "A connection is a client that backs up this account — an Immich instance or a restic repository."
 #~ msgstr "A connection is a client that backs up this account — an Immich instance or a restic repository."
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "A folder on this computer"
+msgstr "A folder on this computer"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "A label for this repository."
@@ -73,13 +105,54 @@ msgstr "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
 #~ msgid "Access keys: {0}"
 #~ msgstr "Access keys: {0}"
 
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Active"
+msgstr "Active"
+
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "Add {0} connection"
 #~ msgstr "Add {0} connection"
 
+#: src/lib/components/backends/BackendItem.svelte
+msgid "An S3-compatible server"
+msgstr "An S3-compatible server"
+
+#: src/lib/utils/handle-error.ts
+msgid "An unknown error occurred"
+msgstr "An unknown error occurred"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Attempted"
+msgstr "Attempted"
+
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "Automatic"
 #~ msgstr "Automatic"
+
+#: src/lib/services/immich.integration.service.ts
+#: src/lib/services/repository.service.ts
+msgid "Back up now"
+msgstr "Back up now"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Backed up"
+msgstr "Backed up"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "backup"
+msgstr "backup"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Backup"
+msgstr "Backup"
+
+#: src/lib/utils/format.ts
+msgid "Backup configuration"
+msgstr "Backup configuration"
+
+#: src/lib/components/integrations/immich/ImmichManageBackupPage.svelte
+msgid "Backups"
+msgstr "Backups"
 
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "billed"
@@ -89,13 +162,27 @@ msgstr "billed"
 #~ msgid "Cancel"
 #~ msgstr "Cancel"
 
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Cancelled {noun}"
+msgstr "Cancelled {noun}"
+
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Choose a strong repository password"
 #~ msgstr "Choose a strong repository password"
 
+#: src/lib/services/repository.service.ts
+msgid "Cleaning up old backups"
+msgstr "Cleaning up old backups"
+
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Close"
 #~ msgstr "Close"
+
+#: src/lib/services/immich.integration.service.ts
+#: src/lib/services/repository.service.ts
+#: src/lib/services/schedule.service.ts
+msgid "Configure"
+msgstr "Configure"
 
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 #: ../../web/src/routes/dashboard/connections/+page.svelte
@@ -136,6 +223,10 @@ msgstr "Continue"
 #~ msgid "Copy URL"
 #~ msgstr "Copy URL"
 
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "Could not reach FUTO Backups. Check your connection."
+msgstr "Could not reach FUTO Backups. Check your connection."
+
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Couldn't copy — select the text manually"
 #~ msgstr "Couldn't copy — select the text manually"
@@ -156,6 +247,41 @@ msgstr "Continue"
 #~ msgid "Created {0} · expires {1}"
 #~ msgstr "Created {0} · expires {1}"
 
+#: src/lib/utils/format.ts
+msgid "Database backups"
+msgstr "Database backups"
+
+#: src/lib/services/schedule.service.ts
+#: src/lib/services/schedule.service.ts
+#: src/lib/services/snapshot.service.ts
+#: src/lib/services/snapshot.service.ts
+msgid "Delete"
+msgstr "Delete"
+
+#: src/lib/services/repository.service.ts
+msgid "Delete repository"
+msgstr "Delete repository"
+
+#: src/lib/services/schedule.service.ts
+msgid "Delete Schedule"
+msgstr "Delete Schedule"
+
+#: src/lib/services/snapshot.service.ts
+msgid "Delete Snapshot"
+msgstr "Delete Snapshot"
+
+#: src/lib/services/schedule.service.ts
+msgid "Deleted schedule \"{name}\""
+msgstr "Deleted schedule \"{name}\""
+
+#: src/lib/services/snapshot.service.ts
+msgid "Deleted snapshot"
+msgstr "Deleted snapshot"
+
+#: src/lib/services/snapshot.service.ts
+msgid "Deleting snapshot"
+msgstr "Deleting snapshot"
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Discord account linked. You can head back to Discord."
 msgstr "Discord account linked. You can head back to Discord."
@@ -163,6 +289,10 @@ msgstr "Discord account linked. You can head back to Discord."
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Done"
 #~ msgstr "Done"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Download Full Log"
+msgstr "Download Full Log"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "e.g. laptop"
@@ -172,33 +302,200 @@ msgstr "Discord account linked. You can head back to Discord."
 #~ msgid "e.g. my laptop"
 #~ msgstr "e.g. my laptop"
 
+#: src/lib/utils/format.ts
+msgid "Encoded videos"
+msgstr "Encoded videos"
+
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
 msgstr "Enter an invite code to continue."
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Estimated"
+msgstr "Estimated"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Expired"
 #~ msgstr "Expired"
 
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Failed"
+msgstr "Failed"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Failed {noun}"
+msgstr "Failed {noun}"
+
+#: src/lib/services/task.service.ts
+msgid "Failed to cancel task"
+msgstr "Failed to cancel task"
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to confirm recovery key"
+msgstr "Failed to confirm recovery key"
+
+#: src/lib/services/integrations.service.ts
+msgid "Failed to create backup"
+msgstr "Failed to create backup"
+
+#: src/lib/services/backend.service.ts
+msgid "Failed to create local backend"
+msgstr "Failed to create local backend"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to create repository"
+msgstr "Failed to create repository"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Failed to create restic backup"
 #~ msgstr "Failed to create restic backup"
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to create schedule"
+msgstr "Failed to create schedule"
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to delete schedule"
+msgstr "Failed to delete schedule"
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to delete snapshot"
+msgstr "Failed to delete snapshot"
+
+#: src/lib/services/immich.integration.service.ts
+msgid "Failed to ignore Immich database dump warning"
+msgstr "Failed to ignore Immich database dump warning"
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to import recovery key"
+msgstr "Failed to import recovery key"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to import repository"
+msgstr "Failed to import repository"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Failed to load access keys"
 #~ msgstr "Failed to load access keys"
 
+#: src/lib/services/filesystem.service.ts
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to load directory listing"
+msgstr "Failed to load directory listing"
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to load onboarding status"
+msgstr "Failed to load onboarding status"
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to load recovery key"
+msgstr "Failed to load recovery key"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Failed to load run history"
+msgstr "Failed to load run history"
+
+#: src/lib/services/task.service.ts
+msgid "Failed to load running tasks"
+msgstr "Failed to load running tasks"
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to load schedules"
+msgstr "Failed to load schedules"
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to load snapshots"
+msgstr "Failed to load snapshots"
+
+#: src/lib/services/session.service.ts
+msgid "Failed to log in"
+msgstr "Failed to log in"
+
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Failed to mint a new access key"
 #~ msgstr "Failed to mint a new access key"
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to pause schedule"
+msgstr "Failed to pause schedule"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to reconfigure backend"
+msgstr "Failed to reconfigure backend"
+
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to report error"
+msgstr "Failed to report error"
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to resume schedule"
+msgstr "Failed to resume schedule"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Failed to revoke access key"
 #~ msgstr "Failed to revoke access key"
 
+#: src/lib/services/integrations.service.ts
+msgid "Failed to save backup settings"
+msgstr "Failed to save backup settings"
+
+#: src/lib/services/onboarding.service.ts
+#: src/lib/services/onboarding.service.ts
+msgid "Failed to save preferences"
+msgstr "Failed to save preferences"
+
+#: src/lib/services/config.service.ts
+msgid "Failed to save settings"
+msgstr "Failed to save settings"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start backup"
+msgstr "Failed to start backup"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start cleanup"
+msgstr "Failed to start cleanup"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start deletion"
+msgstr "Failed to start deletion"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to start disable write-only process"
+msgstr "Failed to start disable write-only process"
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to start restore"
+msgstr "Failed to start restore"
+
+#: src/lib/services/snapshot.service.ts
+msgid "Failed to start rollback"
+msgstr "Failed to start rollback"
+
+#: src/lib/services/immich.integration.service.ts
+msgid "Failed to update Immich database dump settings"
+msgstr "Failed to update Immich database dump settings"
+
+#: src/lib/services/repository.service.ts
+msgid "Failed to update repository"
+msgstr "Failed to update repository"
+
+#: src/lib/services/schedule.service.ts
+msgid "Failed to update schedule"
+msgstr "Failed to update schedule"
+
 #: src/routes/+page.svelte
 #~ msgid "From the {0}: {1}"
 #~ msgstr "From the {0}: {1}"
+
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "FUTO Backups"
+msgstr "FUTO Backups"
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Hosted cloud backup storage"
+msgstr "Hosted cloud backup storage"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
@@ -211,6 +508,10 @@ msgstr "Enter an invite code to continue."
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
 #~ msgstr "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
+
+#: src/lib/services/repository.service.ts
+msgid "Import"
+msgstr "Import"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Initialize the repository"
@@ -242,6 +543,11 @@ msgstr "Link Discord"
 msgid "Link Discord account @{0} to {1}?"
 msgstr "Link Discord account @{0} to {1}?"
 
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Local Storage"
+msgstr "Local Storage"
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Log in to link your Discord account."
 msgstr "Log in to link your Discord account."
@@ -252,13 +558,45 @@ msgstr "Log in to link your Discord account."
 msgid "Login"
 msgstr "Login"
 
+#: src/lib/services/backend.service.ts
+msgid "Login again"
+msgstr "Login again"
+
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "Login was cancelled or timed out."
+msgstr "Login was cancelled or timed out."
+
 #: ../../web/src/routes/dashboard/+layout.svelte
 msgid "Logout"
 msgstr "Logout"
 
+#: src/lib/services/repository.service.ts
+msgid "Logs"
+msgstr "Logs"
+
+#: src/lib/services/repository.service.ts
+msgid "Metrics history"
+msgstr "Metrics history"
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Missing on service"
+msgstr "Missing on service"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Name"
 #~ msgstr "Name"
+
+#: src/lib/services/log.service.svelte.ts
+msgid "Nearly done."
+msgstr "Nearly done."
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Never backed up"
+msgstr "Never backed up"
+
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "Never run"
+msgstr "Never run"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "New access key"
@@ -282,6 +620,10 @@ msgstr "Logout"
 #~ msgid "No access keys yet."
 #~ msgstr "No access keys yet."
 
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "No backups in this schedule."
+msgstr "No backups in this schedule."
+
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "No connections yet."
 #~ msgstr "No connections yet."
@@ -289,6 +631,37 @@ msgstr "Logout"
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "No expiry"
 #~ msgstr "No expiry"
+
+#: src/lib/services/integrations.service.ts
+msgid "No Immich instance detected."
+msgstr "No Immich instance detected."
+
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Offline"
+msgstr "Offline"
+
+#: src/lib/components/backends/BackendItem.svelte
+msgid "Online"
+msgstr "Online"
+
+#: src/lib/services/schedule.service.ts
+msgid "Pause"
+msgstr "Pause"
+
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "Paused"
+msgstr "Paused"
+
+#: src/lib/services/schedule.service.ts
+msgid "Paused schedule \"{name}\""
+msgstr "Paused schedule \"{name}\""
+
+#: src/lib/utils/format.ts
+#: src/lib/utils/format.ts
+#: src/lib/utils/format.ts
+msgid "Photos and videos"
+msgstr "Photos and videos"
 
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "Pick what you want to back up. Each connection type works a little differently."
@@ -298,9 +671,33 @@ msgstr "Logout"
 #~ msgid "Prevent this repository from being deleted or overwritten."
 #~ msgstr "Prevent this repository from being deleted or overwritten."
 
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "prune"
+msgstr "prune"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Prune"
+msgstr "Prune"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Pruned"
+msgstr "Pruned"
+
 #: src/routes/+page.svelte
 #~ msgid "Purchase Immich"
 #~ msgstr "Purchase Immich"
+
+#: src/lib/components/schedules/ScheduleItem.svelte
+msgid "Ran"
+msgstr "Ran"
+
+#: src/lib/services/backend.service.ts
+msgid "Reconfigure"
+msgstr "Reconfigure"
+
+#: src/lib/services/backend.service.ts
+msgid "Remove"
+msgstr "Remove"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Repository"
@@ -322,6 +719,30 @@ msgstr "Logout"
 #~ msgid "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
 #~ msgstr "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
 
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "restore"
+msgstr "restore"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Restore"
+msgstr "Restore"
+
+#: src/lib/services/snapshot.service.ts
+msgid "Restore files"
+msgstr "Restore files"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Restored"
+msgstr "Restored"
+
+#: src/lib/services/schedule.service.ts
+msgid "Resume"
+msgstr "Resume"
+
+#: src/lib/services/schedule.service.ts
+msgid "Resumed schedule \"{name}\""
+msgstr "Resumed schedule \"{name}\""
+
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Revoke"
 #~ msgstr "Revoke"
@@ -330,13 +751,50 @@ msgstr "Logout"
 #~ msgid "Revoked"
 #~ msgstr "Revoked"
 
+#: src/lib/services/snapshot.service.ts
+msgid "Rollback snapshot"
+msgstr "Rollback snapshot"
+
+#: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backups/BackupItem.svelte
+msgid "S3 Server"
+msgstr "S3 Server"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Shown in the access-key list."
 #~ msgstr "Shown in the access-key list."
 
+#: src/lib/services/repository.service.ts
+msgid "Snapshots"
+msgstr "Snapshots"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Started"
+msgstr "Started"
+
+#: src/lib/services/repository.service.ts
+msgid "Started backup"
+msgstr "Started backup"
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Successful"
+msgstr "Successful"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+msgid "Successful {noun}"
+msgstr "Successful {noun}"
+
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "That account does not own this instance. Log in with the account it was connected with."
+msgstr "That account does not own this instance. Log in with the account it was connected with."
+
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "This connection type can't be added from here — see the note above."
 #~ msgstr "This connection type can't be added from here — see the note above."
+
+#: src/lib/services/deviceFlow.service.svelte.ts
+msgid "This instance is not connected to a FUTO Backups account yet."
+msgstr "This instance is not connected to a FUTO Backups account yet."
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "This invite link has expired. Go back to Discord and claim it again to get a fresh one."
@@ -346,13 +804,45 @@ msgstr "This invite link has expired. Go back to Discord and claim it again to g
 msgid "This link is invalid or has expired. Click the support button in Discord to get a new one."
 msgstr "This link is invalid or has expired. Click the support button in Discord to get a new one."
 
+#: src/lib/services/schedule.service.ts
+msgid "This schedule will be removed."
+msgstr "This schedule will be removed."
+
+#: src/lib/services/snapshot.service.ts
+msgid "This snapshot will be permanently removed."
+msgstr "This snapshot will be permanently removed."
+
+#: src/lib/utils/format.ts
+msgid "Thumbnails and previews"
+msgstr "Thumbnails and previews"
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Unable to link your Discord account."
 msgstr "Unable to link your Discord account."
 
+#: src/lib/services/log.service.svelte.ts
+msgid "Unknown error"
+msgstr "Unknown error"
+
+#: src/lib/services/runHistory.service.ts
+msgid "View Log"
+msgstr "View Log"
+
+#: src/lib/services/immich.integration.service.ts
+msgid "View recovery key"
+msgstr "View recovery key"
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "Warnings"
+msgstr "Warnings"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Write-once (WORM)"
 #~ msgstr "Write-once (WORM)"
+
+#: src/lib/components/backups/BackupItem.svelte
+msgid "write-only"
+msgstr "write-only"
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Your email isn't part of the beta yet."

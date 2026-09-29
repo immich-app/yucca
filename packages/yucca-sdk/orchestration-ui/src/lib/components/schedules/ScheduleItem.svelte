@@ -5,6 +5,7 @@
   import { getScheduleActions } from "$lib/services/schedule.service";
   import { Badge, Icon } from "@immich/ui";
   import { mdiClockOutline } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     schedule: ScheduleDto;
@@ -14,7 +15,7 @@
   const { schedule, repositoryNames }: Props = $props();
 
   const { Resume, Pause, Configure, Delete } = $derived(
-    getScheduleActions(schedule),
+    getScheduleActions(schedule, $t),
   );
 </script>
 
@@ -32,22 +33,22 @@
       .map((repositoryId) => repositoryNames[repositoryId] ?? repositoryId)
       .join(", ")}
   {:else}
-    No backups in this schedule.
+    {$t`No backups in this schedule.`}
   {/if}
 
   {#snippet trailing()}
     <Badge size="tiny" color="info">{schedule.cron}</Badge>
 
     {#if schedule.paused}
-      <Badge size="tiny" color="warning">Paused</Badge>
+      <Badge size="tiny" color="warning">{$t`Paused`}</Badge>
     {/if}
 
     {#if schedule.lastRun}
       <Badge size="tiny" color="success">
-        Ran <RelativeTime time={schedule.lastRun} />
+        {$t`Ran`} <RelativeTime time={schedule.lastRun} />
       </Badge>
     {:else}
-      <Badge size="tiny" color="secondary">Never run</Badge>
+      <Badge size="tiny" color="secondary">{$t`Never run`}</Badge>
     {/if}
   {/snippet}
 </StackListItem>

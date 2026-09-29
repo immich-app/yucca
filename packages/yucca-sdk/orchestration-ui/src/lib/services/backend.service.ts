@@ -15,6 +15,7 @@ import { handleError } from '$lib/utils/handle-error';
 import { modalManager, type ActionItem } from '@immich/ui';
 import { mdiLogin } from '@mdi/js';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
+import { gt, msg } from 'svelte-i18n-lingui';
 
 export const backendKeys = {
   all: ['backends'] as const,
@@ -66,7 +67,8 @@ export const useCreateLocalBackend = () =>
     () => ({
       mutationFn: (dto: CreateLocalBackendRequestDto) =>
         createLocalBackend(dto),
-      onError: (error) => handleError(error, 'Failed to create local backend'),
+      onError: (error) =>
+        handleError(error, gt`Failed to create local backend`),
     }),
     () => queryClient,
   );
@@ -89,19 +91,20 @@ export const handleRemoveRepositoryBackend = (
 export const getBackendActions = (
   repository: LocalRepositoryDto | undefined,
   backend: BackendDto,
+  t: typeof gt,
   repositoryBackend?: RepositoryBackendDto & { primary?: boolean },
   onLogin?: () => void,
 ) => {
   const LoginAgain: ActionItem = {
     icon: mdiLogin,
-    title: 'Login again',
+    title: t(msg`Login again`),
     onAction: () => onLogin?.(),
     $if: () => backend.type === 'yucca' && !backend.isOnline,
   };
 
   const Reconfigure: ActionItem = {
     icon: mdiLogin,
-    title: 'Reconfigure',
+    title: t(msg`Reconfigure`),
     onAction: () => void handleReconfigureRepositoryBackend(repository!),
     $if: () =>
       repositoryBackend
@@ -113,7 +116,7 @@ export const getBackendActions = (
 
   const Remove: ActionItem = {
     icon: mdiLogin,
-    title: 'Remove',
+    title: t(msg`Remove`),
     onAction: () =>
       void handleRemoveRepositoryBackend(backend, repositoryBackend!),
     $if: () =>

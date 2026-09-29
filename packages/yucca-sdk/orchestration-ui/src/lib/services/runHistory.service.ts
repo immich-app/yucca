@@ -7,6 +7,7 @@ import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { modalManager, type ActionItem } from '@immich/ui';
 import { createQuery } from '@tanstack/svelte-query';
+import { gt, msg } from 'svelte-i18n-lingui';
 
 export const runHistoryKeys = {
   byRepository: (id: string) => ['runHistory', id] as const,
@@ -79,19 +80,19 @@ export const handleGetRunHistory = async (id: string) => {
   try {
     return await sdk.getRunHistory(id);
   } catch (error) {
-    handleError(error, 'Failed to load run history');
+    handleError(error, gt`Failed to load run history`);
     throw error;
   }
 };
 
-export const getRunActions = (run: RunDto) => {
+export const getRunActions = (run: RunDto, t: typeof gt) => {
   const ViewLog: ActionItem = {
-    title: 'View Log',
+    title: t(msg`View Log`),
     onAction: () => void modalManager.open(ViewStatusModal, { logId: run.id }),
   };
 
   const DownloadLog: ActionItem = {
-    title: 'Download Full Log',
+    title: t(msg`Download Full Log`),
     onAction: () =>
       window.open(
         `${getProvider().baseUrl}/api/yucca/logs/${run.id}/download`,

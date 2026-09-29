@@ -30,6 +30,7 @@ import {
   mdiTrashCan,
 } from '@mdi/js';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
+import { gt, msg } from 'svelte-i18n-lingui';
 
 export const repositoryKeys = {
   all: ['repositories'] as const,
@@ -128,7 +129,7 @@ export const useCreateRepository = () =>
     () => ({
       mutationFn: (dto: RepositoryCreateRequestDto) =>
         sdk.createRepository(dto),
-      onError: (error) => handleError(error, 'Failed to create repository'),
+      onError: (error) => handleError(error, gt`Failed to create repository`),
     }),
     () => queryClient,
   );
@@ -138,7 +139,7 @@ export const useImportRepository = () =>
     () => ({
       mutationFn: ({ id, backendId }: { id: string; backendId: string }) =>
         sdk.importRepository(id, backendId),
-      onError: (error) => handleError(error, 'Failed to import repository'),
+      onError: (error) => handleError(error, gt`Failed to import repository`),
     }),
     () => queryClient,
   );
@@ -155,7 +156,7 @@ export const useUpdateRepository = () =>
         dto: RepositoryUpdateRequestDto;
         local?: boolean;
       }) => (local ? sdk.updateRepository(id, dto) : updateRepository(id, dto)),
-      onError: (error) => handleError(error, 'Failed to update repository'),
+      onError: (error) => handleError(error, gt`Failed to update repository`),
     }),
     () => queryClient,
   );
@@ -165,14 +166,14 @@ export const useReconfigureRepositoryPrimaryBackend = () =>
     () => ({
       mutationFn: ({ id, backendId }: { id: string; backendId: string }) =>
         reconfigureRepositoryPrimaryBackend(id, { backendId }),
-      onError: (error) => handleError(error, 'Failed to reconfigure backend'),
+      onError: (error) => handleError(error, gt`Failed to reconfigure backend`),
     }),
     () => queryClient,
   );
 
 export const handleCreateBackup = async (id: string) => {
   try {
-    toastManager.info('Started backup');
+    toastManager.info(gt`Started backup`);
     const response = await sdk.createBackup(id);
     void modalManager.open(ViewStatusModal, {
       logId: response.logId,
@@ -180,14 +181,14 @@ export const handleCreateBackup = async (id: string) => {
     });
     return response;
   } catch (error) {
-    handleError(error, 'Failed to start backup');
+    handleError(error, gt`Failed to start backup`);
     throw error;
   }
 };
 
 export const handlePruneRepository = async (id: string) => {
   try {
-    toastManager.info('Cleaning up old backups');
+    toastManager.info(gt`Cleaning up old backups`);
     const response = await sdk.pruneRepository(id);
     void modalManager.open(ViewStatusModal, {
       logId: response.logId,
@@ -195,7 +196,7 @@ export const handlePruneRepository = async (id: string) => {
     });
     return response;
   } catch (error) {
-    handleError(error, 'Failed to start cleanup');
+    handleError(error, gt`Failed to start cleanup`);
     throw error;
   }
 };
@@ -214,7 +215,7 @@ export const handleDeleteRepository = async (
 
     window.open(redirectTo, '_blank');
   } catch (error) {
-    handleError(error, 'Failed to start deletion');
+    handleError(error, gt`Failed to start deletion`);
     throw error;
   }
 };
@@ -233,13 +234,14 @@ export const handleDisableWormRepository = async (
 
     window.open(redirectTo, '_blank');
   } catch (error) {
-    handleError(error, 'Failed to start disable write-only process');
+    handleError(error, gt`Failed to start disable write-only process`);
     throw error;
   }
 };
 
 export const getRepositoryActions = (
   repository: LocalRepositoryDto,
+  t: typeof gt,
   local?: boolean,
 ) => {
   const online = Boolean(
@@ -248,28 +250,28 @@ export const getRepositoryActions = (
   const configured = Boolean(repository.configuration);
 
   const BackupNow: ActionItem = {
-    title: 'Back up now',
+    title: t(msg`Back up now`),
     icon: mdiPlay,
     onAction: () => void handleCreateBackup(repository.id),
     $if: () => online,
   };
 
   const Snapshots: ActionItem = {
-    title: 'Snapshots',
+    title: t(msg`Snapshots`),
     icon: mdiFormatListBulletedType,
     onAction: () => void modalManager.open(SnapshotsListModal, { repository }),
     $if: () => online,
   };
 
   const History: ActionItem = {
-    title: 'Logs',
+    title: t(msg`Logs`),
     icon: mdiListStatus,
     onAction: () => void modalManager.open(RunHistoryModal, { repository }),
     $if: () => configured,
   };
 
   const Configure: ActionItem = {
-    title: 'Configure',
+    title: t(msg`Configure`),
     icon: mdiCog,
     onAction: () =>
       void modalManager.open(ConfigureRepositoryModal, {
@@ -279,7 +281,7 @@ export const getRepositoryActions = (
   };
 
   const Import: ActionItem = {
-    title: 'Import',
+    title: t(msg`Import`),
     icon: mdiImport,
     onAction: () =>
       void modalManager.open(ImportRepositoryModal, { repository }),
@@ -287,14 +289,14 @@ export const getRepositoryActions = (
   };
 
   const MetricsHistory: ActionItem = {
-    title: 'Metrics history',
+    title: t(msg`Metrics history`),
     icon: mdiHistory,
     onAction: () => void modalManager.open(MetricsHistoryModal, { repository }),
     $if: () => !repository.backends,
   };
 
   const Delete: ActionItem = {
-    title: 'Delete repository',
+    title: t(msg`Delete repository`),
     icon: mdiTrashCan,
     onAction: () => void handleDeleteRepository(repository.id, local),
     $if: () =>

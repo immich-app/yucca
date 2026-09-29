@@ -1,4 +1,5 @@
 import { toastManager } from '@immich/ui';
+import { gt } from 'svelte-i18n-lingui';
 
 export function getServerErrorMessage(error: {
   data?: { message?: string };
@@ -25,7 +26,7 @@ export function getReadableErrorMessage(error: unknown): string {
   return (
     getServerErrorMessage(error as never) ||
     standardizeError(error).message ||
-    'An unknown error occurred'
+    gt`An unknown error occurred`
   );
 }
 

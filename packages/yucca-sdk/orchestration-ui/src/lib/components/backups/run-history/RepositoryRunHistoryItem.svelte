@@ -9,18 +9,23 @@
     mdiCloudOffOutline,
     mdiCloudSyncOutline,
   } from "@mdi/js";
+  import { t, msg } from "svelte-i18n-lingui";
 
   type Props = {
     run: RunDto;
   };
 
   const { run }: Props = $props();
-  const { ViewLog, DownloadLog } = $derived(getRunActions(run));
+  const { ViewLog, DownloadLog } = $derived(getRunActions(run, $t));
 
   const nouns = {
-    restore: { name: "restore", running: "Restore", done: "Restored" },
-    forget: { name: "prune", running: "Prune", done: "Pruned" },
-    backup: { name: "backup", running: "Backup", done: "Backed up" },
+    restore: {
+      name: msg`restore`,
+      running: msg`Restore`,
+      done: msg`Restored`,
+    },
+    forget: { name: msg`prune`, running: msg`Prune`, done: msg`Pruned` },
+    backup: { name: msg`backup`, running: msg`Backup`, done: msg`Backed up` },
   };
 
   const noun = $derived(
@@ -33,35 +38,50 @@
     switch (run.status) {
       case "failed": {
         return {
-          title: `Failed ${noun.name}`,
+          title: $t({
+            message: "Failed {noun}",
+            values: { noun: $t(noun.name) },
+          }),
           color: "danger",
           icon: mdiCloudOffOutline,
         } as const;
       }
       case "cancelled": {
         return {
-          title: `Cancelled ${noun.name}`,
+          title: $t({
+            message: "Cancelled {noun}",
+            values: { noun: $t(noun.name) },
+          }),
           color: "warning",
           icon: mdiCloudOffOutline,
         } as const;
       }
       case "warn": {
         return {
-          title: `${noun.done} with warnings`,
+          title: $t({
+            message: "{done} with warnings",
+            values: { done: $t(noun.done) },
+          }),
           color: "warning",
           icon: mdiCloudCheckOutline,
         } as const;
       }
       case "incomplete": {
         return {
-          title: `${noun.running} in progress`,
+          title: $t({
+            message: "{running} in progress",
+            values: { running: $t(noun.running) },
+          }),
           color: "primary",
           icon: mdiCloudSyncOutline,
         } as const;
       }
       default: {
         return {
-          title: `Successful ${noun.name}`,
+          title: $t({
+            message: "Successful {noun}",
+            values: { noun: $t(noun.name) },
+          }),
           color: "success",
           icon: mdiCloudCheckOutline,
         } as const;
@@ -76,10 +96,10 @@
   {/snippet}
 
   {#if run.status === "incomplete"}
-    Started <RelativeTime time={run.start} />
+    {$t`Started`} <RelativeTime time={run.start} />
   {:else if run.status === "failed" || run.status === "cancelled"}
-    Attempted {#if run.end}<RelativeTime time={run.end} />{/if}
+    {$t`Attempted`} {#if run.end}<RelativeTime time={run.end} />{/if}
   {:else}
-    {noun.done} {#if run.end}<RelativeTime time={run.end} />{/if}
+    {$t(noun.done)} {#if run.end}<RelativeTime time={run.end} />{/if}
   {/if}
 </StackListItem>

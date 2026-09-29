@@ -1,6 +1,7 @@
 import { getProvider } from '$lib/providers';
 import { formatDuration } from '$lib/utils/format';
 import debounce from 'lodash.debounce';
+import { gt } from 'svelte-i18n-lingui';
 
 type SummaryEvent = {
   message_type: 'summary';
@@ -52,7 +53,7 @@ const formatErrorEvent = (
   const text =
     (typeof event.error === 'string' ? event.error : event.error?.message) ??
     event.message ??
-    'Unknown error';
+    gt`Unknown error`;
   const context = [event.during, event.item].filter(Boolean).join(' ');
   return context ? `${context}: ${text}` : text;
 };
@@ -109,8 +110,13 @@ export function createLogObserver(logId: string) {
             (event.bytes_done && event.total_bytes
               ? event.bytes_done < event.total_bytes
               : event.percent_done < 100)
-              ? `${formatDuration(event.seconds_remaining * 1000)} remaining`
-              : 'Nearly done.',
+              ? gt({
+                  message: '{duration} remaining',
+                  values: {
+                    duration: formatDuration(event.seconds_remaining * 1000),
+                  },
+                })
+              : gt`Nearly done.`,
           currentFiles: event.current_files ?? [],
         };
         flush();
