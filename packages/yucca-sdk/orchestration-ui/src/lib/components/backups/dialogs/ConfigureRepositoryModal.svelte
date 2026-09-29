@@ -13,6 +13,7 @@
     Stack,
   } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -42,14 +43,14 @@
 <FormModal
   disabled={name.length === 0 ||
     updateMutation.isPending}
-  title={`Configure ${name}`}
+  title={$t({ message: "Configure {name}", values: { name } })}
   size="large"
   {onSubmit}
   {onClose}
 >
   <Stack gap={4}>
     <Stack gap={2}>
-      <Field label="Name">
+      <Field label={$t`Name`}>
         <Input bind:value={name} />
       </Field>
     </Stack>
@@ -57,13 +58,13 @@
     {#if repository.configuration}
       <PathListField
         {paths}
-        addLabel="Add path"
-        manageLabel="Add first path"
-        pickerTitle="Backup Paths"
-        pickerDescription="Select files and folders to include in this backup."
+        addLabel={$t`Add path`}
+        manageLabel={$t`Add first path`}
+        pickerTitle={$t`Backup Paths`}
+        pickerDescription={$t`Select files and folders to include in this backup.`}
       >
-        {#snippet label()}Backup Paths{/snippet}
-        {#snippet empty()}No paths configured yet.{/snippet}
+        {#snippet label()}{$t`Backup Paths`}{/snippet}
+        {#snippet empty()}{$t`No paths configured yet.`}{/snippet}
       </PathListField>
     {/if}
 

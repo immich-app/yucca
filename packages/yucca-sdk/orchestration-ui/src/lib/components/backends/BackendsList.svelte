@@ -12,6 +12,7 @@
   import OnEvents from "../util/OnEvents.svelte";
   import Suspense from "../util/Suspense.svelte";
   import BackendItem from "./BackendItem.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository?: LocalRepositoryDto;
@@ -40,7 +41,7 @@
 <OnEvents {onBackendCreate} />
 
 {#snippet heading()}
-  Where your backup is stored
+  {$t`Where your backup is stored`}
 {/snippet}
 
 <StackList title={repository ? heading : undefined}>
@@ -64,12 +65,12 @@
     <Button
       size="small"
       variant="outline"
-      onclick={() => handleStartYuccaLogin()}>Login with FUTO Backups</Button
+      onclick={() => handleStartYuccaLogin()}>{$t`Login with FUTO Backups`}</Button
     >
     <Button
       size="small"
       variant="outline"
-      onclick={() => handleSetupLocalStorage()}>New local storage</Button
+      onclick={() => handleSetupLocalStorage()}>{$t`New local storage`}</Button
     >
   </HStack>
 {/if}

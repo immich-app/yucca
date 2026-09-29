@@ -9,6 +9,7 @@
     Stack,
     Text,
   } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: string;
@@ -27,19 +28,19 @@
     );
 </script>
 
-<Modal title="Rollback to this snapshot?" size="small" {onClose}>
+<Modal title={$t`Rollback to this snapshot?`} size="small" {onClose}>
   <ModalBody>
     <Stack gap={4}>
       <Text>
-        Your instance will return to how it was when this snapshot was taken.
+        {$t`Your instance will return to how it was when this snapshot was taken.`}
       </Text>
 
       <Stack gap={2}>
-        <Text>This will:</Text>
+        <Text>{$t`This will:`}</Text>
         <ul class="list-disc ps-6">
-          <li><Text>Restore files from the snapshot</Text></li>
-          <li><Text>Restore the Immich database</Text></li>
-          <li><Text>Restart the server during rollback</Text></li>
+          <li><Text>{$t`Restore files from the snapshot`}</Text></li>
+          <li><Text>{$t`Restore the Immich database`}</Text></li>
+          <li><Text>{$t`Restart the server during rollback`}</Text></li>
         </ul>
       </Stack>
     </Stack>
@@ -47,9 +48,9 @@
   <ModalFooter>
     <HStack>
       <Button color="danger" loading={mutation.isPending} onclick={onConfirm}>
-        Confirm rollback
+        {$t`Confirm rollback`}
       </Button>
-      <Button variant="ghost" onclick={onClose}>Cancel</Button>
+      <Button variant="ghost" onclick={onClose}>{$t`Cancel`}</Button>
     </HStack>
   </ModalFooter>
 </Modal>

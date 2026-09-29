@@ -18,6 +18,7 @@
   } from "@immich/ui";
   import { mdiHarddisk, mdiShieldCheck } from "@mdi/js";
   import type { Snippet } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     title?: string;
@@ -63,25 +64,25 @@
       <StackList>
         <StackListOption
           {disabled}
-          title="FUTO Backups"
+          title={$t`FUTO Backups`}
           onclick={onFutoBackups}
         >
           {#snippet icon()}
             <Icon icon={mdiShieldCheck} />
           {/snippet}
 
-          Simple, hosted backups.
+          {$t`Simple, hosted backups.`}
         </StackListOption>
         <StackListOption
           {disabled}
-          title="Local Storage"
+          title={$t`Local Storage`}
           onclick={onLocalBackups}
         >
           {#snippet icon()}
             <Icon icon={mdiHarddisk} />
           {/snippet}
 
-          A folder on this computer.
+          {$t`A folder on this computer.`}
         </StackListOption>
 
         <Suspense query={backends}>
@@ -90,7 +91,7 @@
               {#if backend.type === "local"}
                 <StackListOption
                   {disabled}
-                  title="Existing Local Storage"
+                  title={$t`Existing Local Storage`}
                   onclick={() => {
                     onSelect(backend.id);
                   }}
@@ -110,7 +111,7 @@
   </ModalBody>
   <ModalFooter>
     <HStack>
-      <Button variant="ghost" {disabled} onclick={onCancel}>Cancel</Button>
+      <Button variant="ghost" {disabled} onclick={onCancel}>{$t`Cancel`}</Button>
     </HStack>
   </ModalFooter>
 </Modal>

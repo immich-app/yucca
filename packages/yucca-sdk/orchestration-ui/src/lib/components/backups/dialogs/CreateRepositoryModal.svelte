@@ -9,6 +9,7 @@
     Stack,
   } from "@immich/ui";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onClose: () => void;
@@ -40,18 +41,21 @@
 </script>
 
 <FormModal
-  title="Create A New Backup"
+  title={$t`Create A New Backup`}
   disabled={name.length === 0 || mutation.isPending}
   {onSubmit}
   {onClose}
 >
   <Stack gap={4}>
-    <Field label="Name" description="A memorable name for this backup">
+    <Field
+      label={$t`Name`}
+      description={$t`A memorable name for this backup`}
+    >
       <Input bind:value={name} />
     </Field>
     <Field
-      label="Write once (WORM)"
-      description="Prevent anything being deleted"
+      label={$t`Write once (WORM)`}
+      description={$t`Prevent anything being deleted`}
     >
       <Checkbox bind:checked={worm} />
     </Field>

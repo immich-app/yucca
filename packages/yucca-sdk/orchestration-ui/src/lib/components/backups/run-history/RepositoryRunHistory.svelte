@@ -10,6 +10,7 @@
   } from "$lib/services/runHistory.service";
   import { Button } from "@immich/ui";
   import RepositoryRunHistoryItem from "./RepositoryRunHistoryItem.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -27,12 +28,12 @@
 
 <StackList>
   {#snippet title()}
-    Recent backup attempts
+    {$t`Recent backup attempts`}
   {/snippet}
 
   {#snippet action()}
     {#if onViewAll && query.data?.length}
-      <Button variant="ghost" size="small" onclick={onViewAll}>View all</Button>
+      <Button variant="ghost" size="small" onclick={onViewAll}>{$t`View all`}</Button>
     {/if}
   {/snippet}
 
@@ -43,7 +44,7 @@
       {/each}
 
       {#if runs.length === 0}
-        <StackListPlaceholder>No recent backups</StackListPlaceholder>
+        <StackListPlaceholder>{$t`No recent backups`}</StackListPlaceholder>
       {/if}
     {/snippet}
   </Suspense>

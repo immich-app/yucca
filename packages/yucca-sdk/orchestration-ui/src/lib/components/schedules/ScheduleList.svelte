@@ -11,6 +11,7 @@
   import Suspense from "../util/Suspense.svelte";
   import CreateScheduleModal from "./dialogs/CreateScheduleModal.svelte";
   import ScheduleItem from "./ScheduleItem.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   const schedulesQuery = useSchedules();
   const repositoriesQuery = useRepositories();
@@ -34,7 +35,7 @@
 
 <Stack gap={2}>
   <StackList>
-    {#snippet title()}Schedules{/snippet}
+    {#snippet title()}{$t`Schedules`}{/snippet}
 
     <Suspense query={schedulesQuery}>
       {#snippet children(schedules)}
@@ -43,7 +44,7 @@
         {/each}
 
         {#if schedules.length === 0}
-          <StackListPlaceholder>No schedules yet.</StackListPlaceholder>
+          <StackListPlaceholder>{$t`No schedules yet.`}</StackListPlaceholder>
         {/if}
       {/snippet}
     </Suspense>
@@ -51,7 +52,7 @@
 
   <HStack>
     <Button shape="round" size="tiny" variant="outline" onclick={onCreate}
-      >Create new schedule</Button
+      >{$t`Create new schedule`}</Button
     >
   </HStack>
 </Stack>

@@ -25,9 +25,29 @@ msgstr "{0} repositories"
 msgid "{count} changed"
 msgstr "{count} changed"
 
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{count} items backed up"
+msgstr "{count} items backed up"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{count} items restored"
+msgstr "{count} items restored"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{count} kept"
+msgstr "{count} kept"
+
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
 msgid "{count} new"
 msgstr "{count} new"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{count} new items"
+msgstr "{count} new items"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{count} skipped"
+msgstr "{count} skipped"
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "{done} with warnings"
@@ -41,6 +61,26 @@ msgstr "{duration} remaining"
 msgid "{name} (primary)"
 msgstr "{name} (primary)"
 
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{name} cancelled"
+msgstr "{name} cancelled"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{name} complete"
+msgstr "{name} complete"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{name} completed with warnings"
+msgstr "{name} completed with warnings"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{name} failed"
+msgstr "{name} failed"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "{num, plural, one {# backup removed} other {# backups removed}}"
+msgstr "{num, plural, one {# backup removed} other {# backups removed}}"
+
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
 msgid "{num, plural, one {# file} other {# files}}"
 msgstr "{num, plural, one {# file} other {# files}}"
@@ -48,6 +88,14 @@ msgstr "{num, plural, one {# file} other {# files}}"
 #: src/routes/+page.svelte
 #~ msgid "{num, plural, one {# item} other {# items}}"
 #~ msgstr "{num, plural, one {# item} other {# items}}"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "{num, plural, one {Completed with # warning.} other {Completed with # warnings.}}"
+msgstr "{num, plural, one {Completed with # warning.} other {Completed with # warnings.}}"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "{phase} · {percent}%"
+msgstr "{phase} · {percent}%"
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "{running} in progress"
@@ -77,9 +125,17 @@ msgstr "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
 msgid "A folder on this computer"
 msgstr "A folder on this computer"
 
+#: src/lib/components/backends/dialogs/SelectBackendModal.svelte
+msgid "A folder on this computer."
+msgstr "A folder on this computer."
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "A label for this repository."
 #~ msgstr "A label for this repository."
+
+#: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
+msgid "A memorable name for this backup"
+msgstr "A memorable name for this backup"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Access key"
@@ -109,9 +165,29 @@ msgstr "A folder on this computer"
 msgid "Active"
 msgstr "Active"
 
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "Add"
+msgstr "Add"
+
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "Add {0} connection"
 #~ msgstr "Add {0} connection"
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+msgid "Add first path"
+msgstr "Add first path"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Add more files"
+msgstr "Add more files"
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+msgid "Add path"
+msgstr "Add path"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "All attempts"
+msgstr "All attempts"
 
 #: src/lib/components/backends/BackendItem.svelte
 msgid "An S3-compatible server"
@@ -129,6 +205,10 @@ msgstr "Attempted"
 #~ msgid "Automatic"
 #~ msgstr "Automatic"
 
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "Available"
+msgstr "Available"
+
 #: src/lib/services/immich.integration.service.ts
 #: src/lib/services/repository.service.ts
 msgid "Back up now"
@@ -138,29 +218,85 @@ msgstr "Back up now"
 msgid "Backed up"
 msgstr "Backed up"
 
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Backing up"
+msgstr "Backing up"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "Backing up your library"
+msgstr "Backing up your library"
+
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "backup"
 msgstr "backup"
 
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Backup"
 msgstr "Backup"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Backup cancelled"
+msgstr "Backup cancelled"
 
 #: src/lib/utils/format.ts
 msgid "Backup configuration"
 msgstr "Backup configuration"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Backup finished"
+msgstr "Backup finished"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Backup incomplete"
+msgstr "Backup incomplete"
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+msgid "Backup Paths"
+msgstr "Backup Paths"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Backup started"
+msgstr "Backup started"
+
 #: src/lib/components/integrations/immich/ImmichManageBackupPage.svelte
 msgid "Backups"
 msgstr "Backups"
+
+#: src/lib/components/backups/BackupsList.svelte
+msgid "Backups found elsewhere"
+msgstr "Backups found elsewhere"
+
+#: src/lib/components/backups/BackupsList.svelte
+msgid "Backups on this machine"
+msgstr "Backups on this machine"
 
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "billed"
 msgstr "billed"
 
-#: src/lib/components/connections/NewConnectionModal.svelte
-#~ msgid "Cancel"
-#~ msgstr "Cancel"
+#: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
+msgid "Can't access, is your recovery key correct?"
+msgstr "Can't access, is your recovery key correct?"
+
+#: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
+msgid "Can't read repository."
+msgstr "Can't read repository."
+
+#: src/lib/components/backends/dialogs/OAuthDeviceFlowModal.svelte
+#: src/lib/components/backends/dialogs/SelectBackendModal.svelte
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+#: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Cancelled"
+msgstr "Cancelled"
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Cancelled {noun}"
@@ -170,6 +306,18 @@ msgstr "Cancelled {noun}"
 #~ msgid "Choose a strong repository password"
 #~ msgstr "Choose a strong repository password"
 
+#: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
+msgid "Choose backend folder"
+msgstr "Choose backend folder"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Choose target folder"
+msgstr "Choose target folder"
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
+msgid "Clean up old backups now"
+msgstr "Clean up old backups now"
+
 #: src/lib/services/repository.service.ts
 msgid "Cleaning up old backups"
 msgstr "Cleaning up old backups"
@@ -178,11 +326,28 @@ msgstr "Cleaning up old backups"
 #~ msgid "Close"
 #~ msgstr "Close"
 
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Completed in {duration}"
+msgstr "Completed in {duration}"
+
 #: src/lib/services/immich.integration.service.ts
 #: src/lib/services/repository.service.ts
 #: src/lib/services/schedule.service.ts
 msgid "Configure"
 msgstr "Configure"
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+#: src/lib/i18n.spec.ts
+msgid "Configure {name}"
+msgstr "Configure {name}"
+
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+msgid "Confirm rollback"
+msgstr "Confirm rollback"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Connecting…"
+msgstr "Connecting…"
 
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 #: ../../web/src/routes/dashboard/connections/+page.svelte
@@ -239,9 +404,25 @@ msgstr "Could not reach FUTO Backups. Check your connection."
 #~ msgid "Create"
 #~ msgstr "Create"
 
-#: src/routes/dashboard/backups/+page.svelte
-#~ msgid "Create new backup"
-#~ msgstr "Create new backup"
+#: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
+msgid "Create A New Backup"
+msgstr "Create A New Backup"
+
+#: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
+msgid "Create A New Schedule"
+msgstr "Create A New Schedule"
+
+#: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
+msgid "Create local backend"
+msgstr "Create local backend"
+
+#: src/lib/components/backups/BackupsList.svelte
+msgid "Create new backup"
+msgstr "Create new backup"
+
+#: src/lib/components/schedules/ScheduleList.svelte
+msgid "Create new schedule"
+msgstr "Create new schedule"
 
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Created {0} · expires {1}"
@@ -294,6 +475,10 @@ msgstr "Discord account linked. You can head back to Discord."
 msgid "Download Full Log"
 msgstr "Download Full Log"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Duration {duration}"
+msgstr "Duration {duration}"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "e.g. laptop"
 #~ msgstr "e.g. laptop"
@@ -302,9 +487,17 @@ msgstr "Download Full Log"
 #~ msgid "e.g. my laptop"
 #~ msgstr "e.g. my laptop"
 
+#: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
+msgid "Edit {name}"
+msgstr "Edit {name}"
+
 #: src/lib/utils/format.ts
 msgid "Encoded videos"
 msgstr "Encoded videos"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Ended {date}"
+msgstr "Ended {date}"
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
@@ -314,17 +507,35 @@ msgstr "Enter an invite code to continue."
 msgid "Estimated"
 msgstr "Estimated"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Event"
+msgstr "Event"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "Event Log"
+msgstr "Event Log"
+
+#: src/lib/components/backends/dialogs/SelectBackendModal.svelte
+msgid "Existing Local Storage"
+msgstr "Existing Local Storage"
+
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "Expired"
 #~ msgstr "Expired"
 
 #: src/lib/components/backups/BackupItem.svelte
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Failed"
 msgstr "Failed"
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Failed {noun}"
 msgstr "Failed {noun}"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "Failed only"
+msgstr "Failed only"
 
 #: src/lib/services/task.service.ts
 msgid "Failed to cancel task"
@@ -484,14 +695,40 @@ msgstr "Failed to update repository"
 msgid "Failed to update schedule"
 msgstr "Failed to update schedule"
 
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Files to restore"
+msgstr "Files to restore"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "Filters"
+msgstr "Filters"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Finalizing backup"
+msgstr "Finalizing backup"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Finalizing prune"
+msgstr "Finalizing prune"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Finalizing restore"
+msgstr "Finalizing restore"
+
 #: src/routes/+page.svelte
 #~ msgid "From the {0}: {1}"
 #~ msgstr "From the {0}: {1}"
 
 #: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
 msgid "FUTO Backups"
 msgstr "FUTO Backups"
+
+#: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
+msgid "Give this schedule a name"
+msgstr "Give this schedule a name"
 
 #: src/lib/components/backends/BackendItem.svelte
 msgid "Hosted cloud backup storage"
@@ -509,9 +746,26 @@ msgstr "Hosted cloud backup storage"
 #~ msgid "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
 #~ msgstr "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
 
+#: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
 #: src/lib/services/repository.service.ts
 msgid "Import"
 msgstr "Import"
+
+#: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
+msgid "Import {name}"
+msgstr "Import {name}"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "In progress only"
+msgstr "In progress only"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "In-place restore"
+msgstr "In-place restore"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Incomplete"
+msgstr "Incomplete"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Initialize the repository"
@@ -531,6 +785,10 @@ msgstr "Join the beta"
 #~ msgid "Key label"
 #~ msgstr "Key label"
 
+#: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
+msgid "Last backup: {date}"
+msgstr "Last backup: {date}"
+
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Link account"
 msgstr "Link account"
@@ -543,7 +801,12 @@ msgstr "Link Discord"
 msgid "Link Discord account @{0} to {1}?"
 msgstr "Link Discord account @{0} to {1}?"
 
+#: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
+msgid "Local directory to store backups."
+msgstr "Local directory to store backups."
+
 #: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
 msgid "Local Storage"
 msgstr "Local Storage"
@@ -551,6 +814,10 @@ msgstr "Local Storage"
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Log in to link your Discord account."
 msgstr "Log in to link your Discord account."
+
+#: src/lib/components/backends/dialogs/OAuthDeviceFlowModal.svelte
+msgid "Logging into FUTO Backups"
+msgstr "Logging into FUTO Backups"
 
 #: ../../web/src/routes/+page.svelte
 #: ../../web/src/routes/+page.svelte
@@ -566,6 +833,10 @@ msgstr "Login again"
 msgid "Login was cancelled or timed out."
 msgstr "Login was cancelled or timed out."
 
+#: src/lib/components/backends/BackendsList.svelte
+msgid "Login with FUTO Backups"
+msgstr "Login with FUTO Backups"
+
 #: ../../web/src/routes/dashboard/+layout.svelte
 msgid "Logout"
 msgstr "Logout"
@@ -578,13 +849,28 @@ msgstr "Logs"
 msgid "Metrics history"
 msgstr "Metrics history"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Metrics history for {name}"
+msgstr "Metrics history for {name}"
+
 #: src/lib/components/backends/BackendItem.svelte
 msgid "Missing on service"
 msgstr "Missing on service"
 
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Name"
-#~ msgstr "Name"
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "Move down"
+msgstr "Move down"
+
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "Move up"
+msgstr "Move up"
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+#: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
+#: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
+#: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
+msgid "Name"
+msgstr "Name"
 
 #: src/lib/services/log.service.svelte.ts
 msgid "Nearly done."
@@ -607,6 +893,10 @@ msgstr "Never run"
 #~ msgid "New connection"
 #~ msgstr "New connection"
 
+#: src/lib/components/backends/BackendsList.svelte
+msgid "New local storage"
+msgstr "New local storage"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "New restic backup"
@@ -616,13 +906,49 @@ msgstr "Never run"
 #~ msgid "New restic repository"
 #~ msgstr "New restic repository"
 
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
+msgid "Newest first"
+msgstr "Newest first"
+
 #: src/lib/components/connections/ManageTokensModal.svelte
 #~ msgid "No access keys yet."
 #~ msgstr "No access keys yet."
 
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "No backups found"
+msgstr "No backups found"
+
+#: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
+msgid "No backups found."
+msgstr "No backups found."
+
 #: src/lib/components/schedules/ScheduleItem.svelte
 msgid "No backups in this schedule."
 msgstr "No backups in this schedule."
+
+#: src/lib/components/backups/BackupsList.svelte
+msgid "No backups on this machine yet."
+msgstr "No backups on this machine yet."
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "No backups were removed."
+msgstr "No backups were removed."
+
+#: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
+msgid "No backups yet"
+msgstr "No backups yet"
+
+#: src/lib/components/backups/BackupsList.svelte
+msgid "No backups yet."
+msgstr "No backups yet."
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "No changes were made to your existing backups."
+msgstr "No changes were made to your existing backups."
 
 #: src/routes/dashboard/connections/+page.svelte
 #~ msgid "No connections yet."
@@ -636,14 +962,69 @@ msgstr "No backups in this schedule."
 msgid "No Immich instance detected."
 msgstr "No Immich instance detected."
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "No metrics history yet."
+msgstr "No metrics history yet."
+
+#: src/lib/components/backups/BackupsList.svelte
+msgid "No other backups found."
+msgstr "No other backups found."
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+msgid "No paths configured yet."
+msgstr "No paths configured yet."
+
+#: src/lib/components/backups/run-history/RepositoryRunHistory.svelte
+msgid "No recent backups"
+msgstr "No recent backups"
+
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "No repositories in this schedule yet."
+msgstr "No repositories in this schedule yet."
+
+#: src/lib/components/schedules/ScheduleList.svelte
+msgid "No schedules yet."
+msgstr "No schedules yet."
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
+msgid "No snapshots found"
+msgstr "No snapshots found"
+
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backups/BackupItem.svelte
 msgid "Offline"
 msgstr "Offline"
 
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Old backups could not be pruned"
+msgstr "Old backups could not be pruned"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Old backups were pruned successfully"
+msgstr "Old backups were pruned successfully"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Old backups were pruned, with warnings"
+msgstr "Old backups were pruned, with warnings"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
+msgid "Oldest first"
+msgstr "Oldest first"
+
 #: src/lib/components/backends/BackendItem.svelte
 msgid "Online"
 msgstr "Online"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Options"
+msgstr "Options"
+
+#: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
+msgid "Path"
+msgstr "Path"
 
 #: src/lib/services/schedule.service.ts
 msgid "Pause"
@@ -663,18 +1044,51 @@ msgstr "Paused schedule \"{name}\""
 msgid "Photos and videos"
 msgstr "Photos and videos"
 
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Pick the files and folders to restore. Leave empty to restore everything."
+msgstr "Pick the files and folders to restore. Leave empty to restore everything."
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Pick the folder to restore files into."
+msgstr "Pick the folder to restore files into."
+
+#: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
+msgid "Pick the local directory where backups will be stored."
+msgstr "Pick the local directory where backups will be stored."
+
 #: src/lib/components/connections/NewConnectionModal.svelte
 #~ msgid "Pick what you want to back up. Each connection type works a little differently."
 #~ msgstr "Pick what you want to back up. Each connection type works a little differently."
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Preparing backup"
+msgstr "Preparing backup"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Preparing prune"
+msgstr "Preparing prune"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Preparing restore"
+msgstr "Preparing restore"
+
+#: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
+msgid "Prevent anything being deleted"
+msgstr "Prevent anything being deleted"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Prevent this repository from being deleted or overwritten."
 #~ msgstr "Prevent this repository from being deleted or overwritten."
 
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "processed"
+msgstr "processed"
+
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "prune"
 msgstr "prune"
 
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Prune"
 msgstr "Prune"
@@ -682,6 +1096,18 @@ msgstr "Prune"
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Pruned"
 msgstr "Pruned"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Pruning"
+msgstr "Pruning"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "Pruning old backups"
+msgstr "Pruning old backups"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Pruning old backups was cancelled"
+msgstr "Pruning old backups was cancelled"
 
 #: src/routes/+page.svelte
 #~ msgid "Purchase Immich"
@@ -691,21 +1117,38 @@ msgstr "Pruned"
 msgid "Ran"
 msgstr "Ran"
 
+#: src/lib/components/backups/run-history/RepositoryRunHistory.svelte
+msgid "Recent backup attempts"
+msgstr "Recent backup attempts"
+
 #: src/lib/services/backend.service.ts
 msgid "Reconfigure"
 msgstr "Reconfigure"
 
+#: src/lib/components/schedules/RepositoryPicker.svelte
 #: src/lib/services/backend.service.ts
 msgid "Remove"
 msgstr "Remove"
+
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "Repositories"
+msgstr "Repositories"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Repository"
 #~ msgstr "Repository"
 
+#: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
+msgid "Repository is readable and accessible!"
+msgstr "Repository is readable and accessible!"
+
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Repository URL"
 #~ msgstr "Repository URL"
+
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+msgid "Restart the server during rollback"
+msgstr "Restart the server during rollback"
 
 #: src/lib/components/connections/ResticResultModal.svelte
 #~ msgid "Restic backup ready"
@@ -723,17 +1166,51 @@ msgstr "Remove"
 msgid "restore"
 msgstr "restore"
 
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Restore"
 msgstr "Restore"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Restore Backup"
+msgstr "Restore Backup"
 
 #: src/lib/services/snapshot.service.ts
 msgid "Restore files"
 msgstr "Restore files"
 
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+msgid "Restore files from the snapshot"
+msgstr "Restore files from the snapshot"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Restore files to where they were originally."
+msgstr "Restore files to where they were originally."
+
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+msgid "Restore the Immich database"
+msgstr "Restore the Immich database"
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "restored"
+msgstr "restored"
+
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Restored"
 msgstr "Restored"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Restoring"
+msgstr "Restoring"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Restoring all files and folders."
+msgstr "Restoring all files and folders."
+
+#: src/lib/components/backups/dialogs/ViewStatusModal.svelte
+msgid "Restoring your library"
+msgstr "Restoring your library"
 
 #: src/lib/services/schedule.service.ts
 msgid "Resume"
@@ -755,26 +1232,93 @@ msgstr "Resumed schedule \"{name}\""
 msgid "Rollback snapshot"
 msgstr "Rollback snapshot"
 
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+msgid "Rollback to this snapshot?"
+msgstr "Rollback to this snapshot?"
+
+#: src/lib/components/backups/run-history/RunHistoryModal.svelte
+msgid "Run History for {name}"
+msgstr "Run History for {name}"
+
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backups/BackupItem.svelte
 msgid "S3 Server"
 msgstr "S3 Server"
 
+#: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
+#: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
+msgid "Schedule"
+msgstr "Schedule"
+
+#: src/lib/components/schedules/ScheduleList.svelte
+msgid "Schedules"
+msgstr "Schedules"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "Search backups"
+msgstr "Search backups"
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
+msgid "Search snapshots"
+msgstr "Search snapshots"
+
+#: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
+msgid "Select Backup"
+msgstr "Select Backup"
+
+#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
+msgid "Select files and folders to include in this backup."
+msgstr "Select files and folders to include in this backup."
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Select files instead"
+msgstr "Select files instead"
+
+#: src/lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte
+msgid "Select new service"
+msgstr "Select new service"
+
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Shown in the access-key list."
 #~ msgstr "Shown in the access-key list."
 
+#: src/lib/components/backends/dialogs/SelectBackendModal.svelte
+msgid "Simple, hosted backups."
+msgstr "Simple, hosted backups."
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Size {size}"
+msgstr "Size {size}"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Size updated"
+msgstr "Size updated"
+
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
 #: src/lib/services/repository.service.ts
 msgid "Snapshots"
 msgstr "Snapshots"
 
+#: src/lib/components/backups/snapshots-list/SnapshotsListModal.svelte
+msgid "Snapshots for {name}"
+msgstr "Snapshots for {name}"
+
+#: src/lib/components/backups/BackupStatus.svelte
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Started"
 msgstr "Started"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Started {date}"
+msgstr "Started {date}"
+
 #: src/lib/services/repository.service.ts
 msgid "Started backup"
 msgstr "Started backup"
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Success"
+msgstr "Success"
 
 #: src/lib/components/backups/BackupItem.svelte
 msgid "Successful"
@@ -783,6 +1327,14 @@ msgstr "Successful"
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Successful {noun}"
 msgstr "Successful {noun}"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "Successful only"
+msgstr "Successful only"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Target"
+msgstr "Target"
 
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "That account does not own this instance. Log in with the account it was connected with."
@@ -812,9 +1364,17 @@ msgstr "This schedule will be removed."
 msgid "This snapshot will be permanently removed."
 msgstr "This snapshot will be permanently removed."
 
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+msgid "This will:"
+msgstr "This will:"
+
 #: src/lib/utils/format.ts
 msgid "Thumbnails and previews"
 msgstr "Thumbnails and previews"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Try again"
+msgstr "Try again"
 
 #: ../../web/src/routes/link/discord/+page.svelte
 msgid "Unable to link your Discord account."
@@ -824,6 +1384,16 @@ msgstr "Unable to link your Discord account."
 msgid "Unknown error"
 msgstr "Unknown error"
 
+#: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
+#: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
+msgid "Uses cron syntax"
+msgstr "Uses cron syntax"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistory.svelte
+#: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
+msgid "View all"
+msgstr "View all"
+
 #: src/lib/services/runHistory.service.ts
 msgid "View Log"
 msgstr "View Log"
@@ -832,9 +1402,29 @@ msgstr "View Log"
 msgid "View recovery key"
 msgstr "View recovery key"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Warning"
+msgstr "Warning"
+
 #: src/lib/components/backups/BackupItem.svelte
 msgid "Warnings"
 msgstr "Warnings"
+
+#: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+msgid "Where do you want this backup restored to?"
+msgstr "Where do you want this backup restored to?"
+
+#: src/lib/components/backends/BackendsList.svelte
+msgid "Where your backup is stored"
+msgstr "Where your backup is stored"
+
+#: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
+msgid "With warnings only"
+msgstr "With warnings only"
+
+#: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
+msgid "Write once (WORM)"
+msgstr "Write once (WORM)"
 
 #: src/lib/components/connections/CreateResticModal.svelte
 #~ msgid "Write-once (WORM)"
@@ -844,9 +1434,69 @@ msgstr "Warnings"
 msgid "write-only"
 msgstr "write-only"
 
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "You can close this window and the backup will continue in the background."
+msgstr "You can close this window and the backup will continue in the background."
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "You can close this window and the prune will continue in the background."
+msgstr "You can close this window and the prune will continue in the background."
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "You can close this window and the restore will continue in the background."
+msgstr "You can close this window and the restore will continue in the background."
+
+#: src/lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte
+msgid "You may reset and reconfigure your backups by selecting one of the following."
+msgstr "You may reset and reconfigure your backups by selecting one of the following."
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your backup was cancelled"
+msgstr "Your backup was cancelled"
+
+#: src/lib/components/backups/BackupsList.svelte
+msgid "Your Backups"
+msgstr "Your Backups"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your backups are untouched — nothing was lost."
+msgstr "Your backups are untouched — nothing was lost."
+
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Your email isn't part of the beta yet."
 msgstr "Your email isn't part of the beta yet."
+
+#: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
+msgid "Your instance will return to how it was when this snapshot was taken."
+msgstr "Your instance will return to how it was when this snapshot was taken."
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your library could not be backed up"
+msgstr "Your library could not be backed up"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your library could not be restored"
+msgstr "Your library could not be restored"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your library was backed up successfully"
+msgstr "Your library was backed up successfully"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your library was backed up, with warnings"
+msgstr "Your library was backed up, with warnings"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your library was restored successfully"
+msgstr "Your library was restored successfully"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your library was restored, with warnings"
+msgstr "Your library was restored, with warnings"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Your restore was cancelled"
+msgstr "Your restore was cancelled"
 
 #: src/routes/+page.svelte
 #~ msgid "yucca API"

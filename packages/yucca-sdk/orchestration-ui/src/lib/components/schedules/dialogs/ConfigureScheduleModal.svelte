@@ -4,6 +4,7 @@
   import { Field, FormModal, Input, Stack } from "@immich/ui";
   import validate from "cron-validate";
   import RepositoryPicker from "../RepositoryPicker.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onClose: () => void;
@@ -29,7 +30,7 @@
 </script>
 
 <FormModal
-  title={`Edit ${schedule.name}`}
+  title={$t({ message: "Edit {name}", values: { name: schedule.name } })}
   size="large"
   disabled={name.length === 0 ||
     validate(cron).isError() ||
@@ -39,10 +40,10 @@
   {onClose}
 >
   <Stack gap={4}>
-    <Field label="Name">
+    <Field label={$t`Name`}>
       <Input bind:value={name} />
     </Field>
-    <Field label="Schedule" description="Uses cron syntax">
+    <Field label={$t`Schedule`} description={$t`Uses cron syntax`}>
       <Input bind:value={cron} />
     </Field>
 
