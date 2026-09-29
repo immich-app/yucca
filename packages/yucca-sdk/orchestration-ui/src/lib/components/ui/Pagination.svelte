@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button, HStack, IconButton, Text } from "@immich/ui";
   import { mdiChevronLeft, mdiChevronRight } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     page: number;
@@ -42,7 +43,7 @@
 <HStack class="items-center justify-between">
   <IconButton
     icon={mdiChevronLeft}
-    aria-label="Previous page"
+    aria-label={$t`Previous page`}
     variant="ghost"
     color="secondary"
     disabled={page <= 1}
@@ -59,7 +60,7 @@
           variant="ghost"
           color="secondary"
           class={item === page ? "bg-subtle" : undefined}
-          aria-label={`Page ${item}`}
+          aria-label={$t({ message: "Page {item}", values: { item } })}
           aria-current={item === page ? "page" : undefined}
           onclick={() => onChange(item)}
         >
@@ -71,7 +72,7 @@
 
   <IconButton
     icon={mdiChevronRight}
-    aria-label="Next page"
+    aria-label={$t`Next page`}
     variant="ghost"
     color="secondary"
     disabled={page >= pageCount}

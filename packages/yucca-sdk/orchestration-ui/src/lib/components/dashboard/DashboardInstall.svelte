@@ -1,15 +1,16 @@
 <script lang="ts">
   import { Button, Card, CardBody, CardHeader, CardTitle, Logo } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
 </script>
 
 <Card class="border-primary-100 shadow-none">
   <CardHeader>
-    <CardTitle>Install FUTO Backups</CardTitle>
+    <CardTitle>{$t`Install FUTO Backups`}</CardTitle>
   </CardHeader>
   <CardBody>
     <Button href="https://my.immich.app/link?target=backups" variant="outline" size="small">
       <Logo variant="icon" size="tiny" />
-      Setup on Immich
+      {$t`Setup on Immich`}
     </Button>
   </CardBody>
 </Card>

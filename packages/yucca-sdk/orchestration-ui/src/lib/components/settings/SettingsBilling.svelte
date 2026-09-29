@@ -11,6 +11,7 @@
     Text,
   } from "@immich/ui";
   import { mdiCreditCardOutline } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onManageBilling: () => void;
@@ -20,31 +21,31 @@
 </script>
 
 <Accordion
-  title="Billing"
-  subtitle="Manage your FUTO Backups subscription and billing."
+  title={$t`Billing`}
+  subtitle={$t`Manage your FUTO Backups subscription and billing.`}
   icon={mdiCreditCardOutline}
 >
   <Stack gap={4} class="pt-2">
     <Accordion
-      title="FUTO Backups"
-      subtitle="Hosted cloud backup storage for your Immich library."
+      title={$t`FUTO Backups`}
+      subtitle={$t`Hosted cloud backup storage for your Immich library.`}
       isOpen
     >
       <Stack gap={4} class="pt-2">
         <HStack gap={4} class="items-start justify-between">
           <Stack gap={0}>
-            <Label label="Status" color="primary" />
+            <Label label={$t`Status`} color="primary" />
             <Text size="small" color="muted">
-              Connection state for your backup storage.
+              {$t`Connection state for your backup storage.`}
             </Text>
           </Stack>
 
-          <Badge color="primary">Active</Badge>
+          <Badge color="primary">{$t`Active`}</Badge>
         </HStack>
 
         <Field
-          label="Storage Used"
-          description="How much storage your backups are using."
+          label={$t`Storage Used`}
+          description={$t`How much storage your backups are using.`}
           color="primary"
           readOnly
         >
@@ -52,8 +53,8 @@
         </Field>
 
         <Field
-          label="Next Billing Date"
-          description="When your next FUTO Backups charge will occur."
+          label={$t`Next Billing Date`}
+          description={$t`When your next FUTO Backups charge will occur.`}
           color="primary"
           readOnly
         >
@@ -63,7 +64,7 @@
     </Accordion>
 
     <HStack class="justify-end">
-      <Button shape="round" onclick={onManageBilling}>Manage billing</Button>
+      <Button shape="round" onclick={onManageBilling}>{$t`Manage billing`}</Button>
     </HStack>
   </Stack>
 </Accordion>

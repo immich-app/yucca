@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DateTime } from "luxon";
   import { onDestroy, onMount } from "svelte";
+  import { gt } from "svelte-i18n-lingui";
 
   type Props = {
     time: string;
@@ -10,7 +11,7 @@
 
   const format = () => {
     const time = DateTime.fromISO(props.time);
-    return DateTime.now().diff(time).as('minute') < 1 ? "a moment ago" : time.toRelative();
+    return DateTime.now().diff(time).as('minute') < 1 ? gt`a moment ago` : time.toRelative();
   };
 
   let text = $state(format());

@@ -12,6 +12,7 @@
   } from "@immich/ui";
   import { mdiFolder } from "@mdi/js";
   import type { Snippet } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     value: string;
@@ -28,8 +29,8 @@
     value = $bindable(""),
     title,
     description,
-    placeholder = "/path/to/folder",
-    pickerTitle = "Choose folder",
+    placeholder = $t`/path/to/folder`,
+    pickerTitle = $t`Choose folder`,
     pickerDescription,
     foldersOnly = true,
     handleGetListing,
@@ -65,7 +66,7 @@
     <Input bind:value {placeholder} />
     <IconButton
       icon={mdiFolder}
-      aria-label="Choose folder"
+      aria-label={$t`Choose folder`}
       variant="outline"
       color="secondary"
       onclick={browse}

@@ -93,8 +93,16 @@ msgstr ""
 msgid "{running} in progress"
 msgstr ""
 
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "{successful} of {total} successful"
+msgstr ""
+
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
+msgstr ""
+
+#: src/lib/components/ui/PathPickerField.svelte
+msgid "/path/to/folder"
 msgstr ""
 
 #: src/lib/components/backends/BackendItem.svelte
@@ -110,10 +118,12 @@ msgid "A memorable name for this backup"
 msgstr ""
 
 #: src/lib/components/backends/BackendItem.svelte
+#: src/lib/components/settings/SettingsBilling.svelte
 msgid "Active"
 msgstr ""
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
+#: src/lib/components/ui/PathPickerModal.svelte
 msgid "Add"
 msgstr ""
 
@@ -142,11 +152,20 @@ msgid "An unknown error occurred"
 msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+#: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Attempted"
 msgstr ""
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
 msgid "Available"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardAvgBackupTime.svelte
+msgid "Avg. Backup Time"
+msgstr ""
+
+#: src/lib/components/ui/PageLayout.svelte
+msgid "Back"
 msgstr ""
 
 #: src/lib/services/immich.integration.service.ts
@@ -155,7 +174,12 @@ msgid "Back up now"
 msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
+#: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Backed up"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardRecentBackups.svelte
+msgid "Backed up with warnings"
 msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
@@ -183,11 +207,19 @@ msgstr ""
 msgid "Backup configuration"
 msgstr ""
 
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Backup failures"
+msgstr ""
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Backup finished"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Backup Health"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
@@ -219,6 +251,19 @@ msgstr ""
 msgid "billed"
 msgstr ""
 
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Billing"
+msgstr ""
+
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Billing issues"
+msgstr ""
+
+#: src/lib/components/ui/PathPickerModal.svelte
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Browse"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
 msgid "Can't access, is your recovery key correct?"
 msgstr ""
@@ -246,6 +291,15 @@ msgstr ""
 msgid "Choose backend folder"
 msgstr ""
 
+#: src/lib/components/ui/PathPickerField.svelte
+#: src/lib/components/ui/PathPickerField.svelte
+msgid "Choose folder"
+msgstr ""
+
+#: src/lib/components/ui/PathListField.svelte
+msgid "Choose paths"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
 msgid "Choose target folder"
 msgstr ""
@@ -256,6 +310,10 @@ msgstr ""
 
 #: src/lib/services/repository.service.ts
 msgid "Cleaning up old backups"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardRecentBackups.svelte
+msgid "Completed backups will appear here once your first backup runs."
 msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
@@ -281,6 +339,10 @@ msgstr ""
 msgid "Connecting…"
 msgstr ""
 
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Connection state for your backup storage."
+msgstr ""
+
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "Connections"
@@ -292,6 +354,14 @@ msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Continue"
+msgstr ""
+
+#: src/lib/components/util/DeviceFlowAction.svelte
+msgid "Continue to login"
+msgstr ""
+
+#: src/lib/components/util/DeviceFlowCode.svelte
+msgid "Copy code"
 msgstr ""
 
 #: src/lib/services/deviceFlow.service.svelte.ts
@@ -316,6 +386,14 @@ msgstr ""
 
 #: src/lib/components/schedules/ScheduleList.svelte
 msgid "Create new schedule"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardCurrentUsage.svelte
+msgid "Current Usage"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardDailyBackupTime.svelte
+msgid "Daily Backup Time"
 msgstr ""
 
 #: src/lib/utils/format.ts
@@ -385,6 +463,10 @@ msgstr ""
 msgid "Estimated"
 msgstr ""
 
+#: src/lib/components/dashboard/DashboardTotalStored.svelte
+msgid "Estimated {size}"
+msgstr ""
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Event"
 msgstr ""
@@ -400,6 +482,7 @@ msgstr ""
 #: src/lib/components/backups/BackupItem.svelte
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
 msgid "Failed"
 msgstr ""
 
@@ -577,6 +660,7 @@ msgstr ""
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
+#: src/lib/components/settings/SettingsBilling.svelte
 msgid "FUTO Backups"
 msgstr ""
 
@@ -584,8 +668,20 @@ msgstr ""
 msgid "Give this schedule a name"
 msgstr ""
 
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Go up"
+msgstr ""
+
 #: src/lib/components/backends/BackendItem.svelte
 msgid "Hosted cloud backup storage"
+msgstr ""
+
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Hosted cloud backup storage for your Immich library."
+msgstr ""
+
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "How much storage your backups are using."
 msgstr ""
 
 #: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
@@ -605,8 +701,16 @@ msgstr ""
 msgid "In-place restore"
 msgstr ""
 
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "In-progress or incomplete"
+msgstr ""
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Incomplete"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardInstall.svelte
+msgid "Install FUTO Backups"
 msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
@@ -679,6 +783,27 @@ msgstr ""
 msgid "Logs"
 msgstr ""
 
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Manage backup alerts."
+msgstr ""
+
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Manage billing"
+msgstr ""
+
+#: src/lib/components/ui/PathListField.svelte
+#: src/lib/components/ui/PathListField.svelte
+msgid "Manage paths"
+msgstr ""
+
+#: src/lib/components/settings/SettingsBackends.svelte
+msgid "Manage the storage services your backups can be sent to."
+msgstr ""
+
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Manage your FUTO Backups subscription and billing."
+msgstr ""
+
 #: src/lib/services/repository.service.ts
 msgid "Metrics history"
 msgstr ""
@@ -718,6 +843,10 @@ msgstr ""
 msgid "Never run"
 msgstr ""
 
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Never Run"
+msgstr ""
+
 #: src/lib/components/backends/BackendsList.svelte
 msgid "New local storage"
 msgstr ""
@@ -727,6 +856,14 @@ msgstr ""
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsPage.svelte
 msgid "Newest first"
+msgstr ""
+
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Next Billing Date"
+msgstr ""
+
+#: src/lib/components/ui/Pagination.svelte
+msgid "Next page"
 msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
@@ -778,6 +915,10 @@ msgstr ""
 msgid "No paths configured yet."
 msgstr ""
 
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "No paths selected"
+msgstr ""
+
 #: src/lib/components/backups/run-history/RepositoryRunHistory.svelte
 msgid "No recent backups"
 msgstr ""
@@ -794,8 +935,25 @@ msgstr ""
 msgid "No snapshots found"
 msgstr ""
 
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Notifications"
+msgstr ""
+
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Notify me when a backup fails."
+msgstr ""
+
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Notify me when backup storage is unavailable or running low."
+msgstr ""
+
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Notify me when FUTO Backups billing needs attention."
+msgstr ""
+
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backups/BackupItem.svelte
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
 msgid "Offline"
 msgstr ""
 
@@ -822,8 +980,17 @@ msgstr ""
 msgid "Online"
 msgstr ""
 
+#: src/lib/components/ui/PageLayout.svelte
+msgid "Open"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
+#: src/lib/components/ui/StackListItem.svelte
 msgid "Options"
+msgstr ""
+
+#: src/lib/components/ui/Pagination.svelte
+msgid "Page {item}"
 msgstr ""
 
 #: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
@@ -876,6 +1043,10 @@ msgstr ""
 msgid "Prevent anything being deleted"
 msgstr ""
 
+#: src/lib/components/ui/Pagination.svelte
+msgid "Previous page"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 msgid "processed"
 msgstr ""
@@ -913,11 +1084,17 @@ msgstr ""
 msgid "Recent backup attempts"
 msgstr ""
 
+#: src/lib/components/dashboard/DashboardRecentBackups.svelte
+msgid "Recent backups"
+msgstr ""
+
 #: src/lib/services/backend.service.ts
 msgid "Reconfigure"
 msgstr ""
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
+#: src/lib/components/ui/PathListField.svelte
+#: src/lib/components/ui/PathPickerModal.svelte
 #: src/lib/services/backend.service.ts
 msgid "Remove"
 msgstr ""
@@ -1009,6 +1186,11 @@ msgstr ""
 msgid "S3 Server"
 msgstr ""
 
+#: src/lib/components/settings/SettingsNotifications.svelte
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Save"
+msgstr ""
+
 #: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
 #: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
 msgid "Schedule"
@@ -1026,6 +1208,10 @@ msgstr ""
 msgid "Search snapshots"
 msgstr ""
 
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Select"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
 msgid "Select Backup"
 msgstr ""
@@ -1040,6 +1226,19 @@ msgstr ""
 
 #: src/lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte
 msgid "Select new service"
+msgstr ""
+
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Selected"
+msgstr ""
+
+#: src/lib/components/ui/PathPickerModal.svelte
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Selected paths"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardInstall.svelte
+msgid "Setup on Immich"
 msgstr ""
 
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
@@ -1076,11 +1275,28 @@ msgstr ""
 msgid "Started backup"
 msgstr ""
 
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Status"
+msgstr ""
+
+#: src/lib/components/settings/SettingsBackends.svelte
+msgid "Storage backends"
+msgstr ""
+
+#: src/lib/components/settings/SettingsNotifications.svelte
+msgid "Storage issues"
+msgstr ""
+
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "Storage Used"
+msgstr ""
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Success"
 msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
 msgid "Successful"
 msgstr ""
 
@@ -1098,6 +1314,10 @@ msgstr ""
 
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "That account does not own this instance. Log in with the account it was connected with."
+msgstr ""
+
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "This folder is empty"
 msgstr ""
 
 #: src/lib/services/deviceFlow.service.svelte.ts
@@ -1128,7 +1348,12 @@ msgstr ""
 msgid "Thumbnails and previews"
 msgstr ""
 
+#: src/lib/components/dashboard/DashboardTotalStored.svelte
+msgid "Total Stored"
+msgstr ""
+
 #: src/lib/components/backups/BackupStatus.svelte
+#: src/lib/components/util/DeviceFlowAction.svelte
 msgid "Try again"
 msgstr ""
 
@@ -1140,6 +1365,10 @@ msgstr ""
 msgid "Unknown error"
 msgstr ""
 
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Use this folder"
+msgstr ""
+
 #: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
 #: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
 msgid "Uses cron syntax"
@@ -1147,7 +1376,12 @@ msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistory.svelte
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
 msgid "View all"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardRecentBackups.svelte
+msgid "View history"
 msgstr ""
 
 #: src/lib/services/runHistory.service.ts
@@ -1158,6 +1392,10 @@ msgstr ""
 msgid "View recovery key"
 msgstr ""
 
+#: src/lib/components/util/DeviceFlowCode.svelte
+msgid "Waiting for you to confirm login..."
+msgstr ""
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Warning"
 msgstr ""
@@ -1166,12 +1404,20 @@ msgstr ""
 msgid "Warnings"
 msgstr ""
 
+#: src/lib/components/settings/SettingsBilling.svelte
+msgid "When your next FUTO Backups charge will occur."
+msgstr ""
+
 #: src/lib/components/backups/dialogs/RestoreSnapshotModal.svelte
 msgid "Where do you want this backup restored to?"
 msgstr ""
 
 #: src/lib/components/backends/BackendsList.svelte
 msgid "Where your backup is stored"
+msgstr ""
+
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "With warnings"
 msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
@@ -1198,6 +1444,10 @@ msgstr ""
 msgid "You can close this window and the restore will continue in the background."
 msgstr ""
 
+#: src/lib/components/util/DeviceFlowCode.svelte
+msgid "You may be asked or shown the following code:"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte
 msgid "You may reset and reconfigure your backups by selecting one of the following."
 msgstr ""
@@ -1207,6 +1457,7 @@ msgid "Your backup was cancelled"
 msgstr ""
 
 #: src/lib/components/backups/BackupsList.svelte
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
 msgid "Your Backups"
 msgstr ""
 

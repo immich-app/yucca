@@ -11,6 +11,7 @@
   import { getProvider } from "$lib/providers";
   import { getBackupOutcome } from "$lib/utils/backup-status";
   import VisualisationSegmentedBar from "../ui/VisualisationSegmentedBar.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repositories: LocalRepositoryDto[];
@@ -64,52 +65,55 @@
 <Card class="border-primary-100 shadow-none">
   <CardHeader>
     <HStack class="justify-between">
-      <CardTitle>Your Backups</CardTitle>
+      <CardTitle>{$t`Your Backups`}</CardTitle>
       {#if onViewBackups}
         <Button variant="outline" size="tiny" onclick={onViewBackups}>
-          View all
+          {$t`View all`}
         </Button>
       {/if}
     </HStack>
   </CardHeader>
   <CardBody>
     <VisualisationSegmentedBar
-      title="Backup Health"
-      summary="{status.success} of {total} successful"
+      title={$t`Backup Health`}
+      summary={$t({
+        message: "{successful} of {total} successful",
+        values: { successful: status.success, total },
+      })}
       segments={[
         {
           value: status.success,
-          label: "Successful",
+          label: $t`Successful`,
           color: "var(--immich-ui-success-500)",
           badge: "success",
         },
         {
           value: status.incomplete,
-          label: "In-progress or incomplete",
+          label: $t`In-progress or incomplete`,
           color: "var(--immich-ui-info-400)",
           badge: "info",
         },
         {
           value: status.offline,
-          label: "Offline",
+          label: $t`Offline`,
           color: "var(--immich-ui-warning-500)",
           badge: "warning",
         },
         {
           value: status.warned,
-          label: "With warnings",
+          label: $t`With warnings`,
           color: "var(--immich-ui-warning-500)",
           badge: "warning",
         },
         {
           value: status.failed,
-          label: "Failed",
+          label: $t`Failed`,
           color: "var(--immich-ui-danger-500)",
           badge: "danger",
         },
         {
           value: status.neverRun,
-          label: "Never Run",
+          label: $t`Never Run`,
           color: "var(--immich-ui-light-400)",
           badge: "secondary",
         },

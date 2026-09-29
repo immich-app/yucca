@@ -9,6 +9,7 @@
   } from "@immich/ui";
   import { mdiArrowLeft } from "@mdi/js";
   import type { Snippet } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     title?: string;
@@ -32,7 +33,7 @@
         {#if onBack}
           <IconButton
             icon={mdiArrowLeft}
-            aria-label="Back"
+            aria-label={$t`Back`}
             variant="ghost"
             color="secondary"
             shape="round"
@@ -65,7 +66,7 @@
         </div>
 
         <ContextMenuButton
-          aria-label="Open"
+          aria-label={$t`Open`}
           items={actions}
           class="md:hidden"
         />
