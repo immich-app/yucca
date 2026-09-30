@@ -32,8 +32,10 @@
     { id: "schedules", title: "Schedules", icon: mdiClock },
     { id: "config", title: "Configure", icon: mdiCog },
   ];
-  const route = $derived(page.url.hash.slice(1) || "dashboard");
-  const routeTitle = $derived(routes.find(({ id }) => id === route)?.title);
+  const currentRoute = $derived(
+    routes.find(({ id }) => id === page.url.hash.slice(1)) ?? routes[0],
+  );
+  const route = $derived(currentRoute.id);
 </script>
 
 <AppShell class="h-full">
@@ -78,7 +80,7 @@
     tabindex="-1"
     class="p-4 flex flex-col gap-2 max-w-6xl m-auto outline-none"
   >
-    <Heading tag="h1" class="sr-only">{routeTitle}</Heading>
+    <Heading tag="h1" class="sr-only">{currentRoute.title}</Heading>
 
     {#if route === "dashboard"}
       <DashboardPage onViewBackups={() => goto("#backups")} />
