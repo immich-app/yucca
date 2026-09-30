@@ -1373,6 +1373,10 @@ msgstr ""
 msgid "No metrics history yet."
 msgstr ""
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "No more history"
+msgstr ""
+
 #: src/lib/components/backups/BackupsList.svelte
 msgid "No other backups found."
 msgstr ""
