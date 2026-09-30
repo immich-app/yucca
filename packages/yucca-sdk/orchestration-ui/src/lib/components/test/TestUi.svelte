@@ -21,16 +21,19 @@
   import ScheduleList from "../schedules/ScheduleList.svelte";
   import SkipLink from "../ui/SkipLink.svelte";
   import { MediaQuery } from "svelte/reactivity";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
 
   const fullSidebar = new MediaQuery("min-width: 48rem");
   let open = $derived(fullSidebar.current);
-  let route = $state("dashboard");
-  const routeTitles: Record<string, string> = {
-    dashboard: "Dashboard",
-    backups: "Backups",
-    schedules: "Schedules",
-    config: "Configure",
-  };
+  const routes = [
+    { id: "dashboard", title: "Dashboard", icon: mdiViewDashboard },
+    { id: "backups", title: "Backups", icon: mdiBackupRestore },
+    { id: "schedules", title: "Schedules", icon: mdiClock },
+    { id: "config", title: "Configure", icon: mdiCog },
+  ];
+  const route = $derived(page.url.hash.slice(1) || "dashboard");
+  const routeTitle = $derived(routes.find(({ id }) => id === route)?.title);
 </script>
 
 <AppShell class="h-full">
@@ -63,64 +66,11 @@
   </AppShellHeader>
 
   <AppShellSidebar bind:open>
-    <div class="pt-4 pr-2">
-      <div
-        onclick={() => (route = "dashboard")}
-        onkeydown={() => (route = "dashboard")}
-        tabindex={0}
-        role="button"
-        aria-label="Dashboard"
-      >
-        <NavbarItem
-          href="#"
-          title="Dashboard"
-          icon={mdiViewDashboard}
-          active={route === "dashboard"}
-        />
-      </div>
-      <div
-        onclick={() => (route = "backups")}
-        onkeydown={() => (route = "backups")}
-        tabindex={0}
-        role="button"
-        aria-label="Backups"
-      >
-        <NavbarItem
-          href="#"
-          title="Backups"
-          icon={mdiBackupRestore}
-          active={route === "backups"}
-        />
-      </div>
-      <div
-        onclick={() => (route = "schedules")}
-        onkeydown={() => (route = "schedules")}
-        tabindex={0}
-        role="button"
-        aria-label="Schedules"
-      >
-        <NavbarItem
-          href="#"
-          title="Schedules"
-          icon={mdiClock}
-          active={route === "schedules"}
-        />
-      </div>
-      <div
-        onclick={() => (route = "config")}
-        onkeydown={() => (route = "config")}
-        tabindex={0}
-        role="button"
-        aria-label="Configure"
-      >
-        <NavbarItem
-          href="#"
-          title="Configure"
-          icon={mdiCog}
-          active={route === "config"}
-        />
-      </div>
-    </div>
+    <nav class="pt-4 pr-2" aria-label="Main">
+      {#each routes as { id, title, icon } (id)}
+        <NavbarItem href="#{id}" {title} {icon} active={route === id} />
+      {/each}
+    </nav>
   </AppShellSidebar>
 
   <main
@@ -128,10 +78,10 @@
     tabindex="-1"
     class="p-4 flex flex-col gap-2 max-w-6xl m-auto outline-none"
   >
-    <Heading tag="h1" class="sr-only">{routeTitles[route]}</Heading>
+    <Heading tag="h1" class="sr-only">{routeTitle}</Heading>
 
     {#if route === "dashboard"}
-      <DashboardPage onViewBackups={() => (route = "backups")} />
+      <DashboardPage onViewBackups={() => goto("#backups")} />
     {:else if route === "backups"}
       <BackupsList />
     {:else if route === "config"}
