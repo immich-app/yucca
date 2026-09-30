@@ -1,6 +1,6 @@
 <script lang="ts">
   import { useCreateSchedule } from "$lib/services/schedule.service";
-  import { Field, FormModal, Input, Stack } from "@immich/ui";
+  import { Field, FormModal, HelperText, Input, Stack } from "@immich/ui";
   import validate from "cron-validate";
   import RepositoryPicker from "../RepositoryPicker.svelte";
   import { t } from "svelte-i18n-lingui";
@@ -15,6 +15,8 @@
   let cron = $state("*/15 * * * *");
   let repositories = $state<string[]>([]);
 
+  const cronInvalid = $derived(validate(cron).isError());
+
   const mutation = useCreateSchedule();
 
   const onSubmit = () =>
@@ -28,7 +30,7 @@
   title={$t`Create A New Schedule`}
   size="large"
   disabled={name.length === 0 ||
-    validate(cron).isError() ||
+    cronInvalid ||
     repositories.length === 0 ||
     mutation.isPending}
   {onSubmit}
@@ -41,8 +43,17 @@
     >
       <Input bind:value={name} />
     </Field>
-    <Field label={$t`Schedule`} description={$t`Uses cron syntax`}>
+    <Field
+      label={$t`Schedule`}
+      description={$t`Uses cron syntax`}
+      invalid={cronInvalid}
+    >
       <Input bind:value={cron} />
+      {#if cronInvalid}
+        <HelperText color="danger"
+          >{$t`Enter a valid cron expression, for example */15 * * * *`}</HelperText
+        >
+      {/if}
     </Field>
 
     <RepositoryPicker bind:repositories />

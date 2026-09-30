@@ -681,6 +681,15 @@ msgstr ""
 msgid "Ended {date}"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
+msgid "Enter a backup name."
+msgstr ""
+
+#: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
+#: src/lib/components/schedules/dialogs/CreateScheduleModal.svelte
+msgid "Enter a valid cron expression, for example */15 * * * *"
+msgstr ""
+
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
 msgstr ""
