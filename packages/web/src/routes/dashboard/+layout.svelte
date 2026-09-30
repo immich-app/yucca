@@ -17,7 +17,7 @@
     mdiMenu,
     mdiViewDashboard,
   } from "@mdi/js";
-  import { configureYucca } from "@futo-org/backups-orchestrator-ui";
+  import { configureYucca, SkipLink } from "@futo-org/backups-orchestrator-ui";
   import { t } from "svelte-i18n-lingui";
   import { defaults } from "@futo-org/backups-api-client";
   import { sidebarStore } from "$lib/stores/sidebar.svelte";
@@ -32,6 +32,8 @@
 
 <AppShell>
   <AppShellHeader>
+    <SkipLink target="main-content" />
+
     <div class="flex w-full h-full items-center justify-between p-4">
       <HStack>
         <IconButton
@@ -84,7 +86,7 @@
     </nav>
   </AppShellSidebar>
 
-  <main class="p-4">
+  <main id="main-content" tabindex="-1" class="p-4 outline-none">
     {@render children()}
   </main>
 </AppShell>

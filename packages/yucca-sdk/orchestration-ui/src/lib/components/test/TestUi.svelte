@@ -19,6 +19,7 @@
   import BackupsList from "../backups/BackupsList.svelte";
   import DashboardPage from "../dashboard/DashboardPage.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
+  import SkipLink from "../ui/SkipLink.svelte";
   import { MediaQuery } from "svelte/reactivity";
 
   const fullSidebar = new MediaQuery("min-width: 48rem");
@@ -34,6 +35,8 @@
 
 <AppShell class="h-full">
   <AppShellHeader>
+    <SkipLink target="main-content" />
+
     <div class="flex items-center justify-between w-full px-4 py-2">
       <div class="flex items-center gap-1">
         <IconButton
@@ -120,7 +123,11 @@
     </div>
   </AppShellSidebar>
 
-  <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
+  <main
+    id="main-content"
+    tabindex="-1"
+    class="p-4 flex flex-col gap-2 max-w-6xl m-auto outline-none"
+  >
     <Heading tag="h1" class="sr-only">{routeTitles[route]}</Heading>
 
     {#if route === "dashboard"}
@@ -132,5 +139,5 @@
     {:else if route === "schedules"}
       <ScheduleList />
     {/if}
-  </div>
+  </main>
 </AppShell>

@@ -43,6 +43,7 @@
   import MockImmichPurchaseInfo from "./immich/MockImmichPurchaseInfo.svelte";
   import MockImmichStorageSpace from "./immich/MockImmichStorageSpace.svelte";
   import PageLayout from "../ui/PageLayout.svelte";
+  import SkipLink from "../ui/SkipLink.svelte";
   import ImmichBackupAttemptsPage from "../integrations/immich/ImmichBackupAttemptsPage.svelte";
   import ImmichBackupSettingsPage from "../integrations/immich/ImmichBackupSettingsPage.svelte";
   import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
@@ -95,6 +96,8 @@
 
 <AppShell class="h-full">
   <AppShellHeader>
+    <SkipLink target="main-content" />
+
     <div class="grid grid-cols-[--spacing(64)_auto] items-center w-full py-2">
       <div class="flex flex-row gap-1 mx-4 items-center">
         <IconButton
@@ -273,39 +276,41 @@
     </div>
   </AppShellSidebar>
 
-  {#if $testUiRestore}
-    <ImmichOnboardingRestoreFlow
-      {onExit}
-      onFinish={() => testUiRestore.set(false)}
-    />
-  {:else if route === "settings"}
-    <ImmichBackupsPage
-      price="$1"
-      includedStorage="50 GB"
-      questions={[
-        {
-          title: "Already back up your library elsewhere?",
-          answer: hideReminder,
-        },
-        ...sampleQuestions,
-      ]}
-      onConfigure={() => (route = "backup-settings")}
-      onViewAttempts={() => (route = "backup-attempts")}
-      onViewSnapshots={() => (route = "backup-snapshots")}
-    />
-  {:else if route === "backup-settings"}
-    <PageLayout title="Backup settings" onBack={backToBackups}>
-      <ImmichBackupSettingsPage onUnconfigured={backToBackups} />
-    </PageLayout>
-  {:else if route === "backup-attempts"}
-    <PageLayout title="Backup attempts" onBack={backToBackups}>
-      <ImmichBackupAttemptsPage onUnconfigured={backToBackups} />
-    </PageLayout>
-  {:else if route === "backup-snapshots"}
-    <PageLayout title="Snapshots" onBack={backToBackups}>
-      <ImmichSnapshotsPage onUnconfigured={backToBackups} />
-    </PageLayout>
-  {:else}
-    <MockImmichPhotos />
-  {/if}
+  <main id="main-content" tabindex="-1" class="h-full outline-none">
+    {#if $testUiRestore}
+      <ImmichOnboardingRestoreFlow
+        {onExit}
+        onFinish={() => testUiRestore.set(false)}
+      />
+    {:else if route === "settings"}
+      <ImmichBackupsPage
+        price="$1"
+        includedStorage="50 GB"
+        questions={[
+          {
+            title: "Already back up your library elsewhere?",
+            answer: hideReminder,
+          },
+          ...sampleQuestions,
+        ]}
+        onConfigure={() => (route = "backup-settings")}
+        onViewAttempts={() => (route = "backup-attempts")}
+        onViewSnapshots={() => (route = "backup-snapshots")}
+      />
+    {:else if route === "backup-settings"}
+      <PageLayout title="Backup settings" onBack={backToBackups}>
+        <ImmichBackupSettingsPage onUnconfigured={backToBackups} />
+      </PageLayout>
+    {:else if route === "backup-attempts"}
+      <PageLayout title="Backup attempts" onBack={backToBackups}>
+        <ImmichBackupAttemptsPage onUnconfigured={backToBackups} />
+      </PageLayout>
+    {:else if route === "backup-snapshots"}
+      <PageLayout title="Snapshots" onBack={backToBackups}>
+        <ImmichSnapshotsPage onUnconfigured={backToBackups} />
+      </PageLayout>
+    {:else}
+      <MockImmichPhotos />
+    {/if}
+  </main>
 </AppShell>

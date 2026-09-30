@@ -402,6 +402,7 @@ msgstr "Backup was cancelled"
 msgid "Backup your photos, videos, albums, metadata, database, configuration, and external libraries together."
 msgstr "Backup your photos, videos, albums, metadata, database, configuration, and external libraries together."
 
+#: ../../web/src/routes/dashboard/backups/+page.svelte
 #: src/lib/components/integrations/immich/ImmichBackupsAdminNavButton.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupPage.svelte
 msgid "Backups"
@@ -693,6 +694,10 @@ msgstr "Daily"
 #: src/lib/components/dashboard/DashboardDailyBackupTime.svelte
 msgid "Daily Backup Time"
 msgstr "Daily Backup Time"
+
+#: ../../web/src/routes/dashboard/+page.svelte
+msgid "Dashboard"
+msgstr "Dashboard"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Database and metadata"
@@ -1343,6 +1348,10 @@ msgstr "Logout"
 #: src/lib/services/repository.service.ts
 msgid "Logs"
 msgstr "Logs"
+
+#: ../../web/src/routes/dashboard/+layout.svelte
+msgid "Main"
+msgstr "Main"
 
 #: src/lib/components/settings/SettingsNotifications.svelte
 msgid "Manage backup alerts."
@@ -2040,6 +2049,10 @@ msgstr "Size {size}"
 msgid "Size updated"
 msgstr "Size updated"
 
+#: src/lib/components/ui/SkipLink.svelte
+msgid "Skip to content"
+msgstr "Skip to content"
+
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 #~ msgid "Slow down backup uploads without affecting restores."
 #~ msgstr "Slow down backup uploads without affecting restores."
@@ -2194,6 +2207,10 @@ msgstr "This will:"
 #: src/lib/utils/format.ts
 msgid "Thumbnails and previews"
 msgstr "Thumbnails and previews"
+
+#: ../../web/src/routes/dashboard/+layout.svelte
+msgid "Toggle navigation"
+msgstr "Toggle navigation"
 
 #: src/lib/components/dashboard/DashboardTotalStored.svelte
 msgid "Total Stored"
