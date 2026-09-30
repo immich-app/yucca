@@ -122,15 +122,23 @@
 
   const sampleQuestions = [
     {
-      title: "Is FUTO Backups the same as an Immich product key?",
+      title: "Where can I store my backups?",
       answer: "Sample answer copy for the FAQ preview.",
     },
     {
-      title: "How is FUTO Backups priced?",
+      title: "Does my Immich product key include FUTO Backups?",
       answer: "Sample answer copy for the FAQ preview.",
     },
     {
-      title: "Can I use local storage instead?",
+      title: "Do I need FUTO Backups to use Immich?",
+      answer: "Sample answer copy for the FAQ preview.",
+    },
+    {
+      title: "How is FUTO Cloud priced?",
+      answer: "Sample answer copy for the FAQ preview.",
+    },
+    {
+      title: "What does FUTO Backups protect?",
       answer: "Sample answer copy for the FAQ preview.",
     },
   ];

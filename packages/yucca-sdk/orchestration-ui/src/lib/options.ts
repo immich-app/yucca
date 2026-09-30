@@ -4,4 +4,5 @@ export const options = {
   advanced: writable(false),
   testUiRestore: writable(false),
   demoPadding: writable(false),
+  hideBackupsReminder: writable(false),
 };

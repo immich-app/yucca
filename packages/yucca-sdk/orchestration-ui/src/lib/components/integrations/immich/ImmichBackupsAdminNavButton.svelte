@@ -11,9 +11,10 @@
 
   type Props = {
     href: string;
+    onclick?: () => void;
   };
 
-  const { href }: Props = $props();
+  const { href, onclick }: Props = $props();
 
   const active = $derived(page.url.pathname.startsWith(href));
 
@@ -34,7 +35,7 @@
 <OnEvents {onIntegrationUpdate} />
 
 <div class={configured ? "" : "mx-4 mb-2"}>
-  <a {href} class={shell} aria-current={active ? "page" : undefined}>
+  <a {href} {onclick} class={shell} aria-current={active ? "page" : undefined}>
     <Icon
       icon={configured ? mdiCloudUploadOutline : mdiCloudUpload}
       size="1.375em"
