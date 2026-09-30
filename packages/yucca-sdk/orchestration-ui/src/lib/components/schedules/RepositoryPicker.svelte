@@ -48,15 +48,16 @@
     {#snippet title()}{$t`Repositories`}{/snippet}
 
     {#each repositories as id, index (id)}
+      {@const name = nameById[id] ?? id}
       <StackListItem>
-        <Text class="grow truncate" size="small">{nameById[id] ?? id}</Text>
+        <Text class="grow truncate" size="small">{name}</Text>
 
         {#snippet trailing()}
           <IconButton
             icon={mdiArrowUp}
             size="tiny"
             variant="ghost"
-            aria-label={$t`Move up`}
+            aria-label={$t({ message: "Move {name} up", values: { name } })}
             disabled={index === 0}
             onclick={() => move(index, -1)}
           />
@@ -64,7 +65,7 @@
             icon={mdiArrowDown}
             size="tiny"
             variant="ghost"
-            aria-label={$t`Move down`}
+            aria-label={$t({ message: "Move {name} down", values: { name } })}
             disabled={index === repositories.length - 1}
             onclick={() => move(index, 1)}
           />
@@ -73,7 +74,7 @@
             size="tiny"
             color="danger"
             variant="ghost"
-            aria-label={$t`Remove`}
+            aria-label={$t({ message: "Remove {name}", values: { name } })}
             onclick={() => remove(id)}
           />
         {/snippet}
@@ -102,7 +103,7 @@
               icon={mdiPlus}
               size="tiny"
               variant="ghost"
-              aria-label={$t`Add`}
+              aria-label={$t({ message: "Add {name}", values: { name: repo.name } })}
               onclick={() => add(repo.id)}
             />
           {/snippet}

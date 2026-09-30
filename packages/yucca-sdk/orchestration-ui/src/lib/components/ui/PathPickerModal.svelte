@@ -122,7 +122,7 @@
               <Text class="grow truncate" title={path}>{path}</Text>
               <IconButton
                 icon={mdiClose}
-                aria-label={$t`Remove`}
+                aria-label={$t({ message: "Remove {path}", values: { path } })}
                 size="tiny"
                 variant="ghost"
                 onclick={() => selected.delete(path)}
@@ -177,6 +177,7 @@
         {#each sortedItems as item (item.path)}
           {#if item.isDirectory || !foldersOnly}
             {@const isSelected = selected.has(item.path)}
+            {@const name = item.path.split(/[\\/]/).pop()}
             <HStack
               gap={2}
               class="items-center px-2 py-1 {isSelected
@@ -189,7 +190,7 @@
                   onclick={() => browse(item.path)}
                   class="flex-1 justify-start"
                 >
-                  {item.path.split(/[\\/]/).pop()}
+                  {name}
                 </ListButton>
               {:else}
                 <HStack gap={2} class="items-center grow px-2 py-2">
@@ -199,17 +200,17 @@
                     color="secondary"
                     title={item.path}
                   >
-                    {item.path.split(/[\\/]/).pop()}
+                    {name}
                   </Text>
                 </HStack>
               {/if}
               <IconButton
                 icon={isSelected ? mdiCheck : mdiPlus}
                 aria-label={isSelected
-                  ? $t`Selected`
+                  ? $t({ message: "{name} selected", values: { name } })
                   : single
-                    ? $t`Select`
-                    : $t`Add`}
+                    ? $t({ message: "Select {name}", values: { name } })
+                    : $t({ message: "Add {name}", values: { name } })}
                 size="tiny"
                 variant="ghost"
                 color={isSelected ? "primary" : undefined}

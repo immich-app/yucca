@@ -73,6 +73,10 @@ msgstr ""
 msgid "{name} failed"
 msgstr ""
 
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "{name} selected"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 msgid "{num, plural, one {# backup removed} other {# backups removed}}"
 msgstr ""
@@ -125,7 +129,7 @@ msgstr ""
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
-msgid "Add"
+msgid "Add {name}"
 msgstr ""
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
@@ -484,10 +488,6 @@ msgid "Configure"
 msgstr ""
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
-#~ msgid "Configure {0}"
-#~ msgstr ""
-
-#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 #: src/lib/i18n.spec.ts
 msgid "Configure {name}"
 msgstr "Test String {name}"
@@ -702,6 +702,7 @@ msgstr ""
 msgid "Existing Local Storage"
 msgstr ""
 
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "External libraries"
 msgstr ""
@@ -1245,11 +1246,11 @@ msgid "Most users should select \"use FUTO Backups only\"."
 msgstr ""
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
-msgid "Move down"
+msgid "Move {name} down"
 msgstr ""
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
-msgid "Move up"
+msgid "Move {name} up"
 msgstr ""
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
@@ -1581,11 +1582,17 @@ msgstr ""
 msgid "Recovery Key"
 msgstr ""
 
-#: src/lib/components/schedules/RepositoryPicker.svelte
-#: src/lib/components/ui/PathListField.svelte
-#: src/lib/components/ui/PathPickerModal.svelte
 #: src/lib/services/backend.service.ts
 msgid "Remove"
+msgstr ""
+
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "Remove {name}"
+msgstr ""
+
+#: src/lib/components/ui/PathListField.svelte
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Remove {path}"
 msgstr ""
 
 #: src/lib/components/onboarding/OnboardingBootstrapError.svelte
@@ -1760,7 +1767,7 @@ msgid "Securely connect FUTO Backups to Immich."
 msgstr ""
 
 #: src/lib/components/ui/PathPickerModal.svelte
-msgid "Select"
+msgid "Select {name}"
 msgstr ""
 
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
@@ -1777,10 +1784,6 @@ msgstr ""
 
 #: src/lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte
 msgid "Select new service"
-msgstr ""
-
-#: src/lib/components/ui/PathPickerModal.svelte
-msgid "Selected"
 msgstr ""
 
 #: src/lib/components/ui/PathPickerModal.svelte
@@ -1816,10 +1819,6 @@ msgstr ""
 #: src/lib/components/ui/SkipLink.svelte
 msgid "Skip to content"
 msgstr ""
-
-#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
-#~ msgid "Slow down backup uploads without affecting restores."
-#~ msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 msgid "Slow down backup uploads without affecting restores. Leave empty for no limit."

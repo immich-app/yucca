@@ -7,13 +7,12 @@
     useRestoreSnapshot,
   } from "$lib/services/snapshot.service";
   import {
+    Field,
     FormModal,
     Heading,
-    HStack,
     modalManager,
     Stack,
     Switch,
-    Text,
   } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
   import ViewStatusModal from "./ViewStatusModal.svelte";
@@ -81,15 +80,12 @@
     <Stack gap={4}>
       <Heading tag="h3" class="px-1" size="tiny">{$t`Options`}</Heading>
 
-      <HStack gap={4}>
-        <Stack gap={0}>
-          <Text>{$t`In-place restore`}</Text>
-          <Text color="secondary" size="small">
-            {$t`Restore files to where they were originally.`}
-          </Text>
-        </Stack>
+      <Field
+        label={$t`In-place restore`}
+        description={$t`Restore files to where they were originally.`}
+      >
         <Switch bind:checked={inPlace} />
-      </HStack>
+      </Field>
 
       {#if !inPlace}
         <PathPickerField

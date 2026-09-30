@@ -36,6 +36,10 @@
     handleGetListing,
   }: Props = $props();
 
+  const id = $props.id();
+  const titleId = `${id}-title`;
+  const descriptionId = `${id}-description`;
+
   const browse = () =>
     modalManager.open(PathPickerModal, {
       title: pickerTitle,
@@ -55,15 +59,22 @@
   {#if title || description}
     <Stack gap={0}>
       {#if title}
-        <Heading class="px-1" size="tiny">{@render title()}</Heading>
+        <Heading id={titleId} class="px-1" size="tiny">{@render title()}</Heading>
       {/if}
       {#if description}
-        <Text color="secondary" size="small">{@render description()}</Text>
+        <Text id={descriptionId} color="secondary" size="small"
+          >{@render description()}</Text
+        >
       {/if}
     </Stack>
   {/if}
   <HStack gap={2}>
-    <Input bind:value {placeholder} />
+    <Input
+      bind:value
+      {placeholder}
+      aria-labelledby={title ? titleId : undefined}
+      aria-describedby={description ? descriptionId : undefined}
+    />
     <IconButton
       icon={mdiFolder}
       aria-label={$t`Choose folder`}

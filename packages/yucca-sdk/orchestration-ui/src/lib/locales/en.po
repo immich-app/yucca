@@ -13,10 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "{0} objects"
-#~ msgstr "{0} objects"
-
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "{0} repositories"
 msgstr "{0} repositories"
@@ -77,6 +73,10 @@ msgstr "{name} completed with warnings"
 msgid "{name} failed"
 msgstr "{name} failed"
 
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "{name} selected"
+msgstr "{name} selected"
+
 #: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 msgid "{num, plural, one {# backup removed} other {# backups removed}}"
 msgstr "{num, plural, one {# backup removed} other {# backups removed}}"
@@ -84,10 +84,6 @@ msgstr "{num, plural, one {# backup removed} other {# backups removed}}"
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
 msgid "{num, plural, one {# file} other {# files}}"
 msgstr "{num, plural, one {# file} other {# files}}"
-
-#: src/routes/+page.svelte
-#~ msgid "{num, plural, one {# item} other {# items}}"
-#~ msgstr "{num, plural, one {# item} other {# items}}"
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "{num, plural, one {Completed with # warning.} other {Completed with # warnings.}}"
@@ -113,22 +109,6 @@ msgstr "@{0}, you're invited to the FUTO Backups beta. Sign in to join."
 msgid "/path/to/folder"
 msgstr "/path/to/folder"
 
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "1 year"
-#~ msgstr "1 year"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "30 days"
-#~ msgstr "30 days"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "90 days"
-#~ msgstr "90 days"
-
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "A connection is a client that backs up this account — an Immich instance or a restic repository."
-#~ msgstr "A connection is a client that backs up this account — an Immich instance or a restic repository."
-
 #: src/lib/components/backends/BackendItem.svelte
 msgid "A folder on this computer"
 msgstr "A folder on this computer"
@@ -138,37 +118,9 @@ msgstr "A folder on this computer"
 msgid "A folder on this computer."
 msgstr "A folder on this computer."
 
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "A label for this repository."
-#~ msgstr "A label for this repository."
-
 #: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
 msgid "A memorable name for this backup"
 msgstr "A memorable name for this backup"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Access key"
-#~ msgstr "Access key"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Access key lifetime"
-#~ msgstr "Access key lifetime"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Access key revoked"
-#~ msgstr "Access key revoked"
-
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "Access keys"
-#~ msgstr "Access keys"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Access keys — {0}"
-#~ msgstr "Access keys — {0}"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Access keys: {0}"
-#~ msgstr "Access keys: {0}"
 
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/settings/SettingsBilling.svelte
@@ -177,12 +129,8 @@ msgstr "Active"
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
-msgid "Add"
-msgstr "Add"
-
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "Add {0} connection"
-#~ msgstr "Add {0} connection"
+msgid "Add {name}"
+msgstr "Add {name}"
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 msgid "Add first path"
@@ -240,10 +188,6 @@ msgstr "An unknown error occurred"
 #: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Attempted"
 msgstr "Attempted"
-
-#: src/lib/components/connections/NewConnectionModal.svelte
-#~ msgid "Automatic"
-#~ msgstr "Automatic"
 
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
 msgid "Automatic backups"
@@ -484,10 +428,6 @@ msgstr "Cancelled {noun}"
 msgid "Checking backup status"
 msgstr "Checking backup status"
 
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Choose a strong repository password"
-#~ msgstr "Choose a strong repository password"
-
 #: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
 msgid "Choose backend folder"
 msgstr "Choose backend folder"
@@ -548,10 +488,6 @@ msgid "Configure"
 msgstr "Configure"
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
-#~ msgid "Configure {0}"
-#~ msgstr "Configure {0}"
-
-#: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 #: src/lib/i18n.spec.ts
 msgid "Configure {name}"
 msgstr "Configure {name}"
@@ -594,10 +530,6 @@ msgstr "Connection state for your backup storage."
 msgid "Connections"
 msgstr "Connections"
 
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "Connections are the sources of data that back up to us — right now, that's mostly Immich."
-#~ msgstr "Connections are the sources of data that back up to us — right now, that's mostly Immich."
-
 #: ../../web/src/routes/dashboard/connections/+page.svelte
 msgid "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
 msgstr "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
@@ -613,51 +545,17 @@ msgstr "Continue"
 msgid "Continue to login"
 msgstr "Continue to login"
 
-#: src/lib/components/connections/ResticResultModal.svelte
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copied"
-#~ msgstr "Copied"
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copied to clipboard"
-#~ msgstr "Copied to clipboard"
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copy"
-#~ msgstr "Copy"
-
 #: src/lib/components/util/DeviceFlowCode.svelte
 msgid "Copy code"
 msgstr "Copy code"
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copy command"
-#~ msgstr "Copy command"
 
 #: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
 msgid "Copy recovery key"
 msgstr "Copy recovery key"
 
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Copy URL"
-#~ msgstr "Copy URL"
-
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "Could not reach FUTO Backups. Check your connection."
 msgstr "Could not reach FUTO Backups. Check your connection."
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Couldn't copy — select the text manually"
-#~ msgstr "Couldn't copy — select the text manually"
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Couldn't copy. Select the text manually"
-#~ msgstr "Couldn't copy. Select the text manually"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Create"
-#~ msgstr "Create"
 
 #: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
 msgid "Create A New Backup"
@@ -678,10 +576,6 @@ msgstr "Create new backup"
 #: src/lib/components/schedules/ScheduleList.svelte
 msgid "Create new schedule"
 msgstr "Create new schedule"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Created {0} · expires {1}"
-#~ msgstr "Created {0} · expires {1}"
 
 #: src/lib/components/dashboard/DashboardCurrentUsage.svelte
 msgid "Current Usage"
@@ -750,10 +644,6 @@ msgstr "Disable write-only"
 msgid "Discord account linked. You can head back to Discord."
 msgstr "Discord account linked. You can head back to Discord."
 
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Done"
-#~ msgstr "Done"
-
 #: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
 msgid "Download"
 msgstr "Download"
@@ -765,14 +655,6 @@ msgstr "Download Full Log"
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Duration {duration}"
 msgstr "Duration {duration}"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "e.g. laptop"
-#~ msgstr "e.g. laptop"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "e.g. my laptop"
-#~ msgstr "e.g. my laptop"
 
 #: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
 msgid "Edit {name}"
@@ -820,10 +702,7 @@ msgstr "Event Log"
 msgid "Existing Local Storage"
 msgstr "Existing Local Storage"
 
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Expired"
-#~ msgstr "Expired"
-
+#: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "External libraries"
 msgstr "External libraries"
@@ -863,10 +742,6 @@ msgstr "Failed to create local backend"
 msgid "Failed to create repository"
 msgstr "Failed to create repository"
 
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Failed to create restic backup"
-#~ msgstr "Failed to create restic backup"
-
 #: src/lib/services/schedule.service.ts
 msgid "Failed to create schedule"
 msgstr "Failed to create schedule"
@@ -890,10 +765,6 @@ msgstr "Failed to import recovery key"
 #: src/lib/services/repository.service.ts
 msgid "Failed to import repository"
 msgstr "Failed to import repository"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Failed to load access keys"
-#~ msgstr "Failed to load access keys"
 
 #: src/lib/services/filesystem.service.ts
 #: src/lib/services/snapshot.service.ts
@@ -928,10 +799,6 @@ msgstr "Failed to load snapshots"
 msgid "Failed to log in"
 msgstr "Failed to log in"
 
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Failed to mint a new access key"
-#~ msgstr "Failed to mint a new access key"
-
 #: src/lib/services/schedule.service.ts
 msgid "Failed to pause schedule"
 msgstr "Failed to pause schedule"
@@ -947,10 +814,6 @@ msgstr "Failed to report error"
 #: src/lib/services/schedule.service.ts
 msgid "Failed to resume schedule"
 msgstr "Failed to resume schedule"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Failed to revoke access key"
-#~ msgstr "Failed to revoke access key"
 
 #: src/lib/services/integrations.service.ts
 msgid "Failed to save backup settings"
@@ -1046,10 +909,6 @@ msgstr "Frequently Asked Questions"
 msgid "From"
 msgstr "From"
 
-#: src/routes/+page.svelte
-#~ msgid "From the {0}: {1}"
-#~ msgstr "From the {0}: {1}"
-
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 msgid "Full speed during quiet hours"
 msgstr "Full speed during quiet hours"
@@ -1111,18 +970,6 @@ msgstr "Hosted cloud backup storage for your Immich library."
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "How it works"
 msgstr "How it works"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
-#~ msgstr "How long the URL stays valid (max 1 year). Revoke the key any time to end access sooner."
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "How long the URL stays valid, e.g. 90d. Blank uses the default."
-#~ msgstr "How long the URL stays valid, e.g. 90d. Blank uses the default."
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
-#~ msgstr "How long the URL stays valid. \"No expiry\" relies on revoking the key instead."
 
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "How much storage your backups are using."
@@ -1201,10 +1048,6 @@ msgstr "Includes {includedStorage} of backup storage. Additional storage billed 
 msgid "Incomplete"
 msgstr "Incomplete"
 
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Initialize the repository"
-#~ msgstr "Initialize the repository"
-
 #: src/lib/components/dashboard/DashboardInstall.svelte
 msgid "Install FUTO Backups"
 msgstr "Install FUTO Backups"
@@ -1234,10 +1077,6 @@ msgstr "Keep this key somewhere safe. It is required to restore your backups."
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
 msgid "Keep your Immich library safe with our secure, hosted backups solution."
 msgstr "Keep your Immich library safe with our secure, hosted backups solution."
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Key label"
-#~ msgstr "Key label"
 
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
 msgid "Last backup"
@@ -1407,12 +1246,12 @@ msgid "Most users should select \"use FUTO Backups only\"."
 msgstr "Most users should select \"use FUTO Backups only\"."
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
-msgid "Move down"
-msgstr "Move down"
+msgid "Move {name} down"
+msgstr "Move {name} down"
 
 #: src/lib/components/schedules/RepositoryPicker.svelte
-msgid "Move up"
-msgstr "Move up"
+msgid "Move {name} up"
+msgstr "Move {name} up"
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 #: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
@@ -1445,27 +1284,9 @@ msgstr "Never run"
 msgid "Never Run"
 msgstr "Never Run"
 
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "New access key"
-#~ msgstr "New access key"
-
-#: src/lib/components/connections/NewConnectionModal.svelte
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "New connection"
-#~ msgstr "New connection"
-
 #: src/lib/components/backends/BackendsList.svelte
 msgid "New local storage"
 msgstr "New local storage"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "New restic backup"
-#~ msgstr "New restic backup"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "New restic repository"
-#~ msgstr "New restic repository"
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
@@ -1481,10 +1302,6 @@ msgstr "Next Billing Date"
 #: src/lib/components/ui/Pagination.svelte
 msgid "Next page"
 msgstr "Next page"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "No access keys yet."
-#~ msgstr "No access keys yet."
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryPage.svelte
 msgid "No backups found"
@@ -1518,14 +1335,6 @@ msgstr "No backups yet."
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "No changes were made to your existing backups."
 msgstr "No changes were made to your existing backups."
-
-#: src/routes/dashboard/connections/+page.svelte
-#~ msgid "No connections yet."
-#~ msgstr "No connections yet."
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "No expiry"
-#~ msgstr "No expiry"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "No external libraries found."
@@ -1692,10 +1501,6 @@ msgstr "Pick the folder to restore files into."
 msgid "Pick the local directory where backups will be stored."
 msgstr "Pick the local directory where backups will be stored."
 
-#: src/lib/components/connections/NewConnectionModal.svelte
-#~ msgid "Pick what you want to back up. Each connection type works a little differently."
-#~ msgstr "Pick what you want to back up. Each connection type works a little differently."
-
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Preparing backup"
 msgstr "Preparing backup"
@@ -1711,10 +1516,6 @@ msgstr "Preparing restore"
 #: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
 msgid "Prevent anything being deleted"
 msgstr "Prevent anything being deleted"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Prevent this repository from being deleted or overwritten."
-#~ msgstr "Prevent this repository from being deleted or overwritten."
 
 #: src/lib/components/ui/Pagination.svelte
 msgid "Previous page"
@@ -1757,10 +1558,6 @@ msgstr "Pruning old backups"
 msgid "Pruning old backups was cancelled"
 msgstr "Pruning old backups was cancelled"
 
-#: src/routes/+page.svelte
-#~ msgid "Purchase Immich"
-#~ msgstr "Purchase Immich"
-
 #: src/lib/components/schedules/ScheduleItem.svelte
 msgid "Ran"
 msgstr "Ran"
@@ -1785,12 +1582,18 @@ msgstr "Recovery key"
 msgid "Recovery Key"
 msgstr "Recovery Key"
 
-#: src/lib/components/schedules/RepositoryPicker.svelte
-#: src/lib/components/ui/PathListField.svelte
-#: src/lib/components/ui/PathPickerModal.svelte
 #: src/lib/services/backend.service.ts
 msgid "Remove"
 msgstr "Remove"
+
+#: src/lib/components/schedules/RepositoryPicker.svelte
+msgid "Remove {name}"
+msgstr "Remove {name}"
+
+#: src/lib/components/ui/PathListField.svelte
+#: src/lib/components/ui/PathPickerModal.svelte
+msgid "Remove {path}"
+msgstr "Remove {path}"
 
 #: src/lib/components/onboarding/OnboardingBootstrapError.svelte
 msgid "Report error and quit"
@@ -1800,17 +1603,9 @@ msgstr "Report error and quit"
 msgid "Repositories"
 msgstr "Repositories"
 
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Repository"
-#~ msgstr "Repository"
-
 #: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
 msgid "Repository is readable and accessible!"
 msgstr "Repository is readable and accessible!"
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Repository URL"
-#~ msgstr "Repository URL"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 #: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
@@ -1821,18 +1616,6 @@ msgstr "Reset"
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 msgid "Restart the server during rollback"
 msgstr "Restart the server during rollback"
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "Restic backup ready"
-#~ msgstr "Restic backup ready"
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "restic will ask you to set a password when you initialize. Keep it safe — it encrypts your backups and cannot be recovered."
-#~ msgstr "restic will ask you to set a password when you initialize. Keep it safe — it encrypts your backups and cannot be recovered."
-
-#: src/lib/components/connections/ResticResultModal.svelte
-#~ msgid "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
-#~ msgstr "restic will ask you to set a password when you initialize. Keep it safe: it encrypts your backups and cannot be recovered."
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "restore"
@@ -1919,14 +1702,6 @@ msgstr "Resumed schedule \"{name}\""
 msgid "Return you here to finish setup"
 msgstr "Return you here to finish setup"
 
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Revoke"
-#~ msgstr "Revoke"
-
-#: src/lib/components/connections/ManageTokensModal.svelte
-#~ msgid "Revoked"
-#~ msgstr "Revoked"
-
 #: src/lib/services/snapshot.service.ts
 msgid "Rollback snapshot"
 msgstr "Rollback snapshot"
@@ -1992,8 +1767,8 @@ msgid "Securely connect FUTO Backups to Immich."
 msgstr "Securely connect FUTO Backups to Immich."
 
 #: src/lib/components/ui/PathPickerModal.svelte
-msgid "Select"
-msgstr "Select"
+msgid "Select {name}"
+msgstr "Select {name}"
 
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
 msgid "Select Backup"
@@ -2012,10 +1787,6 @@ msgid "Select new service"
 msgstr "Select new service"
 
 #: src/lib/components/ui/PathPickerModal.svelte
-msgid "Selected"
-msgstr "Selected"
-
-#: src/lib/components/ui/PathPickerModal.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "Selected paths"
 msgstr "Selected paths"
@@ -2031,10 +1802,6 @@ msgstr "Set up Backups"
 #: src/lib/components/dashboard/DashboardInstall.svelte
 msgid "Setup on Immich"
 msgstr "Setup on Immich"
-
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Shown in the access-key list."
-#~ msgstr "Shown in the access-key list."
 
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
@@ -2052,10 +1819,6 @@ msgstr "Size updated"
 #: src/lib/components/ui/SkipLink.svelte
 msgid "Skip to content"
 msgstr "Skip to content"
-
-#: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
-#~ msgid "Slow down backup uploads without affecting restores."
-#~ msgstr "Slow down backup uploads without affecting restores."
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 msgid "Slow down backup uploads without affecting restores. Leave empty for no limit."
@@ -2165,10 +1928,6 @@ msgstr "Telemetry required for closed beta"
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "That account does not own this instance. Log in with the account it was connected with."
 msgstr "That account does not own this instance. Log in with the account it was connected with."
-
-#: src/lib/components/connections/NewConnectionModal.svelte
-#~ msgid "This connection type can't be added from here — see the note above."
-#~ msgstr "This connection type can't be added from here — see the note above."
 
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "This folder is empty"
@@ -2341,10 +2100,6 @@ msgstr "With warnings only"
 msgid "Write once (WORM)"
 msgstr "Write once (WORM)"
 
-#: src/lib/components/connections/CreateResticModal.svelte
-#~ msgid "Write-once (WORM)"
-#~ msgstr "Write-once (WORM)"
-
 #: src/lib/components/backups/BackupItem.svelte
 msgid "write-only"
 msgstr "write-only"
@@ -2457,7 +2212,3 @@ msgstr "Your restore was cancelled"
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
 msgid "Your subscription is active. Finish setup to create your recovery key and start backing up your Immich library."
 msgstr "Your subscription is active. Finish setup to create your recovery key and start backing up your Immich library."
-
-#: src/routes/+page.svelte
-#~ msgid "yucca API"
-#~ msgstr "yucca API"

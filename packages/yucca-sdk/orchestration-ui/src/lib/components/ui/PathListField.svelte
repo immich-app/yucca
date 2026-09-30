@@ -67,7 +67,7 @@
           {#snippet trailing()}
             <IconButton
               icon={mdiClose}
-              aria-label={$t`Remove`}
+              aria-label={$t({ message: "Remove {path}", values: { path } })}
               size="tiny"
               variant="ghost"
               onclick={() => paths.delete(path)}

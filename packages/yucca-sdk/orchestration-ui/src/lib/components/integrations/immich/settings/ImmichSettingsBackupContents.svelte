@@ -279,7 +279,11 @@
         {#if libraries.length === 0}
           <Text size="small" color="muted">{$t`No external libraries found.`}</Text>
         {:else}
-          <Stack gap={2} class="ps-1">
+          <div
+            role="group"
+            aria-label={$t`External libraries`}
+            class="flex flex-col gap-2 ps-1"
+          >
             {#each libraries as library (library.id)}
               <label class="flex select-none items-center gap-3">
                 <Checkbox
@@ -289,7 +293,7 @@
                 <Text size="small">{library.name}</Text>
               </label>
             {/each}
-          </Stack>
+          </div>
         {/if}
       {:else if librariesMode === "all" && libraries.length > 0}
         <Text size="small" color="muted">

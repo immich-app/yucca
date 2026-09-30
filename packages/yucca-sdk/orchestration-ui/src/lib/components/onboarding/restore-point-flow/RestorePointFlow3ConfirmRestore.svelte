@@ -7,6 +7,7 @@
   import {
     Button,
     Checkbox,
+    Field,
     HStack,
     Modal,
     ModalBody,
@@ -28,6 +29,7 @@
   };
 
   const { onBack, onFinish, repository, snapshot }: Props = $props();
+  const backupIncludesId = $props.id();
 
   const yuccaConfigOptions = $derived(
     snapshot.paths
@@ -69,9 +71,8 @@
   <Modal title={$t`Confirm restore from snapshot`} size="small" onClose={onBack}>
     <ModalBody>
       <Stack>
-        <Stack gap={2}>
-          <Text fontWeight="bold">{$t`Restore configuration`}</Text>
-          <HStack>
+        <Field label={$t`Restore configuration`}>
+          <HStack class="items-end">
             <Select
               options={yuccaConfigOptions}
               bind:value={yuccaConfig}
@@ -84,10 +85,10 @@
               </Button>
             {/if}
           </HStack>
-        </Stack>
+        </Field>
 
-        <Stack gap={2}>
-          <Text fontWeight="bold">{$t`Backup includes`}</Text>
+        <div role="group" aria-labelledby={backupIncludesId} class="flex flex-col gap-2">
+          <Text id={backupIncludesId} fontWeight="bold">{$t`Backup includes`}</Text>
           {#each snapshot.paths as path}
             {@const forced = path === yuccaConfig}
             <label class="select-none flex gap-2 items-center">
@@ -102,7 +103,7 @@
               {path}
             </label>
           {/each}
-        </Stack>
+        </div>
 
         <Text size="small" color="muted">
           {$t`Files will be restored to their exact paths.`}
