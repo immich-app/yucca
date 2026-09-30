@@ -276,7 +276,7 @@
     </div>
   </AppShellSidebar>
 
-  <main id="main-content" tabindex="-1" class="h-full outline-none">
+  <div id="main-content" tabindex="-1" class="h-full outline-none">
     {#if $testUiRestore}
       <ImmichOnboardingRestoreFlow
         {onExit}
@@ -312,5 +312,5 @@
     {:else}
       <MockImmichPhotos />
     {/if}
-  </main>
+  </div>
 </AppShell>
