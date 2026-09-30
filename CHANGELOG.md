@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.47.0](https://github.com/immich-app/yucca/compare/v0.46.0...v0.47.0) (2026-09-30)
+
+
+### Features
+
+* **restic proxy:** auto create repositories & cfg session token ([#710](https://github.com/immich-app/yucca/issues/710)) ([894414a](https://github.com/immich-app/yucca/commit/894414a15a844597ef633f55610cadb4bc650bf9))
+* **yucca sdk:** freeform bandwidth limit ([#713](https://github.com/immich-app/yucca/issues/713)) ([8c20fe5](https://github.com/immich-app/yucca/commit/8c20fe5856c5c00146bf0fa9f32035a5dfbeca41))
+* **yucca sdk:** i18n ([#718](https://github.com/immich-app/yucca/issues/718)) ([17b425c](https://github.com/immich-app/yucca/commit/17b425c447a96cb13b870082d7ab321be7b7b893))
+
+
+### Bug Fixes
+
+* new mise version forces strict provenance ([#720](https://github.com/immich-app/yucca/issues/720)) ([ed15bec](https://github.com/immich-app/yucca/commit/ed15beca479314b7f2a117911163f1e5d0d72521))
+
 ## [0.46.0](https://github.com/immich-app/yucca/compare/v0.45.0...v0.46.0) (2026-09-23)
 
 
