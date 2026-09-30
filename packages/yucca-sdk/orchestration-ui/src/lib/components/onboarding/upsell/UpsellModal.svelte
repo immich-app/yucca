@@ -34,7 +34,7 @@
   </ModalHeader>
 
   <ModalBody>
-    <HStack gap={4} wrap class="p-4">
+    <HStack gap={4} class="p-4 max-md:flex-wrap">
       <UpsellProtectYourImmichLibrary {price} {onGetStarted} {onLearnMore} />
 
       <UpsellHowItWorks />
