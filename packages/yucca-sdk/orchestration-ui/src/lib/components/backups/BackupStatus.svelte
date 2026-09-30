@@ -149,10 +149,10 @@
 
 <Stack gap={4}>
   <Stack gap={2}>
-    <Heading size="medium" color={titleColor} fontWeight="bold">{title}</Heading>
+    <Heading tag="h2" size="medium" color={titleColor} fontWeight="bold">{title}</Heading>
 
     <Stack gap={1}>
-      <Heading size="small">{headline}</Heading>
+      <Heading tag="h3" size="small">{headline}</Heading>
 
       {#if backupState === "running" && start}
         <Text color="muted">{$t`Started`} <RelativeTime time={start} /></Text>

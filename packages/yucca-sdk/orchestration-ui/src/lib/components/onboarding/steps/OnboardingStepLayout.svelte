@@ -33,7 +33,7 @@
   <UpsellFutoBackupsBadge />
 
   <Stack gap={2}>
-    <Heading size="medium" color="primary" fontWeight="bold">{title}</Heading>
+    <Heading tag="h2" size="medium" color="primary" fontWeight="bold">{title}</Heading>
     <Text>{description}</Text>
   </Stack>
 

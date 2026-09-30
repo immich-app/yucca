@@ -24,6 +24,12 @@
   const fullSidebar = new MediaQuery("min-width: 48rem");
   let open = $derived(fullSidebar.current);
   let route = $state("dashboard");
+  const routeTitles: Record<string, string> = {
+    dashboard: "Dashboard",
+    backups: "Backups",
+    schedules: "Schedules",
+    config: "Configure",
+  };
 </script>
 
 <AppShell class="h-full">
@@ -115,6 +121,8 @@
   </AppShellSidebar>
 
   <div class="p-4 flex flex-col gap-2 max-w-6xl m-auto">
+    <Heading tag="h1" class="sr-only">{routeTitles[route]}</Heading>
+
     {#if route === "dashboard"}
       <DashboardPage onViewBackups={() => (route = "backups")} />
     {:else if route === "backups"}

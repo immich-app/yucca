@@ -41,7 +41,7 @@
     <Card>
       <CardBody>
         <VStack>
-          <Heading>FUTO Backups</Heading>
+          <Heading tag="h1">FUTO Backups</Heading>
           {#if linked}
             <Alert color="success"
               >{$t`Discord account linked. You can head back to Discord.`}</Alert

@@ -23,7 +23,7 @@
   <UpsellFutoBackupsBadge />
 
   <Stack gap={4}>
-    <Heading size="medium" color="primary" fontWeight="bold"
+    <Heading tag="h2" size="medium" color="primary" fontWeight="bold"
       >{$t`Protect your Immich library`}</Heading
     >
 

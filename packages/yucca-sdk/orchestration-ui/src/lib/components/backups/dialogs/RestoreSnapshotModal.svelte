@@ -79,7 +79,7 @@
     </PathListField>
 
     <Stack gap={4}>
-      <Heading class="px-1" size="tiny">{$t`Options`}</Heading>
+      <Heading tag="h3" class="px-1" size="tiny">{$t`Options`}</Heading>
 
       <HStack gap={4}>
         <Stack gap={0}>

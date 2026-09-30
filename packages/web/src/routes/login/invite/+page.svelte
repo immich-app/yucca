@@ -46,7 +46,7 @@
     <Card>
       <CardBody>
         <VStack>
-          <Heading>FUTO Backups</Heading>
+          <Heading tag="h1">FUTO Backups</Heading>
           {#if notAllowed}
             <Alert color="warning"
               >{$t`Your email isn't part of the beta yet.`}</Alert

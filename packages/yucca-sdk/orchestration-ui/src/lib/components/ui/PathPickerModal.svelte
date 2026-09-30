@@ -132,7 +132,7 @@
         </StackList>
       {:else}
         <Stack gap={2}>
-          <Heading class="px-1" size="tiny">{$t`Selected paths`}</Heading>
+          <Heading tag="h3" class="px-1" size="tiny">{$t`Selected paths`}</Heading>
           <Text color="muted" class="text-center py-6"
             >{$t`No paths selected`}</Text
           >
@@ -142,7 +142,7 @@
 
     {#if !listing}
       <Stack gap={2}>
-        <Heading class="px-1" size="tiny">{$t`Browse`}</Heading>
+        <Heading tag="h3" class="px-1" size="tiny">{$t`Browse`}</Heading>
         <div class="py-6 flex justify-center">
           <LoadingSpinner />
         </div>

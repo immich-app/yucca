@@ -15,7 +15,7 @@
   {#if title || action}
     <HStack class="items-center justify-between px-1">
       {#if title}
-        <Heading size="tiny">{@render title()}</Heading>
+        <Heading tag="h2" size="tiny">{@render title()}</Heading>
       {/if}
 
       {@render action?.()}

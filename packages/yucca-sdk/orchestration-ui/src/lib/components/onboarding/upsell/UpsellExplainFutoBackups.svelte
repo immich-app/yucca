@@ -15,7 +15,7 @@
 <Stack gap={6}>
   <Icon icon={mdiCloudUpload} size="5rem" class="text-primary" />
 
-  <Heading size="large" fontWeight="normal">{$t`FUTO Backups`}</Heading>
+  <Heading tag="h1" size="large" fontWeight="normal">{$t`FUTO Backups`}</Heading>
 
   <Text>
     {$t`Keep your Immich library safe with our secure, hosted backups solution.`}

@@ -65,7 +65,7 @@
 <Card class="border-primary-100 shadow-none">
   <CardHeader>
     <HStack class="justify-between">
-      <CardTitle>{$t`Your Backups`}</CardTitle>
+      <CardTitle tag="h2">{$t`Your Backups`}</CardTitle>
       {#if onViewBackups}
         <Button variant="outline" size="tiny" onclick={onViewBackups}>
           {$t`View all`}
