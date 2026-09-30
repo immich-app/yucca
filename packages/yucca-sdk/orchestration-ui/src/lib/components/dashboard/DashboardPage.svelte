@@ -39,14 +39,14 @@
   <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
 {:else if query.isSuccess}
   <Stack gap={6}>
-    <Stack direction="row" gap={4}>
+    <Stack direction="row" gap={4} wrap>
       <DashboardBackupHealth repositories={query.data} {onViewBackups} />
 
       {#if !local}
         <DashboardInstall />
       {/if}
     </Stack>
-    <Stack direction="row" gap={4}>
+    <Stack direction="row" gap={4} wrap>
       <DashboardAvgBackupTime repositories={query.data} />
       <DashboardDailyBackupTime repositories={query.data} />
       <DashboardTotalStored repositories={query.data} />

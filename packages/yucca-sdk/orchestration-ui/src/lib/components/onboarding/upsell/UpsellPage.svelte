@@ -25,7 +25,7 @@
   <Stack gap={8} class="py-4">
     <Card color="primary" class="shadow-none">
       <CardBody class="p-8">
-        <HStack gap={8} class="justify-between">
+        <HStack gap={8} wrap class="justify-between">
           <UpsellExplainFutoBackups {price} {includedStorage} {onGetStarted} />
 
           <UpsellHowItWorks color="secondary" />

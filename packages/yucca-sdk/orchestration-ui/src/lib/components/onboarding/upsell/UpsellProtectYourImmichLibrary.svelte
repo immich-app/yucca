@@ -52,7 +52,7 @@
     })}
   </Text>
 
-  <HStack gap={6} class="items-center">
+  <HStack gap={6} wrap class="items-center">
     <Button shape="round" onclick={onGetStarted}>{$t`Get Started`}</Button>
     <Button variant="ghost" shape="round" onclick={onLearnMore}>
       {$t`Learn More`}

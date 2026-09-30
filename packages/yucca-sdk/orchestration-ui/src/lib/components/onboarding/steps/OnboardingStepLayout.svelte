@@ -41,7 +41,7 @@
     {@render children()}
   {/if}
 
-  <HStack gap={2}>
+  <HStack gap={2} wrap>
     {#each enabledActions as action, index (action.label)}
       <Button
         shape="round"

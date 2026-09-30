@@ -51,7 +51,7 @@
       {#if log.status.currentFiles.length > 0}
         <Stack gap={1}>
           {#each log.status.currentFiles as file}
-            <Text size="tiny" class="text-nowrap">{file}</Text>
+            <Text size="tiny" class="break-all">{file}</Text>
           {/each}
         </Stack>
       {/if}
