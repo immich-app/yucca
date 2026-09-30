@@ -1,6 +1,6 @@
 <script lang="ts">
   import Accordion from "$lib/components/ui/Accordion.svelte";
-  import { Stack, Text } from "@immich/ui";
+  import { Heading, Stack, Text } from "@immich/ui";
   import type { Snippet } from "svelte";
   import { t } from "svelte-i18n-lingui";
 
@@ -17,11 +17,11 @@
 </script>
 
 <Stack>
-  <Text fontWeight="semi-bold">{$t`Frequently Asked Questions`}</Text>
+  <Heading tag="h2" size="tiny" fontWeight="semi-bold">{$t`Frequently Asked Questions`}</Heading>
 
   <Stack gap={0}>
     {#each questions as { title, answer } (title)}
-      <Accordion {title}>
+      <Accordion {title} headingTag="h3">
         {#if typeof answer === "string"}
           <Text size="small" color="muted">{answer}</Text>
         {:else}

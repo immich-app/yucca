@@ -2,6 +2,7 @@
   import StackList from "$lib/components/ui/StackList.svelte";
   import type { FilesystemListingResponseDto } from "$lib/fetch-client";
   import { handleGetFileListing } from "$lib/services/filesystem.service";
+  import { FocusGroup } from "$lib/utils/focus";
   import {
     Button,
     FormModal,
@@ -51,13 +52,26 @@
   // svelte-ignore state_referenced_locally
   const selected = new SvelteSet(initial);
   let listing: FilesystemListingResponseDto | undefined = $state();
+  const id = $props.id();
+  const browseRows = new FocusGroup(`${id}-browse`);
+  const removeSelectedButtons = new FocusGroup(`${id}-remove-selected`);
 
-  const browse = async (path?: string) => {
+  const load = async (path?: string) => {
     listing = undefined;
     listing = await (handleGetListing ?? handleGetFileListing)(path);
   };
 
-  onMount(() => void browse());
+  onMount(() => void load());
+
+  const browse = async (path: string) => {
+    await load(path);
+    await browseRows.focusAt(0);
+  };
+
+  const removeSelected = (path: string, index: number) => {
+    selected.delete(path);
+    void removeSelectedButtons.focusAt(index, browseRows);
+  };
 
   const sortedItems = $derived(
     listing
@@ -117,22 +131,23 @@
           {#snippet title()}
             {$t`Selected paths`}
           {/snippet}
-          {#each [...selected] as path (path)}
+          {#each [...selected] as path, index (path)}
             <HStack gap={2} class="items-center px-4 py-3">
               <Text class="grow truncate" title={path}>{path}</Text>
               <IconButton
                 icon={mdiClose}
-                aria-label={$t`Remove`}
+                aria-label={$t({ message: "Remove {path}", values: { path } })}
                 size="tiny"
                 variant="ghost"
-                onclick={() => selected.delete(path)}
+                {...removeSelectedButtons.attributes()}
+                onclick={() => removeSelected(path, index)}
               />
             </HStack>
           {/each}
         </StackList>
       {:else}
         <Stack gap={2}>
-          <Heading class="px-1" size="tiny">{$t`Selected paths`}</Heading>
+          <Heading tag="h3" class="px-1" size="tiny">{$t`Selected paths`}</Heading>
           <Text color="muted" class="text-center py-6"
             >{$t`No paths selected`}</Text
           >
@@ -142,7 +157,7 @@
 
     {#if !listing}
       <Stack gap={2}>
-        <Heading class="px-1" size="tiny">{$t`Browse`}</Heading>
+        <Heading tag="h3" class="px-1" size="tiny">{$t`Browse`}</Heading>
         <div class="py-6 flex justify-center">
           <LoadingSpinner />
         </div>
@@ -169,6 +184,7 @@
               aria-label={$t`Go up`}
               size="tiny"
               variant="ghost"
+              {...browseRows.attributes()}
               onclick={() => browse(listing!.parent)}
             />
           {/if}
@@ -177,6 +193,7 @@
         {#each sortedItems as item (item.path)}
           {#if item.isDirectory || !foldersOnly}
             {@const isSelected = selected.has(item.path)}
+            {@const name = item.path.split(/[\\/]/).pop()}
             <HStack
               gap={2}
               class="items-center px-2 py-1 {isSelected
@@ -186,10 +203,11 @@
               {#if item.isDirectory}
                 <ListButton
                   leadingIcon={mdiFolderOutline}
+                  {...browseRows.attributes()}
                   onclick={() => browse(item.path)}
                   class="flex-1 justify-start"
                 >
-                  {item.path.split(/[\\/]/).pop()}
+                  {name}
                 </ListButton>
               {:else}
                 <HStack gap={2} class="items-center grow px-2 py-2">
@@ -199,17 +217,17 @@
                     color="secondary"
                     title={item.path}
                   >
-                    {item.path.split(/[\\/]/).pop()}
+                    {name}
                   </Text>
                 </HStack>
               {/if}
               <IconButton
                 icon={isSelected ? mdiCheck : mdiPlus}
                 aria-label={isSelected
-                  ? $t`Selected`
+                  ? $t({ message: "{name} selected", values: { name } })
                   : single
-                    ? $t`Select`
-                    : $t`Add`}
+                    ? $t({ message: "Select {name}", values: { name } })
+                    : $t({ message: "Add {name}", values: { name } })}
                 size="tiny"
                 variant="ghost"
                 color={isSelected ? "primary" : undefined}

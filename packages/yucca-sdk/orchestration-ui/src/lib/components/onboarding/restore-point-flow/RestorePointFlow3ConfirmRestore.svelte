@@ -7,6 +7,7 @@
   import {
     Button,
     Checkbox,
+    Field,
     HStack,
     Modal,
     ModalBody,
@@ -15,6 +16,7 @@
     Stack,
     Text,
   } from "@immich/ui";
+  import { tick } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
   import RestorePointFlow4Restore from "./RestorePointFlow4Restore.svelte";
   import { t } from "svelte-i18n-lingui";
@@ -28,6 +30,14 @@
   };
 
   const { onBack, onFinish, repository, snapshot }: Props = $props();
+  const backupIncludesId = $props.id();
+  let yuccaConfigField: HTMLElement | undefined = $state();
+
+  const clearYuccaConfig = async () => {
+    yuccaConfig = undefined;
+    await tick();
+    yuccaConfigField?.querySelector("button")?.focus();
+  };
 
   const yuccaConfigOptions = $derived(
     snapshot.paths
@@ -66,28 +76,28 @@
 {#if logId}
   <RestorePointFlow4Restore {onFinish} {logId} taskId={repository.id} />
 {:else}
-  <Modal title={$t`Confirm restore from snapshot`} size="small" onClose={onBack}>
+  <Modal focusOnOpen title={$t`Confirm restore from snapshot`} size="small" onClose={onBack}>
     <ModalBody>
       <Stack>
-        <Stack gap={2}>
-          <Text fontWeight="bold">{$t`Restore configuration`}</Text>
-          <HStack>
-            <Select
-              options={yuccaConfigOptions}
-              bind:value={yuccaConfig}
-              placeholder={$t`Not restoring backup configuration`}
-              class="flex-1"
-            />
+        <Field label={$t`Restore configuration`}>
+          <HStack class="items-end">
+            <div bind:this={yuccaConfigField} class="flex-1">
+              <Select
+                options={yuccaConfigOptions}
+                bind:value={yuccaConfig}
+                placeholder={$t`Not restoring backup configuration`}
+              />
+            </div>
             {#if yuccaConfig}
-              <Button variant="ghost" onclick={() => (yuccaConfig = undefined)}>
+              <Button variant="ghost" onclick={clearYuccaConfig}>
                 {$t`Clear`}
               </Button>
             {/if}
           </HStack>
-        </Stack>
+        </Field>
 
-        <Stack gap={2}>
-          <Text fontWeight="bold">{$t`Backup includes`}</Text>
+        <div role="group" aria-labelledby={backupIncludesId} class="flex flex-col gap-2">
+          <Text id={backupIncludesId} fontWeight="bold">{$t`Backup includes`}</Text>
           {#each snapshot.paths as path}
             {@const forced = path === yuccaConfig}
             <label class="select-none flex gap-2 items-center">
@@ -102,7 +112,7 @@
               {path}
             </label>
           {/each}
-        </Stack>
+        </div>
 
         <Text size="small" color="muted">
           {$t`Files will be restored to their exact paths.`}

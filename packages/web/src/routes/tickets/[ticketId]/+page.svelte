@@ -71,7 +71,7 @@
         shape="round"
         disabled={!query.isSuccess || action.isPending}
         onclick={() => action.mutateAsync(query.data!).then(window.close)}
-        >{ACTION_CONFIRM_STRINGS[query.data?.action!] ?? "..."}</Button
+        >{ACTION_CONFIRM_STRINGS[query.data?.action!] ?? "Confirm"}</Button
       >
     </div>
   </ModalFooter>

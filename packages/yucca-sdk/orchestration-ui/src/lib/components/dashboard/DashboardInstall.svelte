@@ -5,7 +5,7 @@
 
 <Card class="border-primary-100 shadow-none">
   <CardHeader>
-    <CardTitle>{$t`Install FUTO Backups`}</CardTitle>
+    <CardTitle tag="h2">{$t`Install FUTO Backups`}</CardTitle>
   </CardHeader>
   <CardBody>
     <Button href="https://my.immich.app/link?target=backups" variant="outline" size="small">

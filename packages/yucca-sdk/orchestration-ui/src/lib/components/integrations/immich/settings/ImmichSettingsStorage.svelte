@@ -20,6 +20,7 @@
   import {
     Button,
     Field,
+    HelperText,
     HStack,
     Input,
     LoadingSpinner,
@@ -80,6 +81,8 @@
   let worm = $state(false);
   let retentionKey = $state(defaultRetentionKey);
   let loaded = false;
+
+  const nameMissing = $derived(name.trim().length === 0);
 
   const load = () => {
     if (!repository) {
@@ -147,8 +150,12 @@
         label={$t`Backup name`}
         description={$t`How this backup is labelled across FUTO Backups.`}
         required="indicator"
+        invalid={nameMissing}
       >
         <Input bind:value={name} />
+        {#if nameMissing}
+          <HelperText color="danger">{$t`Enter a backup name.`}</HelperText>
+        {/if}
       </Field>
 
       <BackendsList {repository} />
@@ -192,7 +199,7 @@
         </Button>
         <Button
           shape="round"
-          disabled={name.trim().length === 0}
+          disabled={nameMissing}
           loading={mutation.isPending}
           onclick={onSave}
         >

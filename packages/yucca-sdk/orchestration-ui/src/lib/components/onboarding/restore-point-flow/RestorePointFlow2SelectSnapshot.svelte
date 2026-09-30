@@ -27,6 +27,7 @@
   };
 
   const { onBack, onFinish, repository }: Props = $props();
+  const id = $props.id();
 
   let selectedSnapshot: SnapshotDto | undefined = $state();
 
@@ -41,7 +42,7 @@
     snapshot={selectedSnapshot}
   />
 {:else}
-  <Modal
+  <Modal focusOnOpen
     title={$t({
       message: "Restore from {name}",
       values: { name: repository.name },
@@ -53,7 +54,7 @@
       <StackList>
         {#each snapshots.toSorted((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) as snapshot (snapshot.id)}
           <HStack gap={2} class="px-4 py-3">
-            <Stack gap={0} class="grow min-w-0">
+            <div id="{id}-{snapshot.id}" class="flex flex-col grow min-w-0">
               <HStack
                 ><RelativeTime time={snapshot.time} />
                 {#if snapshot.summary}
@@ -67,8 +68,11 @@
                   ", ",
                 )}</Text
               >
-            </Stack>
-            <Button onclick={() => (selectedSnapshot = snapshot)}>
+            </div>
+            <Button
+              aria-describedby="{id}-{snapshot.id}"
+              onclick={() => (selectedSnapshot = snapshot)}
+            >
               {$t`Restore`}
             </Button>
           </HStack>

@@ -206,7 +206,7 @@
       {#snippet advanced()}
         {#if showAdvanced}
           <Stack gap={1}>
-            <Heading size="small">{$t`Event Log`}</Heading>
+            <Heading tag="h3" size="small">{$t`Event Log`}</Heading>
             <Scrollable class="h-80 overflow-x-hidden">
               <Stack gap={1}>
                 {#each log.events as event, index (index)}

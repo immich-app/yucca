@@ -98,28 +98,32 @@
       </Field>
 
       {#if limited && quiet}
-        <HStack gap={4}>
-          <Field label={$t`From`} color="primary">
-            <Select
-              options={hours}
-              value={quietStart}
-              onChange={(value) => (quietStart = value)}
-            />
-          </Field>
-          <Field label={$t`Until`} color="primary">
-            <Select
-              options={hours}
-              value={quietEnd}
-              onChange={(value) => (quietEnd = value)}
-            />
-          </Field>
-        </HStack>
+        <div>
+          <HStack gap={4}>
+            <Field label={$t`From`} color="primary">
+              <Select
+                options={hours}
+                value={quietStart}
+                onChange={(value) => (quietStart = value)}
+              />
+            </Field>
+            <Field label={$t`Until`} color="primary">
+              <Select
+                options={hours}
+                value={quietEnd}
+                onChange={(value) => (quietEnd = value)}
+              />
+            </Field>
+          </HStack>
 
-        {#if quietStart === quietEnd}
-          <Text size="small" color="muted">
-            {$t`With the same start and end time, the limit never applies.`}
-          </Text>
-        {/if}
+          <div aria-live="polite">
+            {#if quietStart === quietEnd}
+              <Text size="small" color="muted" class="mt-4">
+                {$t`With the same start and end time, the limit never applies.`}
+              </Text>
+            {/if}
+          </div>
+        </div>
       {/if}
 
       <HStack gap={2} class="justify-end">

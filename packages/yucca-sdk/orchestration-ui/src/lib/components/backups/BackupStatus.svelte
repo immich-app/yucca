@@ -129,6 +129,8 @@
     }
   });
 
+  const announcement = $derived(backupState === "running" ? phase : headline);
+
   const titleColor = $derived(
     backupState === "complete"
       ? "success"
@@ -149,10 +151,11 @@
 
 <Stack gap={4}>
   <Stack gap={2}>
-    <Heading size="medium" color={titleColor} fontWeight="bold">{title}</Heading>
+    <Heading tag="h2" size="medium" color={titleColor} fontWeight="bold">{title}</Heading>
 
     <Stack gap={1}>
-      <Heading size="small">{headline}</Heading>
+      <Heading tag="h3" size="small">{headline}</Heading>
+      <p role="status" class="sr-only">{announcement}</p>
 
       {#if backupState === "running" && start}
         <Text color="muted">{$t`Started`} <RelativeTime time={start} /></Text>
@@ -178,6 +181,8 @@
   {#if !terminal}
     <ProgressBar
       {progress}
+      aria-label={phase}
+      valueLabel={`${Math.round(progress * 100)}%`}
       shape="round"
       size="tiny"
       class="bg-primary-100 border-none"

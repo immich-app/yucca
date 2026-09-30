@@ -42,7 +42,7 @@
         {/if}
 
         {#if title}
-          <div class="outline-none pe-8">{title}</div>
+          <h1 class="outline-none pe-8">{title}</h1>
         {/if}
       </div>
 

@@ -11,10 +11,8 @@
     <Card>
       <CardBody>
         <VStack>
-          <Heading>FUTO Backups</Heading>
-          <Button
-            onclick={() =>
-              (location.href = defaults.baseUrl + "api/auth/oidc/login")}
+          <Heading tag="h1">FUTO Backups</Heading>
+          <Button href={defaults.baseUrl + "api/auth/oidc/login"}
             >{$t`Login`}</Button
           >
         </VStack>

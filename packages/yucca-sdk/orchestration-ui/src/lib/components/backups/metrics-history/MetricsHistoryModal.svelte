@@ -6,6 +6,7 @@
   import {
     Alert,
     Badge,
+    Button,
     getByteUnitString,
     HStack,
     Icon,
@@ -23,6 +24,7 @@
     mdiTimerOutline,
   } from "@mdi/js";
   import RelativeTime from "../../util/RelativeTime.svelte";
+  import { tick } from "svelte";
   import { t } from "svelte-i18n-lingui";
 
   type Props = {
@@ -42,6 +44,14 @@
   const isoDate = (value: string) => new Date(value).toLocaleString();
 
   let sentinel = $state<HTMLDivElement | null>(null);
+  let historyEnd = $state<HTMLDivElement>();
+
+  const loadMore = async () => {
+    await query.fetchNextPage();
+    if (query.hasNextPage) return;
+    await tick();
+    historyEnd?.focus();
+  };
 
   $effect(() => {
     if (!sentinel) return;
@@ -201,9 +211,22 @@
 
       {#if query.hasNextPage}
         <div bind:this={sentinel} class="flex justify-center py-4">
-          {#if query.isFetchingNextPage}
-            <LoadingSpinner />
-          {/if}
+          <Button
+            variant="ghost"
+            size="small"
+            loading={query.isFetchingNextPage}
+            onclick={() => void loadMore()}
+          >
+            {$t`Load more`}
+          </Button>
+        </div>
+      {:else if (query.data?.pages.length ?? 0) > 1}
+        <div
+          bind:this={historyEnd}
+          tabindex="-1"
+          class="flex justify-center py-4 outline-none"
+        >
+          <Text color="secondary" size="small">{$t`No more history`}</Text>
         </div>
       {/if}
     {/if}

@@ -13,7 +13,7 @@
 
 <Card>
   <CardHeader>
-    <CardTitle>Grant access to app?</CardTitle>
+    <CardTitle tag="h1">Grant access to app?</CardTitle>
 
     <CardBody>App will be able to manage your backups.</CardBody>
 

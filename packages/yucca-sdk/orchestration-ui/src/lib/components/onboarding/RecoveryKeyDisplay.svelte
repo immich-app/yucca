@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { copyToClipboard } from "$lib/utils/clipboard";
   import { Button, Card, CardBody, HStack, Text, VStack } from "@immich/ui";
   import {
     mdiAsterisk,
@@ -49,7 +50,7 @@
     }
   };
 
-  const copyToClipboard = () => navigator.clipboard.writeText(code);
+  const copyCode = () => copyToClipboard(code);
 
   const PasswordCredential =
     typeof window !== "undefined"
@@ -82,7 +83,7 @@
     shape="round"
     variant="outline"
     leadingIcon={mdiContentCopy}
-    onclick={copyToClipboard}
+    onclick={copyCode}
   >
     {$t`Copy recovery key`}
   </Button>

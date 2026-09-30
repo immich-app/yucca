@@ -40,11 +40,13 @@
         <Text>
           {$t`This instance is connected to a FUTO Backups account. Log in with that account to manage it.`}
         </Text>
-
-        {#if flow.state.error}
-          <Text color="danger">{flow.state.error}</Text>
-        {/if}
       </Stack>
+
+      <div role="alert">
+        {#if flow.state.error}
+          <Text color="danger" class="mt-4">{flow.state.error}</Text>
+        {/if}
+      </div>
     {/if}
   </ModalBody>
   <ModalFooter>

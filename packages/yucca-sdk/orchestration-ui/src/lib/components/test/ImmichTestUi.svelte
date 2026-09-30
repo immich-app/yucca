@@ -35,6 +35,7 @@
   } from "@mdi/js";
   import { options } from "$lib/options";
   import { onDestroy } from "svelte";
+  import { MediaQuery } from "svelte/reactivity";
   import ImmichBackupsAdminNavButton from "../integrations/immich/ImmichBackupsAdminNavButton.svelte";
   import ImmichBackupsSidebarItem from "../integrations/immich/ImmichBackupsSidebarItem.svelte";
   import MockImmichPhotos from "./immich/MockImmichPhotos.svelte";
@@ -42,6 +43,7 @@
   import MockImmichPurchaseInfo from "./immich/MockImmichPurchaseInfo.svelte";
   import MockImmichStorageSpace from "./immich/MockImmichStorageSpace.svelte";
   import PageLayout from "../ui/PageLayout.svelte";
+  import SkipLink from "../ui/SkipLink.svelte";
   import ImmichBackupAttemptsPage from "../integrations/immich/ImmichBackupAttemptsPage.svelte";
   import ImmichBackupSettingsPage from "../integrations/immich/ImmichBackupSettingsPage.svelte";
   import ImmichBackupsPage from "../integrations/immich/ImmichBackupsPage.svelte";
@@ -55,6 +57,9 @@
 
   const { onExit }: Props = $props();
   const { testUiRestore, demoPadding } = options;
+
+  const fullSidebar = new MediaQuery("min-width: 48rem");
+  let sidebarOpen = $derived(fullSidebar.current);
 
   let route = $state<
     | "photos"
@@ -91,6 +96,8 @@
 
 <AppShell class="h-full">
   <AppShellHeader>
+    <SkipLink target="main-content" />
+
     <div class="grid grid-cols-[--spacing(64)_auto] items-center w-full py-2">
       <div class="flex flex-row gap-1 mx-4 items-center">
         <IconButton
@@ -99,9 +106,10 @@
           variant="ghost"
           size="medium"
           aria-label="Main menu"
+          aria-expanded={sidebarOpen}
           icon={mdiMenu}
-          onclick={() => {}}
-          class="sidebar:hidden"
+          onclick={() => (sidebarOpen = fullSidebar.current ? true : !sidebarOpen)}
+          class="md:hidden"
         />
         <Logo variant="inline" class="h-12" />
       </div>
@@ -196,7 +204,7 @@
     </div>
   </AppShellHeader>
 
-  <AppShellSidebar class="relative">
+  <AppShellSidebar class="relative" bind:open={sidebarOpen}>
     <div class="flex h-full flex-col pt-4 pr-2">
       {#if route !== "photos"}
         <ImmichBackupsAdminNavButton href="#" />
@@ -268,39 +276,41 @@
     </div>
   </AppShellSidebar>
 
-  {#if $testUiRestore}
-    <ImmichOnboardingRestoreFlow
-      {onExit}
-      onFinish={() => testUiRestore.set(false)}
-    />
-  {:else if route === "settings"}
-    <ImmichBackupsPage
-      price="$1"
-      includedStorage="50 GB"
-      questions={[
-        {
-          title: "Already back up your library elsewhere?",
-          answer: hideReminder,
-        },
-        ...sampleQuestions,
-      ]}
-      onConfigure={() => (route = "backup-settings")}
-      onViewAttempts={() => (route = "backup-attempts")}
-      onViewSnapshots={() => (route = "backup-snapshots")}
-    />
-  {:else if route === "backup-settings"}
-    <PageLayout title="Backup settings" onBack={backToBackups}>
-      <ImmichBackupSettingsPage onUnconfigured={backToBackups} />
-    </PageLayout>
-  {:else if route === "backup-attempts"}
-    <PageLayout title="Backup attempts" onBack={backToBackups}>
-      <ImmichBackupAttemptsPage onUnconfigured={backToBackups} />
-    </PageLayout>
-  {:else if route === "backup-snapshots"}
-    <PageLayout title="Snapshots" onBack={backToBackups}>
-      <ImmichSnapshotsPage onUnconfigured={backToBackups} />
-    </PageLayout>
-  {:else}
-    <MockImmichPhotos />
-  {/if}
+  <div id="main-content" tabindex="-1" class="h-full outline-none">
+    {#if $testUiRestore}
+      <ImmichOnboardingRestoreFlow
+        {onExit}
+        onFinish={() => testUiRestore.set(false)}
+      />
+    {:else if route === "settings"}
+      <ImmichBackupsPage
+        price="$1"
+        includedStorage="50 GB"
+        questions={[
+          {
+            title: "Already back up your library elsewhere?",
+            answer: hideReminder,
+          },
+          ...sampleQuestions,
+        ]}
+        onConfigure={() => (route = "backup-settings")}
+        onViewAttempts={() => (route = "backup-attempts")}
+        onViewSnapshots={() => (route = "backup-snapshots")}
+      />
+    {:else if route === "backup-settings"}
+      <PageLayout title="Backup settings" onBack={backToBackups}>
+        <ImmichBackupSettingsPage onUnconfigured={backToBackups} />
+      </PageLayout>
+    {:else if route === "backup-attempts"}
+      <PageLayout title="Backup attempts" onBack={backToBackups}>
+        <ImmichBackupAttemptsPage onUnconfigured={backToBackups} />
+      </PageLayout>
+    {:else if route === "backup-snapshots"}
+      <PageLayout title="Snapshots" onBack={backToBackups}>
+        <ImmichSnapshotsPage onUnconfigured={backToBackups} />
+      </PageLayout>
+    {:else}
+      <MockImmichPhotos />
+    {/if}
+  </div>
 </AppShell>

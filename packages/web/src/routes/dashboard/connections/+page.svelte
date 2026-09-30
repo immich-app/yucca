@@ -50,7 +50,7 @@
     <Stack gap={2}>
       <HStack gap={2}>
         <Icon icon={meta.icon} />
-        <Heading size="tiny">{meta.label}</Heading>
+        <Heading tag="h2" size="tiny">{meta.label}</Heading>
       </HStack>
 
       {#if connections.length === 0}
@@ -62,7 +62,7 @@
           <CardHeader>
             <HStack class="justify-between">
               <HStack gap={2}>
-                <CardTitle>{connection.name}</CardTitle>
+                <CardTitle tag="h3">{connection.name}</CardTitle>
                 <Badge color={typeColor(connection.type)}
                   >{connection.type}</Badge
                 >

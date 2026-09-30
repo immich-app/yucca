@@ -37,6 +37,7 @@
     class="max-w-72"
     leadingIcon={mdiMagnify}
     {placeholder}
+    aria-label={placeholder}
     value={search}
     oninput={(event) => onSearch(event.currentTarget.value)}
   />

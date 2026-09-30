@@ -71,28 +71,20 @@
     </span>
 
     {#snippet trailing()}
-      {#if status.kind === "running"}
-        <Button
-          variant="ghost"
-          size="small"
-          color="danger"
-          class="whitespace-nowrap"
-          leadingIcon={mdiStopCircleOutline}
-          onclick={() => void handleCancelTask(repository.id)}
-        >
-          {$t`Cancel backup`}
-        </Button>
-      {:else}
-        <Button
-          variant="ghost"
-          size="small"
-          class="whitespace-nowrap"
-          leadingIcon={mdiCloudUploadOutline}
-          onclick={() => void handleCreateBackup(repository.id)}
-        >
-          {$t`Back up now`}
-        </Button>
-      {/if}
+      {@const running = status.kind === "running"}
+      <Button
+        variant="ghost"
+        size="small"
+        color={running ? "danger" : "primary"}
+        class="whitespace-nowrap"
+        leadingIcon={running ? mdiStopCircleOutline : mdiCloudUploadOutline}
+        onclick={() =>
+          void (running
+            ? handleCancelTask(repository.id)
+            : handleCreateBackup(repository.id))}
+      >
+        {running ? $t`Cancel backup` : $t`Back up now`}
+      </Button>
     {/snippet}
 
     {#snippet footer()}

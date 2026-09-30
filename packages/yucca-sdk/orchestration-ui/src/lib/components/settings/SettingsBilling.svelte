@@ -27,6 +27,7 @@
 >
   <Stack gap={4} class="pt-2">
     <Accordion
+      headingTag="h3"
       title={$t`FUTO Backups`}
       subtitle={$t`Hosted cloud backup storage for your Immich library.`}
       isOpen

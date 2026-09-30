@@ -37,7 +37,7 @@
   };
 </script>
 
-<Modal size="small" title={$t`Import recovery key`} onClose={onCancel}>
+<Modal focusOnOpen size="small" title={$t`Import recovery key`} onClose={onCancel}>
   <ModalBody>
     <VStack>
       <Field label={$t`Recovery Key`}>

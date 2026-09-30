@@ -1,6 +1,6 @@
 <script lang="ts">
   import StepNumber from "$lib/components/ui/StepNumber.svelte";
-  import { Card, CardBody, HStack, Stack, Text } from "@immich/ui";
+  import { Card, CardBody, Heading, HStack, Stack, Text } from "@immich/ui";
   import { t } from "svelte-i18n-lingui";
 
   const steps = $derived([
@@ -28,7 +28,7 @@
 <Card class="shadow-none border-none max-w-96" {color}>
   <CardBody class="p-8">
     <Stack gap={6}>
-      <Text size="large" fontWeight="semi-bold">{$t`How it works`}</Text>
+      <Heading tag="h2" size="small" fontWeight="semi-bold">{$t`How it works`}</Heading>
 
       <Stack gap={4}>
         {#each steps as step, index (step.title)}

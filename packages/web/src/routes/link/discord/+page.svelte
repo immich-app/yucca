@@ -5,25 +5,28 @@
     defaults,
   } from "@futo-org/backups-api-client";
   import { Alert, Button, Card, CardBody, Heading, VStack } from "@immich/ui";
+  import { tick } from "svelte";
   import { t } from "svelte-i18n-lingui";
 
   let { data } = $props();
 
   let linked = $state(false);
   let busy = $state(false);
+  let successMessage: HTMLElement | undefined = $state();
 
-  const login = () => {
-    location.href =
-      defaults.baseUrl +
+  const loginUrl = $derived(
+    defaults.baseUrl +
       "api/auth/oidc/login?redirect=" +
-      encodeURIComponent("/link/discord?code=" + data.code);
-  };
+      encodeURIComponent("/link/discord?code=" + data.code),
+  );
 
   const confirm = async () => {
     busy = true;
     try {
       await confirmDiscordLinkRequest(data.code);
       linked = true;
+      await tick();
+      successMessage?.focus();
     } catch (error) {
       handleError(error, $t`Unable to link your Discord account.`);
     } finally {
@@ -41,14 +44,16 @@
     <Card>
       <CardBody>
         <VStack>
-          <Heading>FUTO Backups</Heading>
+          <Heading tag="h1">FUTO Backups</Heading>
           {#if linked}
-            <Alert color="success"
-              >{$t`Discord account linked. You can head back to Discord.`}</Alert
-            >
+            <div bind:this={successMessage} tabindex="-1" class="outline-none">
+              <Alert color="success"
+                >{$t`Discord account linked. You can head back to Discord.`}</Alert
+              >
+            </div>
           {:else if !data.user}
             <p>{$t`Log in to link your Discord account.`}</p>
-            <Button onclick={login}>{$t`Login`}</Button>
+            <Button href={loginUrl}>{$t`Login`}</Button>
           {:else if !data.request}
             <Alert color="warning"
               >{$t`This link is invalid or has expired. Click the support button in Discord to get a new one.`}</Alert

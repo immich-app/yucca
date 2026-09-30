@@ -23,7 +23,7 @@
   <UpsellFutoBackupsBadge />
 
   <Stack gap={4}>
-    <Heading size="medium" color="primary" fontWeight="bold"
+    <Heading tag="h2" size="medium" color="primary" fontWeight="bold"
       >{$t`Protect your Immich library`}</Heading
     >
 
@@ -52,7 +52,7 @@
     })}
   </Text>
 
-  <HStack gap={6} class="items-center">
+  <HStack gap={6} wrap class="items-center">
     <Button shape="round" onclick={onGetStarted}>{$t`Get Started`}</Button>
     <Button variant="ghost" shape="round" onclick={onLearnMore}>
       {$t`Learn More`}

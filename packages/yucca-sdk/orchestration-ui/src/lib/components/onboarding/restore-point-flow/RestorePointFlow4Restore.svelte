@@ -28,7 +28,7 @@
 
 <OnEvents {onTaskEnd} />
 
-<Modal
+<Modal focusOnOpen
   title={log.errors.length > 0 ? $t`Restore failed` : $t`Restoring`}
   size="small"
   onClose={log.errors.length > 0 ? onFinish : undefined}
@@ -39,7 +39,12 @@
         <Alert color="danger">{error}</Alert>
       {/each}
 
-      <ProgressBar progress={log.status.progress} size="large">
+      <ProgressBar
+        progress={log.status.progress}
+        aria-label={$t`Restore progress`}
+        valueLabel={`${Math.round(log.status.progress * 100)}%`}
+        size="large"
+      >
         <Text
           size="small"
           class={log.status.progress > 0.5 ? "text-light" : "text-dark"}
@@ -51,7 +56,7 @@
       {#if log.status.currentFiles.length > 0}
         <Stack gap={1}>
           {#each log.status.currentFiles as file}
-            <Text size="tiny" class="text-nowrap">{file}</Text>
+            <Text size="tiny" class="break-all">{file}</Text>
           {/each}
         </Stack>
       {/if}

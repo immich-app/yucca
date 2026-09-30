@@ -71,7 +71,7 @@
 </script>
 
 {#if stage === "intro"}
-  <Modal size="small" title={$t`FUTO Backups`} onClose={onCancel}>
+  <Modal focusOnOpen size="small" title={$t`FUTO Backups`} onClose={onCancel}>
     <ModalBody>
       <StepFinishSetup
         onContinue={() =>
@@ -83,7 +83,7 @@
 {:else if stage === "telemetry"}
   <Telemetry onContinue={onTelemetryConfirmed} {onCancel} />
 {:else if stage === "key"}
-  <Modal size="small" title={$t`FUTO Backups`} onClose={onCancel}>
+  <Modal focusOnOpen size="small" title={$t`FUTO Backups`} onClose={onCancel}>
     <ModalBody>
       <StepSaveRecoveryKey
         {code}
@@ -102,7 +102,7 @@
     {onCancel}
   />
 {:else if stage === "connect"}
-  <Modal size="small" title={$t`FUTO Backups`} onClose={onCancel}>
+  <Modal focusOnOpen size="small" title={$t`FUTO Backups`} onClose={onCancel}>
     <ModalBody>
       <StepConnectAccount
         onConnect={() => handleStartYuccaLogin(onFinish)}

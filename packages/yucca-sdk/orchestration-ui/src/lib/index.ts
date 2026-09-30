@@ -17,6 +17,7 @@ export { default as UpsellModal } from './components/onboarding/upsell/UpsellMod
 export { default as UpsellPage } from './components/onboarding/upsell/UpsellPage.svelte';
 export { default as ScheduleList } from './components/schedules/ScheduleList.svelte';
 export { default as GlobalSettings } from './components/settings/GlobalSettings.svelte';
+export { default as SkipLink } from './components/ui/SkipLink.svelte';
 export { default as VisualisationGauge } from './components/ui/VisualisationGauge.svelte';
 export { default as VisualisationSegmentedBar } from './components/ui/VisualisationSegmentedBar.svelte';
 export { default as OnEvents } from './components/util/OnEvents.svelte';

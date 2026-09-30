@@ -25,7 +25,7 @@
   const onConfirm = () => mutation.mutate(undefined, { onSuccess: onContinue });
 </script>
 
-<Modal
+<Modal focusOnOpen
   size="small"
   title={$t`Telemetry required for closed beta`}
   onClose={onCancel}
