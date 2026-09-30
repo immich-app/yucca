@@ -76,7 +76,7 @@
 {#if logId}
   <RestorePointFlow4Restore {onFinish} {logId} taskId={repository.id} />
 {:else}
-  <Modal title={$t`Confirm restore from snapshot`} size="small" onClose={onBack}>
+  <Modal focusOnOpen title={$t`Confirm restore from snapshot`} size="small" onClose={onBack}>
     <ModalBody>
       <Stack>
         <Field label={$t`Restore configuration`}>

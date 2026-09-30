@@ -37,7 +37,7 @@
   // TODO: show existing backends if any configured!
 </script>
 
-<Modal
+<Modal focusOnOpen
   size="small"
   title={restore
     ? $t`Where would you like to restore from?`

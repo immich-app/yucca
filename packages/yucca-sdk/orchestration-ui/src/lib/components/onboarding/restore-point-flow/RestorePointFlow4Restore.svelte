@@ -28,7 +28,7 @@
 
 <OnEvents {onTaskEnd} />
 
-<Modal
+<Modal focusOnOpen
   title={log.errors.length > 0 ? $t`Restore failed` : $t`Restoring`}
   size="small"
   onClose={log.errors.length > 0 ? onFinish : undefined}

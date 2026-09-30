@@ -42,7 +42,7 @@
     snapshot={selectedSnapshot}
   />
 {:else}
-  <Modal
+  <Modal focusOnOpen
     title={$t({
       message: "Restore from {name}",
       values: { name: repository.name },
