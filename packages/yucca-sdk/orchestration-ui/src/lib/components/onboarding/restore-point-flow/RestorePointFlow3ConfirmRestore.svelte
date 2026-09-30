@@ -16,6 +16,7 @@
     Stack,
     Text,
   } from "@immich/ui";
+  import { tick } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
   import RestorePointFlow4Restore from "./RestorePointFlow4Restore.svelte";
   import { t } from "svelte-i18n-lingui";
@@ -30,6 +31,13 @@
 
   const { onBack, onFinish, repository, snapshot }: Props = $props();
   const backupIncludesId = $props.id();
+  let yuccaConfigField: HTMLElement | undefined = $state();
+
+  const clearYuccaConfig = async () => {
+    yuccaConfig = undefined;
+    await tick();
+    yuccaConfigField?.querySelector("button")?.focus();
+  };
 
   const yuccaConfigOptions = $derived(
     snapshot.paths
@@ -73,14 +81,15 @@
       <Stack>
         <Field label={$t`Restore configuration`}>
           <HStack class="items-end">
-            <Select
-              options={yuccaConfigOptions}
-              bind:value={yuccaConfig}
-              placeholder={$t`Not restoring backup configuration`}
-              class="flex-1"
-            />
+            <div bind:this={yuccaConfigField} class="flex-1">
+              <Select
+                options={yuccaConfigOptions}
+                bind:value={yuccaConfig}
+                placeholder={$t`Not restoring backup configuration`}
+              />
+            </div>
             {#if yuccaConfig}
-              <Button variant="ghost" onclick={() => (yuccaConfig = undefined)}>
+              <Button variant="ghost" onclick={clearYuccaConfig}>
                 {$t`Clear`}
               </Button>
             {/if}

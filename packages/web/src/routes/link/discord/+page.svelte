@@ -5,12 +5,14 @@
     defaults,
   } from "@futo-org/backups-api-client";
   import { Alert, Button, Card, CardBody, Heading, VStack } from "@immich/ui";
+  import { tick } from "svelte";
   import { t } from "svelte-i18n-lingui";
 
   let { data } = $props();
 
   let linked = $state(false);
   let busy = $state(false);
+  let successMessage: HTMLElement | undefined = $state();
 
   const login = () => {
     location.href =
@@ -24,6 +26,8 @@
     try {
       await confirmDiscordLinkRequest(data.code);
       linked = true;
+      await tick();
+      successMessage?.focus();
     } catch (error) {
       handleError(error, $t`Unable to link your Discord account.`);
     } finally {
@@ -43,9 +47,11 @@
         <VStack>
           <Heading tag="h1">FUTO Backups</Heading>
           {#if linked}
-            <Alert color="success"
-              >{$t`Discord account linked. You can head back to Discord.`}</Alert
-            >
+            <div bind:this={successMessage} tabindex="-1" class="outline-none">
+              <Alert color="success"
+                >{$t`Discord account linked. You can head back to Discord.`}</Alert
+              >
+            </div>
           {:else if !data.user}
             <p>{$t`Log in to link your Discord account.`}</p>
             <Button onclick={login}>{$t`Login`}</Button>
