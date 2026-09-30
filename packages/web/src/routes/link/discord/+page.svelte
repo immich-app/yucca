@@ -14,12 +14,11 @@
   let busy = $state(false);
   let successMessage: HTMLElement | undefined = $state();
 
-  const login = () => {
-    location.href =
-      defaults.baseUrl +
+  const loginUrl = $derived(
+    defaults.baseUrl +
       "api/auth/oidc/login?redirect=" +
-      encodeURIComponent("/link/discord?code=" + data.code);
-  };
+      encodeURIComponent("/link/discord?code=" + data.code),
+  );
 
   const confirm = async () => {
     busy = true;
@@ -54,7 +53,7 @@
             </div>
           {:else if !data.user}
             <p>{$t`Log in to link your Discord account.`}</p>
-            <Button onclick={login}>{$t`Login`}</Button>
+            <Button href={loginUrl}>{$t`Login`}</Button>
           {:else if !data.request}
             <Alert color="warning"
               >{$t`This link is invalid or has expired. Click the support button in Discord to get a new one.`}</Alert

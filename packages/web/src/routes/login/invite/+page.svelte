@@ -30,12 +30,11 @@
       encodeURIComponent(code);
   };
 
-  const join = () => {
-    location.href =
-      defaults.baseUrl +
+  const joinUrl = $derived(
+    defaults.baseUrl +
       "api/auth/oidc/login?discord_invite=" +
-      encodeURIComponent(data.token);
-  };
+      encodeURIComponent(data.token),
+  );
 </script>
 
 <svelte:head><title>{$t`Invite code`} &middot; FUTO Backups</title></svelte:head
@@ -56,7 +55,7 @@
             <p>
               {$t`@${data.invite.discordUsername}, you're invited to the FUTO Backups beta. Sign in to join.`}
             </p>
-            <Button onclick={join}>{$t`Join the beta`}</Button>
+            <Button href={joinUrl}>{$t`Join the beta`}</Button>
           {:else}
             {#if data.token}
               <Alert color="warning"
