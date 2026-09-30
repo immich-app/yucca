@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/state';
+  import { page } from "$app/state";
   import {
     AppShell,
     AppShellHeader,
@@ -10,26 +10,24 @@
     HStack,
     IconButton,
     NavbarItem,
-  } from '@immich/ui';
-  import { mdiBackupRestore, mdiConnection, mdiMenu, mdiViewDashboard } from '@mdi/js';
-  import { configureYucca } from '@futo-org/backups-orchestrator-ui';
-  import { t } from 'svelte-i18n-lingui';
-  import { defaults } from '@futo-org/backups-api-client';
-  import { MediaQuery } from 'svelte/reactivity';
-  import { afterNavigate } from '$app/navigation';
+  } from "@immich/ui";
+  import {
+    mdiBackupRestore,
+    mdiConnection,
+    mdiMenu,
+    mdiViewDashboard,
+  } from "@mdi/js";
+  import { configureYucca } from "@futo-org/backups-orchestrator-ui";
+  import { t } from "svelte-i18n-lingui";
+  import { defaults } from "@futo-org/backups-api-client";
+  import { sidebarStore } from "$lib/stores/sidebar.svelte";
+  import { beforeNavigate } from "$app/navigation";
 
   const { data, children } = $props();
 
-  configureYucca({ api: 'customer' });
+  configureYucca({ api: "customer" });
 
-  const desktop = new MediaQuery('min-width: 768px');
-  let open = $derived(desktop.current);
-
-  afterNavigate(() => {
-    if (!desktop.current) {
-      open = false;
-    }
-  });
+  beforeNavigate(() => sidebarStore.reset());
 </script>
 
 <AppShell>
@@ -39,43 +37,49 @@
         <IconButton
           icon={mdiMenu}
           aria-label={$t`Toggle navigation`}
-          aria-expanded={open}
+          aria-expanded={sidebarStore.isOpen}
           aria-controls="dashboard-nav"
           variant="ghost"
           color="secondary"
           shape="round"
           class="md:hidden"
-          onclick={() => (open = !open)}
+          onclick={() => sidebarStore.toggle()}
         />
         <Heading size="tiny" tag="h2">FUTO Backups</Heading>
       </HStack>
       <HStack>
         <Avatar name={data.user!.name} />
         <span class="sr-only">{data.user!.name}</span>
-        <Button href={defaults.baseUrl + 'api/auth/logout'}>{$t`Logout`}</Button>
+        <Button href={defaults.baseUrl + "api/auth/logout"}>{$t`Logout`}</Button
+        >
       </HStack>
     </div>
   </AppShellHeader>
 
-  <AppShellSidebar {open}>
-    <nav id="dashboard-nav" class="pt-4 pr-2" aria-label={$t`Main`} inert={!open}>
+  <AppShellSidebar bind:open={sidebarStore.isOpen}>
+    <nav
+      id="dashboard-nav"
+      class="pt-4 pr-2"
+      aria-label={$t`Main`}
+      inert={!sidebarStore.isOpen}
+    >
       <NavbarItem
         title="Dashboard"
         href="/dashboard"
         icon={mdiViewDashboard}
-        active={page.url.pathname === '/dashboard'}
+        active={page.url.pathname === "/dashboard"}
       />
       <NavbarItem
         title="Backups"
         href="/dashboard/backups"
         icon={mdiBackupRestore}
-        active={page.url.pathname === '/dashboard/backups'}
+        active={page.url.pathname === "/dashboard/backups"}
       />
       <NavbarItem
         title="Connections"
         href="/dashboard/connections"
         icon={mdiConnection}
-        active={page.url.pathname === '/dashboard/connections'}
+        active={page.url.pathname === "/dashboard/connections"}
       />
     </nav>
   </AppShellSidebar>
