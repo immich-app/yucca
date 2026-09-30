@@ -1665,6 +1665,10 @@ msgstr ""
 msgid "Restore if your local storage fails"
 msgstr ""
 
+#: src/lib/components/onboarding/restore-point-flow/RestorePointFlow4Restore.svelte
+msgid "Restore progress"
+msgstr ""
+
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 msgid "Restore the Immich database"
 msgstr ""

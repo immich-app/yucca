@@ -39,7 +39,12 @@
         <Alert color="danger">{error}</Alert>
       {/each}
 
-      <ProgressBar progress={log.status.progress} size="large">
+      <ProgressBar
+        progress={log.status.progress}
+        aria-label={$t`Restore progress`}
+        valueLabel={`${Math.round(log.status.progress * 100)}%`}
+        size="large"
+      >
         <Text
           size="small"
           class={log.status.progress > 0.5 ? "text-light" : "text-dark"}
