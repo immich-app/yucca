@@ -2,6 +2,7 @@
   import Accordion from "$lib/components/ui/Accordion.svelte";
   import { Stack, Text } from "@immich/ui";
   import type { Snippet } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Question = {
     title: string;
@@ -16,7 +17,7 @@
 </script>
 
 <Stack>
-  <Text fontWeight="semi-bold">Frequently Asked Questions</Text>
+  <Text fontWeight="semi-bold">{$t`Frequently Asked Questions`}</Text>
 
   <Stack gap={0}>
     {#each questions as { title, answer } (title)}

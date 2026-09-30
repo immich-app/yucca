@@ -14,6 +14,7 @@
   import { mdiRadioboxBlank, mdiRadioboxMarked } from "@mdi/js";
   import { DateTime } from "luxon";
   import RepositorySnapshotsListItem from "./RepositorySnapshotsListItem.svelte";
+  import { msg, t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -37,15 +38,15 @@
   };
 
   const sortOptions = [
-    { newest: true, title: "Newest first" },
-    { newest: false, title: "Oldest first" },
+    { newest: true, title: msg`Newest first` },
+    { newest: false, title: msg`Oldest first` },
   ];
 
   const sort = $derived({
-    label: newestFirst ? "Newest first" : "Oldest first",
+    label: newestFirst ? $t`Newest first` : $t`Oldest first`,
     items: sortOptions.map(
       (option): ActionItem => ({
-        title: option.title,
+        title: $t(option.title),
         icon: newestFirst === option.newest
           ? mdiRadioboxMarked
           : mdiRadioboxBlank,
@@ -93,7 +94,7 @@
 <OnEvents {onRunUpdate} />
 
 <Stack gap={4}>
-  <ListToolbar placeholder="Search snapshots" {search} {onSearch} {sort} />
+  <ListToolbar placeholder={$t`Search snapshots`} {search} {onSearch} {sort} />
 
   <StackList>
     <Suspense {query}>
@@ -106,7 +107,7 @@
       {/each}
 
       {#if filtered.length === 0}
-        <StackListPlaceholder>No snapshots found</StackListPlaceholder>
+        <StackListPlaceholder>{$t`No snapshots found`}</StackListPlaceholder>
       {/if}
     </Suspense>
   </StackList>

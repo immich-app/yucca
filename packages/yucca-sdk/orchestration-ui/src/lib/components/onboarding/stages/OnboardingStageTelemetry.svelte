@@ -11,6 +11,7 @@
   } from "@immich/ui";
   import { useEnableTelemetry } from "$lib/services/onboarding.service";
   import { mdiChartBox, mdiEyeOff } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onContinue: () => void;
@@ -26,7 +27,7 @@
 
 <Modal
   size="small"
-  title="Telemetry required for closed beta"
+  title={$t`Telemetry required for closed beta`}
   onClose={onCancel}
 >
   <ModalBody>
@@ -34,26 +35,24 @@
       <HStack>
         <Icon icon={mdiChartBox} class="shrink-0 place-self-start mt-1" />
         <Text>
-          We collect usage and diagnostic data to understand how FUTO Backups is
-          used and to find problems.</Text
+          {$t`We collect usage and diagnostic data to understand how FUTO Backups is used and to find problems.`}</Text
         >
       </HStack>
       <HStack>
         <Icon icon={mdiEyeOff} class="shrink-0 place-self-start mt-1" />
         <Text>
-          Your photos, files, and recovery key are never collected and never
-          leave your device unencrypted.</Text
+          {$t`Your photos, files, and recovery key are never collected and never leave your device unencrypted.`}</Text
         >
       </HStack>
     </Stack>
   </ModalBody>
   <ModalFooter>
     <HStack>
-      <Button onclick={onConfirm} loading={mutation.isPending}>Continue</Button>
+      <Button onclick={onConfirm} loading={mutation.isPending}>{$t`Continue`}</Button>
       <Button
         variant="ghost"
         onclick={onCancel}
-        disabled={mutation.isPending}>Cancel</Button
+        disabled={mutation.isPending}>{$t`Cancel`}</Button
       >
     </HStack>
   </ModalFooter>

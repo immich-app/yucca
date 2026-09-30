@@ -9,6 +9,7 @@
     Text,
   } from "@immich/ui";
   import { useReportError } from "$lib/services/onboarding.service";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     error?: string;
@@ -23,10 +24,10 @@
     mutation.mutate(undefined, { onSuccess: onQuit });
 </script>
 
-<Modal size="small" title="Something went wrong" onClose={onQuit} icon={false}>
+<Modal size="small" title={$t`Something went wrong`} onClose={onQuit} icon={false}>
   <ModalBody>
     <Stack>
-      <Text>We ran into an error setting up backups...</Text>
+      <Text>{$t`We ran into an error setting up backups...`}</Text>
       {#if error}
         <Text size="small" color="danger" class="font-mono whitespace-pre-wrap"
           >{error}</Text
@@ -39,10 +40,10 @@
       <Button
         color="danger"
         onclick={onReportAndQuit}
-        loading={mutation.isPending}>Report error and quit</Button
+        loading={mutation.isPending}>{$t`Report error and quit`}</Button
       >
       <Button variant="ghost" onclick={onQuit} disabled={mutation.isPending}
-        >Go back</Button
+        >{$t`Go back`}</Button
       >
     </HStack>
   </ModalFooter>

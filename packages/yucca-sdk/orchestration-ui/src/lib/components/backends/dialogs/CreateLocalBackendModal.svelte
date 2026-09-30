@@ -2,6 +2,7 @@
   import PathPickerField from "$lib/components/ui/PathPickerField.svelte";
   import { useCreateLocalBackend } from "$lib/services/backend.service";
   import { FormModal, Stack } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onClose: () => void;
@@ -28,7 +29,7 @@
 
 <FormModal
   size="small"
-  title="Create local backend"
+  title={$t`Create local backend`}
   disabled={path.length === 0 || mutation.isPending}
   {onSubmit}
   {onClose}
@@ -36,11 +37,11 @@
   <Stack gap={4}>
     <PathPickerField
       bind:value={path}
-      pickerTitle="Choose backend folder"
-      pickerDescription="Pick the local directory where backups will be stored."
+      pickerTitle={$t`Choose backend folder`}
+      pickerDescription={$t`Pick the local directory where backups will be stored.`}
     >
-      {#snippet title()}Path{/snippet}
-      {#snippet description()}Local directory to store backups.{/snippet}
+      {#snippet title()}{$t`Path`}{/snippet}
+      {#snippet description()}{$t`Local directory to store backups.`}{/snippet}
     </PathPickerField>
   </Stack>
 </FormModal>

@@ -26,13 +26,14 @@
   } from "@immich/ui";
   import { mdiClockOutline } from "@mdi/js";
   import cronstrue from "cronstrue";
+  import { msg, t } from "svelte-i18n-lingui";
 
   type Frequency = "daily" | "weekly" | "monthly";
 
   const frequencies = [
-    { value: "daily", label: "Daily" },
-    { value: "weekly", label: "Weekly" },
-    { value: "monthly", label: "Monthly" },
+    { value: "daily", label: msg`Daily` },
+    { value: "weekly", label: msg`Weekly` },
+    { value: "monthly", label: msg`Monthly` },
   ];
 
   const startTimes = Array.from({ length: 24 }, (_, hour) => ({
@@ -158,8 +159,8 @@
 />
 
 <Accordion
-  title="Schedule"
-  subtitle="Manage when backups run."
+  title={$t`Schedule`}
+  subtitle={$t`Manage when backups run.`}
   icon={mdiClockOutline}
 >
   <Stack gap={4} class="pt-2">
@@ -167,26 +168,26 @@
       <LoadingSpinner />
     {:else}
       <Field
-        label="Run backups automatically"
-        description="Back up your library on a recurring schedule."
+        label={$t`Run backups automatically`}
+        description={$t`Back up your library on a recurring schedule.`}
         color="primary"
       >
         <Switch bind:checked={enabled} />
       </Field>
 
       <Field
-        label="Frequency"
-        description="How often backups should run."
+        label={$t`Frequency`}
+        description={$t`How often backups should run.`}
         color="primary"
         required="indicator"
         disabled={!enabled}
       >
-        <Select options={frequencies} bind:value={frequency} />
+        <Select options={frequencies.map((option) => ({ ...option, label: $t(option.label) }))} bind:value={frequency} />
       </Field>
 
       <Field
-        label="Start time"
-        description="When the scheduled backup starts."
+        label={$t`Start time`}
+        description={$t`When the scheduled backup starts.`}
         color="primary"
         required="indicator"
         disabled={!enabled}
@@ -195,7 +196,7 @@
       </Field>
 
       <Text size="small" color="muted">
-        Backups will run <span class="lowercase"
+        {$t`Backups will run`} <span class="lowercase"
           >{cronstrue.toString(cron, { verbose: true })}</span
         >.
       </Text>
@@ -207,10 +208,10 @@
           disabled={mutation.isPending}
           onclick={load}
         >
-          Reset
+          {$t`Reset`}
         </Button>
         <Button shape="round" loading={mutation.isPending} onclick={onSave}>
-          Save
+          {$t`Save`}
         </Button>
       </HStack>
     {/if}

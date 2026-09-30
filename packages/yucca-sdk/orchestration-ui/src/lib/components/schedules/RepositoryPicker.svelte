@@ -4,6 +4,7 @@
   import { mdiArrowDown, mdiArrowUp, mdiClose, mdiPlus } from "@mdi/js";
   import StackList from "../ui/StackList.svelte";
   import StackListItem from "../ui/StackListItem.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repositories: string[];
@@ -44,7 +45,7 @@
 
 <Stack gap={4}>
   <StackList>
-    {#snippet title()}Repositories{/snippet}
+    {#snippet title()}{$t`Repositories`}{/snippet}
 
     {#each repositories as id, index (id)}
       <StackListItem>
@@ -55,7 +56,7 @@
             icon={mdiArrowUp}
             size="tiny"
             variant="ghost"
-            aria-label="Move up"
+            aria-label={$t`Move up`}
             disabled={index === 0}
             onclick={() => move(index, -1)}
           />
@@ -63,7 +64,7 @@
             icon={mdiArrowDown}
             size="tiny"
             variant="ghost"
-            aria-label="Move down"
+            aria-label={$t`Move down`}
             disabled={index === repositories.length - 1}
             onclick={() => move(index, 1)}
           />
@@ -72,7 +73,7 @@
             size="tiny"
             color="danger"
             variant="ghost"
-            aria-label="Remove"
+            aria-label={$t`Remove`}
             onclick={() => remove(id)}
           />
         {/snippet}
@@ -82,7 +83,7 @@
     {#if repositories.length === 0}
       <StackListItem>
         <Text color="secondary" size="small">
-          No repositories in this schedule yet.
+          {$t`No repositories in this schedule yet.`}
         </Text>
       </StackListItem>
     {/if}
@@ -90,7 +91,7 @@
 
   {#if available.length > 0}
     <StackList>
-      {#snippet title()}Available{/snippet}
+      {#snippet title()}{$t`Available`}{/snippet}
 
       {#each available as repo (repo.id)}
         <StackListItem>
@@ -101,7 +102,7 @@
               icon={mdiPlus}
               size="tiny"
               variant="ghost"
-              aria-label="Add"
+              aria-label={$t`Add`}
               onclick={() => add(repo.id)}
             />
           {/snippet}

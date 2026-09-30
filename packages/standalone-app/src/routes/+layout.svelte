@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { configureYucca, OnboardingGate, YuccaContext } from '@futo-org/backups-orchestrator-ui';
+  import { configureYucca, defaultMessages, OnboardingGate, YuccaContext } from '@futo-org/backups-orchestrator-ui';
   import {
     AppShell,
     AppShellHeader,
@@ -13,10 +13,12 @@
   import { resolve } from '$app/paths';
   import { nav } from '$lib/nav';
   import './layout.css';
+  import { locale } from 'svelte-i18n-lingui';
 
   const { children } = $props();
 
   configureYucca({ api: 'orchestrator' });
+  locale.set('en', defaultMessages);
 
   toastManager.setOptions({
     class: 'fixed top-0 right-0 flex flex-col items-end justify-end gap-2 p-4',

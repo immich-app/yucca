@@ -45,8 +45,7 @@ COPY . ./
 # filter silently matches nothing (pnpm exits 0), leaving web's SSR deps unbuilt.
 RUN pnpm --filter @common/server build && \
     pnpm --filter @futo-org/backups-api-client build && \
-    pnpm --filter @futo-org/backups-orchestrator-ui build && \
-    pnpm --filter web lingui:compile
+    pnpm --filter @futo-org/backups-orchestrator-ui build
 
 EXPOSE 5173
 CMD ["pnpm", "--filter", "web", "dev", "--host", "0.0.0.0"]

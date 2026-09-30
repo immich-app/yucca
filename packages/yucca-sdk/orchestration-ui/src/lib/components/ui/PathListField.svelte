@@ -12,6 +12,7 @@
   import { mdiClose } from "@mdi/js";
   import type { Snippet } from "svelte";
   import type { SvelteSet } from "svelte/reactivity";
+  import { t } from "svelte-i18n-lingui";
   import PathPickerModal from "./PathPickerModal.svelte";
   import StackList from "./StackList.svelte";
   import StackListItem from "./StackListItem.svelte";
@@ -32,9 +33,9 @@
     paths,
     label,
     empty,
-    addLabel = "Manage paths",
-    manageLabel = "Manage paths",
-    pickerTitle = "Choose paths",
+    addLabel = $t`Manage paths`,
+    manageLabel = $t`Manage paths`,
+    pickerTitle = $t`Choose paths`,
     pickerDescription,
     foldersOnly = false,
     handleGetListing,
@@ -66,7 +67,7 @@
           {#snippet trailing()}
             <IconButton
               icon={mdiClose}
-              aria-label="Remove"
+              aria-label={$t`Remove`}
               size="tiny"
               variant="ghost"
               onclick={() => paths.delete(path)}

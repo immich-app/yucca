@@ -2,6 +2,7 @@
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { Badge, Card, CardBody, getByteUnitString } from "@immich/ui";
   import VisualisationGauge from "../ui/VisualisationGauge.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repositories: LocalRepositoryDto[];
@@ -21,11 +22,15 @@
 <Card class="border-primary-100 shadow-none">
   <CardBody>
     <VisualisationGauge
-      title="Total Stored"
+      title={$t`Total Stored`}
       content={getByteUnitString(totalStored)}
     >
       {#snippet subtitle()}
-        <Badge size="tiny">Estimated {getByteUnitString(estimatedStored)}</Badge
+        <Badge size="tiny"
+          >{$t({
+            message: "Estimated {size}",
+            values: { size: getByteUnitString(estimatedStored) },
+          })}</Badge
         >
       {/snippet}
     </VisualisationGauge>

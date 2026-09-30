@@ -28,6 +28,7 @@
     Switch,
   } from "@immich/ui";
   import { mdiDownloadBox } from "@mdi/js";
+  import { msg, t } from "svelte-i18n-lingui";
 
   type RetentionChoice = {
     key: string;
@@ -36,12 +37,12 @@
   };
 
   const retentionChoices: RetentionChoice[] = [
-    { key: "15d", label: "After 15 days", policy: { keepWithin: "15d" } },
-    { key: "30d", label: "After 30 days", policy: { keepWithin: "30d" } },
-    { key: "60d", label: "After 60 days", policy: { keepWithin: "60d" } },
-    { key: "90d", label: "After 90 days", policy: { keepWithin: "90d" } },
-    { key: "2", label: "Keep latest two backups", policy: { keepLast: 2 } },
-    { key: "never", label: "Never (keep all backups)", policy: null },
+    { key: "15d", label: msg`After 15 days`, policy: { keepWithin: "15d" } },
+    { key: "30d", label: msg`After 30 days`, policy: { keepWithin: "30d" } },
+    { key: "60d", label: msg`After 60 days`, policy: { keepWithin: "60d" } },
+    { key: "90d", label: msg`After 90 days`, policy: { keepWithin: "90d" } },
+    { key: "2", label: msg`Keep latest two backups`, policy: { keepLast: 2 } },
+    { key: "never", label: msg`Never (keep all backups)`, policy: null },
   ];
 
   const defaultRetentionKey = "60d";
@@ -134,8 +135,8 @@
 />
 
 <Accordion
-  title="Storage"
-  subtitle="Manage the backup name, where it is stored, and how long backups are kept."
+  title={$t`Storage`}
+  subtitle={$t`Manage the backup name, where it is stored, and how long backups are kept.`}
   icon={mdiDownloadBox}
 >
   <Stack gap={4} class="pt-2">
@@ -143,8 +144,8 @@
       <LoadingSpinner />
     {:else}
       <Field
-        label="Backup name"
-        description="How this backup is labelled across FUTO Backups."
+        label={$t`Backup name`}
+        description={$t`How this backup is labelled across FUTO Backups.`}
         required="indicator"
       >
         <Input bind:value={name} />
@@ -154,26 +155,26 @@
 
       {#if repository?.worm}
         <Button onclick={() => handleDisableWormRepository(repository.id, true)}>
-          Disable write-only
+          {$t`Disable write-only`}
         </Button>
       {:else}
         <Field
-          label="Write-only"
-          description="Once written, backups can't be removed."
+          label={$t`Write-only`}
+          description={$t`Once written, backups can't be removed.`}
         >
           <Switch bind:checked={worm} />
         </Field>
       {/if}
 
       <Field
-        label="Delete old backups"
-        description="Older snapshots are pruned automatically."
+        label={$t`Delete old backups`}
+        description={$t`Older snapshots are pruned automatically.`}
         disabled={worm}
       >
         <Select
           options={retentionChoices.map(({ key, label }) => ({
             value: key,
-            label,
+            label: $t(label),
           }))}
           value={worm ? "never" : retentionKey}
           onChange={(value) => (retentionKey = value)}
@@ -187,7 +188,7 @@
           disabled={mutation.isPending}
           onclick={load}
         >
-          Reset
+          {$t`Reset`}
         </Button>
         <Button
           shape="round"
@@ -195,7 +196,7 @@
           loading={mutation.isPending}
           onclick={onSave}
         >
-          Save
+          {$t`Save`}
         </Button>
       </HStack>
     {/if}

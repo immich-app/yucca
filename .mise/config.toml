@@ -103,7 +103,7 @@ run = [{ tasks = ["lint", "lint:go", "//packages/...:check"] }, { task = "format
 
 [tasks.fix]
 description = "Run all possible code fixes"
-run = [{ task = "*:fix" }, { task = "//packages/web:lingui" }]
+run = [{ task = "*:fix" }, { task = "//packages/yucca-sdk/orchestration-ui:lingui" }]
 
 [tasks."o11y:render"]
 description = "Render the o11y bundle"

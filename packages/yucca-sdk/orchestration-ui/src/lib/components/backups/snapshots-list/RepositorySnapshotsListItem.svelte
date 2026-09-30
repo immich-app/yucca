@@ -6,6 +6,7 @@
   import { FormatBytes, Icon } from "@immich/ui";
   import { mdiHistory } from "@mdi/js";
   import { DateTime } from "luxon";
+  import { t, plural } from "svelte-i18n-lingui";
 
   type Props = {
     repositoryId: string;
@@ -15,7 +16,7 @@
 
   const { repositoryId, snapshot, immich = false }: Props = $props();
   const { Restore, Rollback, Delete } = $derived(
-    getSnapshotActions(repositoryId, snapshot, immich),
+    getSnapshotActions(repositoryId, snapshot, $t, immich),
   );
 
   const title = $derived(
@@ -31,15 +32,24 @@
   <RelativeTime time={snapshot.time} />
 
   {#if snapshot.summary}
-    &middot; {snapshot.summary.totalFiles.toLocaleString()}
-    {snapshot.summary.totalFiles > 1 ? "files" : "file"} &middot;
+    &middot;
+    {$plural(snapshot.summary.totalFiles, {
+      one: "# file",
+      other: "# files",
+    })} &middot;
     <FormatBytes bytes={snapshot.summary.totalBytes} />
 
     {#if snapshot.summary.filesNew > 0}
-      &middot; {snapshot.summary.filesNew.toLocaleString()} new
+      &middot; {$t({
+        message: "{count} new",
+        values: { count: snapshot.summary.filesNew.toLocaleString() },
+      })}
     {/if}
     {#if snapshot.summary.filesChanged > 0}
-      &middot; {snapshot.summary.filesChanged.toLocaleString()} changed
+      &middot; {$t({
+        message: "{count} changed",
+        values: { count: snapshot.summary.filesChanged.toLocaleString() },
+      })}
     {/if}
   {/if}
 </StackListItem>

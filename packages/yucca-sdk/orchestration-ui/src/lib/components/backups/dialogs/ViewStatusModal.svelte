@@ -22,6 +22,7 @@
   } from "@immich/ui";
   import { DateTime } from "luxon";
   import { onDestroy } from "svelte";
+  import { msg, plural, t } from "svelte-i18n-lingui";
 
   type Props = {
     logId: string;
@@ -87,9 +88,9 @@
   );
 
   const titles: Record<BackupStatusType, Record<"running" | "done", string>> = {
-    backup: { running: "Backing up your library", done: "Backup" },
-    restore: { running: "Restoring your library", done: "Restore" },
-    forget: { running: "Pruning old backups", done: "Prune" },
+    backup: { running: msg`Backing up your library`, done: msg`Backup` },
+    restore: { running: msg`Restoring your library`, done: msg`Restore` },
+    forget: { running: msg`Pruning old backups`, done: msg`Prune` },
   };
 
   const retry = $derived(
@@ -104,19 +105,31 @@
   const title = $derived.by(() => {
     switch (backupState) {
       case "complete": {
-        return `${titles[type].done} complete`;
+        return $t({
+          message: "{name} complete",
+          values: { name: $t(titles[type].done) },
+        });
       }
       case "warned": {
-        return `${titles[type].done} completed with warnings`;
+        return $t({
+          message: "{name} completed with warnings",
+          values: { name: $t(titles[type].done) },
+        });
       }
       case "failed": {
-        return `${titles[type].done} failed`;
+        return $t({
+          message: "{name} failed",
+          values: { name: $t(titles[type].done) },
+        });
       }
       case "cancelled": {
-        return `${titles[type].done} cancelled`;
+        return $t({
+          message: "{name} cancelled",
+          values: { name: $t(titles[type].done) },
+        });
       }
       default: {
-        return titles[type].running;
+        return $t(titles[type].running);
       }
     }
   });
@@ -151,31 +164,49 @@
     >
       {#snippet details()}
         {#if log.summary && type === "backup"}
-          {(log.summary.total_files_processed ?? 0).toLocaleString()} items backed
-          up &middot;
-          {(log.summary.files_new ?? 0).toLocaleString()} new items
+          {$t({
+            message: "{count} items backed up",
+            values: {
+              count: (log.summary.total_files_processed ?? 0).toLocaleString(),
+            },
+          })} &middot;
+          {$t({
+            message: "{count} new items",
+            values: { count: (log.summary.files_new ?? 0).toLocaleString() },
+          })}
           {#if log.summary.total_bytes_processed !== undefined}
             &middot;
-            <FormatBytes bytes={log.summary.total_bytes_processed} /> processed
+            <FormatBytes bytes={log.summary.total_bytes_processed} /> {$t`processed`}
           {/if}
         {:else if log.summary && type === "restore"}
-          {(log.summary.files_restored ?? 0).toLocaleString()} items restored{#if log.summary.files_skipped}
-            &middot; {log.summary.files_skipped.toLocaleString()} skipped
+          {$t({
+            message: "{count} items restored",
+            values: { count: (log.summary.files_restored ?? 0).toLocaleString() },
+          })}{#if log.summary.files_skipped}
+            &middot; {$t({
+              message: "{count} skipped",
+              values: { count: log.summary.files_skipped.toLocaleString() },
+            })}
           {/if}
           {#if log.summary.bytes_restored !== undefined}
-            &middot; <FormatBytes bytes={log.summary.bytes_restored} /> restored
+            &middot; <FormatBytes bytes={log.summary.bytes_restored} /> {$t`restored`}
           {/if}
         {:else if type === "forget"}
-          {log.pruned.removed.toLocaleString()}
-          {log.pruned.removed === 1 ? "backup" : "backups"} removed &middot;
-          {log.pruned.kept.toLocaleString()} kept
+          {$plural(log.pruned.removed, {
+            one: "# backup removed",
+            other: "# backups removed",
+          })} &middot;
+          {$t({
+            message: "{count} kept",
+            values: { count: log.pruned.kept.toLocaleString() },
+          })}
         {/if}
       {/snippet}
 
       {#snippet advanced()}
         {#if showAdvanced}
           <Stack gap={1}>
-            <Heading size="small">Event Log</Heading>
+            <Heading size="small">{$t`Event Log`}</Heading>
             <Scrollable class="h-80 overflow-x-hidden">
               <Stack gap={1}>
                 {#each log.events as event, index (index)}

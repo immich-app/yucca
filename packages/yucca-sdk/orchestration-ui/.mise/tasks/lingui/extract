@@ -2,4 +2,4 @@
 #MISE description="Extract i18n catalog from source code"
 set -e
 
-pnpm --filter web lingui:extract
+pnpm --filter @futo-org/backups-orchestrator-ui lingui:extract

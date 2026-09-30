@@ -10,6 +10,7 @@
     ModalFooter,
     VStack,
   } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onImported: (key: string) => void;
@@ -36,21 +37,21 @@
   };
 </script>
 
-<Modal size="small" title="Import recovery key" onClose={onCancel}>
+<Modal size="small" title={$t`Import recovery key`} onClose={onCancel}>
   <ModalBody>
     <VStack>
-      <Field label="Recovery Key">
+      <Field label={$t`Recovery Key`}>
         <Input bind:value />
       </Field>
     </VStack>
   </ModalBody>
   <ModalFooter>
     <HStack>
-      <Button disabled={!isValidValue()} onclick={onSave}>Save</Button>
+      <Button disabled={!isValidValue()} onclick={onSave}>{$t`Save`}</Button>
       {#if onStart}
-        <Button variant="ghost" onclick={onStart}>Back</Button>
+        <Button variant="ghost" onclick={onStart}>{$t`Back`}</Button>
       {:else}
-        <Button variant="ghost" onclick={onCancel}>Cancel</Button>
+        <Button variant="ghost" onclick={onCancel}>{$t`Cancel`}</Button>
       {/if}
     </HStack>
   </ModalFooter>

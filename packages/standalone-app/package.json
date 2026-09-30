@@ -36,6 +36,7 @@
   "devDependencies": {
     "@futo-org/backups-orchestrator-ui": "workspace:^",
     "@immich/ui": "catalog:",
+    "@lingui/core": "catalog:",
     "@mdi/js": "catalog:",
     "@sveltejs/adapter-static": "catalog:",
     "@sveltejs/kit": "catalog:",
@@ -45,6 +46,7 @@
     "@types/node": "catalog:",
     "svelte": "catalog:",
     "svelte-check": "catalog:",
+    "svelte-i18n-lingui": "catalog:",
     "tailwindcss": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

@@ -12,6 +12,7 @@
   import { Container, Stack } from "@immich/ui";
   import ImmichDatabaseDumpAlert from "./ImmichDatabaseDumpAlert.svelte";
   import ImmichManageBackupOverview from "./ImmichManageBackupOverview.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onConfigure: () => void;
@@ -26,13 +27,13 @@
   const { repository, schedule } = $derived(backup);
 
   const { ViewRecoveryKey, Configure } = $derived(
-    getBackupPageActions(repository?.id, onConfigure),
+    getBackupPageActions(repository?.id, onConfigure, $t),
   );
 </script>
 
 <OnEvents {...useImmichBackupStatusEventHandler()} />
 
-<PageLayout title="Backups" actions={[ViewRecoveryKey, Configure]}>
+<PageLayout title={$t`Backups`} actions={[ViewRecoveryKey, Configure]}>
   <Container size="medium" center>
     {#if repository && schedule}
       <Stack class="mt-4" gap={6}>

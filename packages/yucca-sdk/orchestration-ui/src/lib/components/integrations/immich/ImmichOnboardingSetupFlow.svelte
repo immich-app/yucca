@@ -24,6 +24,7 @@
   import { LoadingSpinner, Modal, ModalBody } from "@immich/ui";
   import cronstrue from "cronstrue";
   import { onMount, type Snippet } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Stage =
     | "idle"
@@ -91,7 +92,7 @@
   };
 
   const onLocalStorage = () => {
-    storageLocation = "Local Storage";
+    storageLocation = $t`Local Storage`;
     handleSetupLocalStorage(onBackendReady);
   };
 

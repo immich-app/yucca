@@ -2,6 +2,7 @@
   import { Button, Heading, HStack, Icon, Stack, Text } from "@immich/ui";
   import { mdiCheckCircle } from "@mdi/js";
   import UpsellFutoBackupsBadge from "./UpsellFutoBackupsBadge.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     price: string;
@@ -11,11 +12,11 @@
 
   const { price, onGetStarted, onLearnMore }: Props = $props();
 
-  const benefits = [
-    "Cloud copy while your originals stay local",
-    "Encrypted backups protect your data",
-    "Restore if your local storage fails",
-  ];
+  const benefits = $derived([
+    $t`Cloud copy while your originals stay local`,
+    $t`Encrypted backups protect your data`,
+    $t`Restore if your local storage fails`,
+  ]);
 </script>
 
 <Stack gap={6}>
@@ -23,12 +24,11 @@
 
   <Stack gap={4}>
     <Heading size="medium" color="primary" fontWeight="bold"
-      >Protect your Immich library</Heading
+      >{$t`Protect your Immich library`}</Heading
     >
 
     <Text>
-      FUTO Backups adds hosted cloud backup storage to your existing Immich
-      setup, so you have another copy if something happens locally.
+      {$t`FUTO Backups adds hosted cloud backup storage to your existing Immich setup, so you have another copy if something happens locally.`}
     </Text>
   </Stack>
 
@@ -46,13 +46,16 @@
   </Stack>
 
   <Text fontWeight="semi-bold">
-    Starting at {price}/month. Additional storage billed by usage.
+    {$t({
+      message: "Starting at {price}/month. Additional storage billed by usage.",
+      values: { price },
+    })}
   </Text>
 
   <HStack gap={6} class="items-center">
-    <Button shape="round" onclick={onGetStarted}>Get Started</Button>
+    <Button shape="round" onclick={onGetStarted}>{$t`Get Started`}</Button>
     <Button variant="ghost" shape="round" onclick={onLearnMore}>
-      Learn More
+      {$t`Learn More`}
     </Button>
   </HStack>
 </Stack>

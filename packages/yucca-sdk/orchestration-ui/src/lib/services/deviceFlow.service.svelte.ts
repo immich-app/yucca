@@ -3,14 +3,13 @@ import {
   startDeviceFlow,
   type DeviceFlowKind,
 } from '$lib/services/session.service';
+import { gt, msg } from 'svelte-i18n-lingui';
 
 const failures: Record<string, string> = {
-  NOT_CONNECTED:
-    'This instance is not connected to a FUTO Backups account yet.',
-  DEVICE_FLOW_FAILED: 'Login was cancelled or timed out.',
-  WRONG_ACCOUNT:
-    'That account does not own this instance. Log in with the account it was connected with.',
-  UNKNOWN: 'Could not reach FUTO Backups. Check your connection.',
+  NOT_CONNECTED: msg`This instance is not connected to a FUTO Backups account yet.`,
+  DEVICE_FLOW_FAILED: msg`Login was cancelled or timed out.`,
+  WRONG_ACCOUNT: msg`That account does not own this instance. Log in with the account it was connected with.`,
+  UNKNOWN: msg`Could not reach FUTO Backups. Check your connection.`,
 };
 
 export function createDeviceFlow(
@@ -76,7 +75,7 @@ export function createDeviceFlow(
           stop();
           state.pending = false;
           state.userCode = undefined;
-          state.error = failures[event.reason ?? 'UNKNOWN'];
+          state.error = gt(failures[event.reason ?? 'UNKNOWN']);
           handlers.onFailure?.(state.error);
           break;
         }

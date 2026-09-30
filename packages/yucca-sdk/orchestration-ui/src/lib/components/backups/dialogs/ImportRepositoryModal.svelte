@@ -7,6 +7,7 @@
   } from "$lib/services/repository.service";
   import { FormModal, modalManager, Text } from "@immich/ui";
   import ConfigureRepositoryModal from "./ConfigureRepositoryModal.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onClose: () => void;
@@ -42,17 +43,17 @@
 </script>
 
 <FormModal
-  title={`Import ${repository.name}`}
-  submitText="Import"
+  title={$t({ message: "Import {name}", values: { name: repository.name } })}
+  submitText={$t`Import`}
   disabled={check.data?.readable !== true || mutation.isPending}
   {onSubmit}
   {onClose}
 >
   <Suspense query={check}>
     {#if check.data?.readable}
-      <Text>Repository is readable and accessible!</Text>
+      <Text>{$t`Repository is readable and accessible!`}</Text>
     {:else}
-      <Text>Can't read repository.</Text>
+      <Text>{$t`Can't read repository.`}</Text>
     {/if}
   </Suspense>
 </FormModal>

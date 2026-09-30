@@ -14,6 +14,7 @@
     mdiCloudOffOutline,
     mdiCloudUploadOutline,
   } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Color = "primary" | "secondary" | "success" | "warning" | "danger";
 
@@ -91,37 +92,37 @@
 
   <Text size="tiny" class="flex-1 leading-tight">
     {#if backup.needsAttention}
-      Needs attention
+      {$t`Needs attention`}
     {:else if status.kind === "loading"}
-      Checking backup status
+      {$t`Checking backup status`}
     {:else if status.kind === "offline"}
-      Backup service is offline
+      {$t`Backup service is offline`}
     {:else if status.kind === "missing"}
-      Backup missing on service
+      {$t`Backup missing on service`}
     {:else if status.kind === "running"}
-      Backing up now
+      {$t`Backing up now`}
     {:else if status.kind === "failed"}
-      Backup failed
+      {$t`Backup failed`}
     {:else if status.kind === "warn"}
-      Backed up with warnings <RelativeTime time={status.lastBackup} />
+      {$t`Backed up with warnings`} <RelativeTime time={status.lastBackup} />
     {:else if status.kind === "incomplete"}
-      Backup did not complete <RelativeTime time={status.lastBackup} />
+      {$t`Backup did not complete`} <RelativeTime time={status.lastBackup} />
     {:else if status.kind === "cancelled"}
-      Backup was cancelled <RelativeTime time={status.lastBackup} />
+      {$t`Backup was cancelled`} <RelativeTime time={status.lastBackup} />
     {:else if status.kind === "paused"}
-      Backups paused
+      {$t`Backups paused`}
     {:else if status.kind === "unconfigured"}
-      Not backed up
+      {$t`Not backed up`}
     {:else if status.kind === "complete"}
-      Last backup <RelativeTime time={status.lastBackup} />
+      {$t`Last backup`} <RelativeTime time={status.lastBackup} />
     {:else}
-      Finish setting up backups
+      {$t`Finish setting up backups`}
     {/if}
   </Text>
 
   <HStack gap={0}>
     {#if !configured}
-      <Text size="tiny" color="primary" class="shrink-0">Set up</Text>
+      <Text size="tiny" color="primary" class="shrink-0">{$t`Set up`}</Text>
     {/if}
 
     <Icon

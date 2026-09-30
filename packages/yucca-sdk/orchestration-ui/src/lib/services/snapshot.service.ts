@@ -15,6 +15,7 @@ import { handleError } from '$lib/utils/handle-error';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
 import { mdiBackupRestore, mdiDeleteOutline, mdiHistory } from '@mdi/js';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
+import { gt, msg } from 'svelte-i18n-lingui';
 
 export const snapshotKeys = {
   byRepository: (id: string) => ['snapshots', id] as const,
@@ -65,7 +66,7 @@ export const handleGetSnapshots = async (repositoryId: string) => {
   try {
     return await sdk.getSnapshots(repositoryId);
   } catch (error) {
-    handleError(error, 'Failed to load snapshots');
+    handleError(error, gt`Failed to load snapshots`);
     throw error;
   }
 };
@@ -82,7 +83,7 @@ export const useRestoreSnapshot = () =>
         snapshotId: string;
         options: RepositorySnapshotRestoreRequestDto;
       }) => sdk.restoreSnapshot(repositoryId, snapshotId, options),
-      onError: (error) => handleError(error, 'Failed to start restore'),
+      onError: (error) => handleError(error, gt`Failed to start restore`),
     }),
     () => queryClient,
   );
@@ -105,7 +106,7 @@ export const handleForgetSnapshot = async (
   repositoryId: string,
   snapshotId: string,
 ) => {
-  toastManager.info('Deleting snapshot', {
+  toastManager.info(gt`Deleting snapshot`, {
     id: snapshotId,
     closable: false,
     timeout: null!,
@@ -113,9 +114,9 @@ export const handleForgetSnapshot = async (
 
   try {
     await sdk.forgetSnapshot(repositoryId, snapshotId);
-    toastManager.success('Deleted snapshot');
+    toastManager.success(gt`Deleted snapshot`);
   } catch (error) {
-    handleError(error, 'Failed to delete snapshot');
+    handleError(error, gt`Failed to delete snapshot`);
     throw error;
   } finally {
     (toastManager as never as { remove(target: { id: string }): void }).remove({
@@ -129,7 +130,7 @@ export const useRollbackSnapshot = () =>
     () => ({
       mutationFn: (dto: ImmichRollbackRequestDto) =>
         sdk.startImmichRollback(dto),
-      onError: (error) => handleError(error, 'Failed to start rollback'),
+      onError: (error) => handleError(error, gt`Failed to start rollback`),
     }),
     () => queryClient,
   );
@@ -142,7 +143,7 @@ export const handleGetSnapshotListing = async (
   try {
     return await sdk.getSnapshotListing(id, snapshotId, { path });
   } catch (error) {
-    handleError(error, 'Failed to load directory listing');
+    handleError(error, gt`Failed to load directory listing`);
     throw error;
   }
 };
@@ -150,12 +151,13 @@ export const handleGetSnapshotListing = async (
 export const getSnapshotActions = (
   repositoryId: string,
   snapshot: SnapshotDto,
+  t: typeof gt,
   immich?: boolean,
 ) => {
   const removeSnapshot = useRemoveSnapshot(repositoryId);
 
   const Restore: ActionItem = {
-    title: 'Restore files',
+    title: t(msg`Restore files`),
     icon: mdiBackupRestore,
     onAction: () =>
       void modalManager.open(RestoreSnapshotModal, {
@@ -165,7 +167,7 @@ export const getSnapshotActions = (
   };
 
   const Rollback: ActionItem = {
-    title: 'Rollback snapshot',
+    title: t(msg`Rollback snapshot`),
     icon: mdiHistory,
     onAction: () =>
       void modalManager.open(RollbackSnapshotModal, {
@@ -176,14 +178,14 @@ export const getSnapshotActions = (
   };
 
   const Delete: ActionItem = {
-    title: 'Delete',
+    title: t(msg`Delete`),
     icon: mdiDeleteOutline,
     color: 'danger',
     onAction: async () => {
       const confirm = await modalManager.showDialog({
-        confirmText: 'Delete',
-        title: 'Delete Snapshot',
-        prompt: 'This snapshot will be permanently removed.',
+        confirmText: t(msg`Delete`),
+        title: t(msg`Delete Snapshot`),
+        prompt: t(msg`This snapshot will be permanently removed.`),
       });
 
       if (!confirm) {

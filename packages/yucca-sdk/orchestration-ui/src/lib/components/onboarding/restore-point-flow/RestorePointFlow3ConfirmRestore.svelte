@@ -17,6 +17,7 @@
   } from "@immich/ui";
   import { SvelteSet } from "svelte/reactivity";
   import RestorePointFlow4Restore from "./RestorePointFlow4Restore.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onBack: () => void;
@@ -65,28 +66,28 @@
 {#if logId}
   <RestorePointFlow4Restore {onFinish} {logId} taskId={repository.id} />
 {:else}
-  <Modal title="Confirm restore from snapshot" size="small" onClose={onBack}>
+  <Modal title={$t`Confirm restore from snapshot`} size="small" onClose={onBack}>
     <ModalBody>
       <Stack>
         <Stack gap={2}>
-          <Text fontWeight="bold">Restore configuration</Text>
+          <Text fontWeight="bold">{$t`Restore configuration`}</Text>
           <HStack>
             <Select
               options={yuccaConfigOptions}
               bind:value={yuccaConfig}
-              placeholder="Not restoring backup configuration"
+              placeholder={$t`Not restoring backup configuration`}
               class="flex-1"
             />
             {#if yuccaConfig}
               <Button variant="ghost" onclick={() => (yuccaConfig = undefined)}>
-                Clear
+                {$t`Clear`}
               </Button>
             {/if}
           </HStack>
         </Stack>
 
         <Stack gap={2}>
-          <Text fontWeight="bold">Backup includes</Text>
+          <Text fontWeight="bold">{$t`Backup includes`}</Text>
           {#each snapshot.paths as path}
             {@const forced = path === yuccaConfig}
             <label class="select-none flex gap-2 items-center">
@@ -104,14 +105,14 @@
         </Stack>
 
         <Text size="small" color="muted">
-          Files will be restored to their exact paths.
+          {$t`Files will be restored to their exact paths.`}
         </Text>
       </Stack>
     </ModalBody>
     <ModalFooter>
       <HStack>
-        <Button variant="ghost" onclick={onBack}>Back</Button>
-        <Button onclick={handleRestore}>Restore</Button>
+        <Button variant="ghost" onclick={onBack}>{$t`Back`}</Button>
+        <Button onclick={handleRestore}>{$t`Restore`}</Button>
       </HStack>
     </ModalFooter>
   </Modal>

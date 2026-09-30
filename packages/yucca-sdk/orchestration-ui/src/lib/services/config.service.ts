@@ -7,6 +7,7 @@ import {
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
+import { gt } from 'svelte-i18n-lingui';
 
 export const configKeys = {
   all: ['config'] as const,
@@ -69,7 +70,7 @@ export const useUpdateConfig = () =>
     () => ({
       mutationFn: (dto: ConfigUpdateRequestDto) => updateConfig(dto),
       onSuccess: (config) => queryClient.setQueryData(configKeys.all, config),
-      onError: (error) => handleError(error, 'Failed to save settings'),
+      onError: (error) => handleError(error, gt`Failed to save settings`),
     }),
     () => queryClient,
   );

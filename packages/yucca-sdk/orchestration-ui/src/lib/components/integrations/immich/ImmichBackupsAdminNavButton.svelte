@@ -7,6 +7,7 @@
   import { page } from "$app/state";
   import { Icon, Text } from "@immich/ui";
   import { mdiCloudUpload, mdiCloudUploadOutline } from "@mdi/js";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     href: string;
@@ -46,7 +47,7 @@
       color={configured && !active ? undefined : "primary"}
       class="flex-1 truncate"
     >
-      {configured ? "Backups" : "Set up Backups"}
+      {configured ? $t`Backups` : $t`Set up Backups`}
     </Text>
   </a>
 </div>

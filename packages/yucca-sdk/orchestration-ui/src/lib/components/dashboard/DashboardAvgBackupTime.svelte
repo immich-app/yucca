@@ -2,6 +2,7 @@
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { formatDuration } from "$lib/utils/format";
   import { Card, CardBody } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
   import VisualisationGauge from "../ui/VisualisationGauge.svelte";
 
   type Props = {
@@ -27,7 +28,7 @@
 <Card class="border-primary-100 shadow-none">
   <CardBody>
     <VisualisationGauge
-      title="Avg. Backup Time"
+      title={$t`Avg. Backup Time`}
       content={avgBackupTime != null ? formatDuration(avgBackupTime) : "—"}
     />
   </CardBody>

@@ -24,6 +24,7 @@
   } from "@mdi/js";
   import { onMount } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     title: string;
@@ -100,7 +101,7 @@
 <FormModal
   {title}
   size="large"
-  submitText="Save"
+  submitText={$t`Save`}
   disabled={submitting}
   onSubmit={handleSubmit}
   {onClose}
@@ -114,14 +115,14 @@
       {#if selected.size > 0}
         <StackList>
           {#snippet title()}
-            Selected paths
+            {$t`Selected paths`}
           {/snippet}
           {#each [...selected] as path (path)}
             <HStack gap={2} class="items-center px-4 py-3">
               <Text class="grow truncate" title={path}>{path}</Text>
               <IconButton
                 icon={mdiClose}
-                aria-label="Remove"
+                aria-label={$t`Remove`}
                 size="tiny"
                 variant="ghost"
                 onclick={() => selected.delete(path)}
@@ -131,15 +132,17 @@
         </StackList>
       {:else}
         <Stack gap={2}>
-          <Heading class="px-1" size="tiny">Selected paths</Heading>
-          <Text color="muted" class="text-center py-6">No paths selected</Text>
+          <Heading class="px-1" size="tiny">{$t`Selected paths`}</Heading>
+          <Text color="muted" class="text-center py-6"
+            >{$t`No paths selected`}</Text
+          >
         </Stack>
       {/if}
     {/if}
 
     {#if !listing}
       <Stack gap={2}>
-        <Heading class="px-1" size="tiny">Browse</Heading>
+        <Heading class="px-1" size="tiny">{$t`Browse`}</Heading>
         <div class="py-6 flex justify-center">
           <LoadingSpinner />
         </div>
@@ -147,7 +150,7 @@
     {:else}
       <StackList>
         {#snippet title()}
-          Browse
+          {$t`Browse`}
         {/snippet}
 
         <HStack
@@ -163,7 +166,7 @@
           {#if listing.parent && listing.parent !== listing.path}
             <IconButton
               icon={mdiArrowUp}
-              aria-label="Go up"
+              aria-label={$t`Go up`}
               size="tiny"
               variant="ghost"
               onclick={() => browse(listing!.parent)}
@@ -203,10 +206,10 @@
               <IconButton
                 icon={isSelected ? mdiCheck : mdiPlus}
                 aria-label={isSelected
-                  ? "Selected"
+                  ? $t`Selected`
                   : single
-                    ? "Select"
-                    : "Add"}
+                    ? $t`Select`
+                    : $t`Add`}
                 size="tiny"
                 variant="ghost"
                 color={isSelected ? "primary" : undefined}
@@ -221,12 +224,12 @@
           {#if foldersOnly}
             <Stack class="items-center px-4 py-6">
               <Button variant="outline" onclick={() => add(listing!.path)}>
-                Use this folder
+                {$t`Use this folder`}
               </Button>
             </Stack>
           {:else}
             <Text color="muted" class="text-center py-6">
-              This folder is empty
+              {$t`This folder is empty`}
             </Text>
           {/if}
         {/if}

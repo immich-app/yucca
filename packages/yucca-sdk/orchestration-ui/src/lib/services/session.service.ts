@@ -3,6 +3,7 @@ import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createMutation } from '@tanstack/svelte-query';
+import { gt } from 'svelte-i18n-lingui';
 
 export type DeviceFlowKind = 'oidc' | 'session';
 
@@ -31,7 +32,7 @@ export const useCreateSession = () =>
   createMutation(
     () => ({
       mutationFn: (token: string) => createSession({ token }),
-      onError: (error) => handleError(error, 'Failed to log in'),
+      onError: (error) => handleError(error, gt`Failed to log in`),
     }),
     () => queryClient,
   );

@@ -7,6 +7,7 @@
   import { mdiArchiveOutline } from "@mdi/js";
   import StackListItem from "../ui/StackListItem.svelte";
   import RelativeTime from "../util/RelativeTime.svelte";
+  import { t, msg } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -17,9 +18,9 @@
   const local = getProvider().api === "orchestrator";
 
   const BackendNames = {
-    yucca: "FUTO Backups",
-    local: "Local Storage",
-    s3: "S3 Server",
+    yucca: msg`FUTO Backups`,
+    local: msg`Local Storage`,
+    s3: msg`S3 Server`,
   };
 
   const outcome = $derived(getBackupOutcome(repository.metrics));
@@ -32,7 +33,7 @@
     Import,
     MetricsHistory,
     Delete,
-  } = $derived(getRepositoryActions(repository, local));
+  } = $derived(getRepositoryActions(repository, $t, local));
 </script>
 
 <StackListItem
@@ -53,38 +54,38 @@
   {/snippet}
 
   {#if repository.backends}
-    {BackendNames[repository.backends.primary.type]} &middot;
+    {$t(BackendNames[repository.backends.primary.type])} &middot;
   {/if}
 
   {#if repository.meter}
     <FormatBytes bytes={repository.meter.sizeBytes} />
   {:else}
-    Estimated <FormatBytes bytes={repository.metrics.sizeBytes} />
+    {$t`Estimated`} <FormatBytes bytes={repository.metrics.sizeBytes} />
   {/if}
 
   {#if repository.worm}
-    &middot; write-only
+    &middot; {$t`write-only`}
   {/if}
 
   {#snippet trailing()}
     {#if repository.backends && !repository.backends.primary.online}
-      <Badge size="tiny" color="danger">Offline</Badge>
+      <Badge size="tiny" color="danger">{$t`Offline`}</Badge>
     {/if}
 
     {#if outcome === "failed"}
       <Badge size="tiny" color="danger">
-        Failed <RelativeTime time={repository.metrics.lastBackup!} />
+        {$t`Failed`} <RelativeTime time={repository.metrics.lastBackup!} />
       </Badge>
     {:else if outcome === "warn"}
       <Badge size="tiny" color="warning">
-        Warnings <RelativeTime time={repository.metrics.lastBackup!} />
+        {$t`Warnings`} <RelativeTime time={repository.metrics.lastBackup!} />
       </Badge>
     {:else if outcome === "complete"}
       <Badge size="tiny" color="success">
-        Successful <RelativeTime time={repository.metrics.lastBackup!} />
+        {$t`Successful`} <RelativeTime time={repository.metrics.lastBackup!} />
       </Badge>
     {:else}
-      <Badge size="tiny" color="warning">Never backed up</Badge>
+      <Badge size="tiny" color="warning">{$t`Never backed up`}</Badge>
     {/if}
   {/snippet}
 </StackListItem>

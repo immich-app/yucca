@@ -9,6 +9,7 @@
   } from "@immich/ui";
   import { mdiDotsVertical } from "@mdi/js";
   import type { Snippet } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Color = "primary" | "success" | "warning" | "danger";
 
@@ -70,7 +71,7 @@
     {#if hasActions(actions)}
       <ContextMenuButton
         icon={mdiDotsVertical}
-        aria-label="Options"
+        aria-label={$t`Options`}
         items={actions}
         variant="ghost"
         color="secondary"

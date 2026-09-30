@@ -17,6 +17,7 @@
     mdiStopCircleOutline,
   } from "@mdi/js";
   import cronstrue from "cronstrue";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -55,7 +56,7 @@
 </script>
 
 <StackList>
-  <StackListItem title="Your library" footerColor={appearance.color}>
+  <StackListItem title={$t`Your library`} footerColor={appearance.color}>
     {#snippet icon()}
       <Icon icon={mdiArchiveOutline} />
     {/snippet}
@@ -63,7 +64,7 @@
     {#if repository.meter}
       <FormatBytes bytes={repository.meter.sizeBytes} />
     {:else}
-      Estimated <FormatBytes bytes={repository.metrics.sizeBytes} />
+      {$t`Estimated`} <FormatBytes bytes={repository.metrics.sizeBytes} />
     {/if} &middot;
     <span class="lowercase">
       {cronstrue.toString(schedule.cron, { verbose: true })}
@@ -79,7 +80,7 @@
           leadingIcon={mdiStopCircleOutline}
           onclick={() => void handleCancelTask(repository.id)}
         >
-          Cancel backup
+          {$t`Cancel backup`}
         </Button>
       {:else}
         <Button
@@ -89,7 +90,7 @@
           leadingIcon={mdiCloudUploadOutline}
           onclick={() => void handleCreateBackup(repository.id)}
         >
-          Back up now
+          {$t`Back up now`}
         </Button>
       {/if}
     {/snippet}
@@ -98,25 +99,25 @@
       <Icon icon={appearance.icon} />
 
       {#if status.kind === "offline"}
-        Backup storage is offline.
+        {$t`Backup storage is offline.`}
       {:else if status.kind === "missing"}
-        Backup is missing on the service.
+        {$t`Backup is missing on the service.`}
       {:else if status.kind === "running"}
-        Backup in progress
+        {$t`Backup in progress`}
       {:else if status.kind === "failed"}
-        Last backup failed <RelativeTime time={status.lastBackup} />
+        {$t`Last backup failed`} <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "warn"}
-        Last backup finished with warnings <RelativeTime time={status.lastBackup} />
+        {$t`Last backup finished with warnings`} <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "incomplete"}
-        Last backup did not complete <RelativeTime time={status.lastBackup} />
+        {$t`Last backup did not complete`} <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "cancelled"}
-        Last backup was cancelled <RelativeTime time={status.lastBackup} />
+        {$t`Last backup was cancelled`} <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "complete"}
-        Last backup successful <RelativeTime time={status.lastBackup} />
+        {$t`Last backup successful`} <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "paused"}
-        Backups paused
+        {$t`Backups paused`}
       {:else}
-        Backup is yet to run.
+        {$t`Backup is yet to run.`}
       {/if}
     {/snippet}
   </StackListItem>

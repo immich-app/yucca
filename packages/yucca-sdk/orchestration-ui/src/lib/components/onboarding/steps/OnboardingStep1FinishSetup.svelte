@@ -4,6 +4,7 @@
   import OnboardingStepLayout, {
     type OnboardingStepAction,
   } from "./OnboardingStepLayout.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onContinue: () => void;
@@ -12,25 +13,25 @@
 
   const { onContinue, onImportKey }: Props = $props();
 
-  const steps = [
-    "Connect FUTO account",
-    "Save your recovery key",
-    "Start your first backup",
-  ];
+  const steps = $derived([
+    $t`Connect FUTO account`,
+    $t`Save your recovery key`,
+    $t`Start your first backup`,
+  ]);
 
-  const actions: OnboardingStepAction[] = [
-    { label: "Continue", onClick: () => onContinue() },
+  const actions = $derived<OnboardingStepAction[]>([
+    { label: $t`Continue`, onClick: () => onContinue() },
     {
-      label: "Import key",
+      label: $t`Import key`,
       onClick: () => onImportKey?.(),
       $if: () => !!onImportKey,
     },
-  ];
+  ]);
 </script>
 
 <OnboardingStepLayout
-  title="Finish setting up FUTO Backups"
-  description="Your subscription is active. Finish setup to create your recovery key and start backing up your Immich library."
+  title={$t`Finish setting up FUTO Backups`}
+  description={$t`Your subscription is active. Finish setup to create your recovery key and start backing up your Immich library.`}
   {actions}
 >
   <Stack gap={3}>

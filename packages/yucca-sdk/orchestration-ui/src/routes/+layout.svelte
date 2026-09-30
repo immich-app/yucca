@@ -1,12 +1,14 @@
 <script lang="ts">
   import { configureYucca } from "$lib/providers";
   import { themeManager, ThemePreference, toastManager } from "@immich/ui";
-  import { YuccaContext } from "$lib";
+  import { defaultMessages, YuccaContext } from "$lib";
   import "./layout.css";
+  import { locale } from "svelte-i18n-lingui";
 
   const { children } = $props();
 
   configureYucca({ api: "orchestrator", baseUrl: "http://localhost:22676" });
+  locale.set("en", defaultMessages);
 
   themeManager.setPreference(ThemePreference.Light);
 

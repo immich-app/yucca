@@ -23,6 +23,7 @@
     mdiTimerOutline,
   } from "@mdi/js";
   import RelativeTime from "../../util/RelativeTime.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -61,7 +62,10 @@
   });
 </script>
 
-<Modal title={`Metrics history for ${repository.name}`} size="large" {onClose}>
+<Modal title={$t({
+    message: "Metrics history for {name}",
+    values: { name: repository.name },
+  })} size="large" {onClose}>
   <ModalBody>
     {#if query.isLoading}
       <LoadingSpinner />
@@ -69,7 +73,7 @@
       <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
     {:else if entries.length === 0}
       <Text color="secondary" class="text-center py-6">
-        No metrics history yet.
+        {$t`No metrics history yet.`}
       </Text>
     {:else}
       <Stack gap={0} class="divide-y rounded-2xl border overflow-hidden">
@@ -87,65 +91,65 @@
                     size="18"
                     class="text-info-500"
                   />
-                  <Text>Backup started</Text>
+                  <Text>{$t`Backup started`}</Text>
                 {:else if status === 'complete'}
                   <Icon
                     icon={mdiCheckCircleOutline}
                     size="18"
                     class="text-success-500"
                   />
-                  <Text>Backup finished</Text>
-                  <Badge size="tiny" color="success">Success</Badge>
+                  <Text>{$t`Backup finished`}</Text>
+                  <Badge size="tiny" color="success">{$t`Success`}</Badge>
                 {:else if status === 'warn'}
                   <Icon
                     icon={mdiAlertCircleOutline}
                     size="18"
                     class="text-warning-500"
                   />
-                  <Text>Backup finished</Text>
-                  <Badge size="tiny" color="warning">Warning</Badge>
+                  <Text>{$t`Backup finished`}</Text>
+                  <Badge size="tiny" color="warning">{$t`Warning`}</Badge>
                 {:else if status === 'incomplete'}
                   <Icon
                     icon={mdiAlertCircleOutline}
                     size="18"
                     class="text-warning-500"
                   />
-                  <Text>Backup incomplete</Text>
-                  <Badge size="tiny" color="warning">Incomplete</Badge>
+                  <Text>{$t`Backup incomplete`}</Text>
+                  <Badge size="tiny" color="warning">{$t`Incomplete`}</Badge>
                 {:else if status === 'failed'}
                   <Icon
                     icon={mdiAlertCircleOutline}
                     size="18"
                     class="text-danger-500"
                   />
-                  <Text>Backup finished</Text>
-                  <Badge size="tiny" color="danger">Failed</Badge>
+                  <Text>{$t`Backup finished`}</Text>
+                  <Badge size="tiny" color="danger">{$t`Failed`}</Badge>
                 {:else if status === 'cancelled'}
                   <Icon
                     icon={mdiAlertCircleOutline}
                     size="18"
                     class="text-warning-500"
                   />
-                  <Text>Backup cancelled</Text>
-                  <Badge size="tiny" color="warning">Cancelled</Badge>
+                  <Text>{$t`Backup cancelled`}</Text>
+                  <Badge size="tiny" color="warning">{$t`Cancelled`}</Badge>
                 {:else if isEnd}
                   <Icon
                     icon={mdiAlertCircleOutline}
                     size="18"
                     class="text-danger-500"
                   />
-                  <Text>Backup finished</Text>
-                  <Badge size="tiny" color="danger">Failed</Badge>
+                  <Text>{$t`Backup finished`}</Text>
+                  <Badge size="tiny" color="danger">{$t`Failed`}</Badge>
                 {:else if isSize}
                   <Icon
                     icon={mdiDatabaseOutline}
                     size="18"
                     class="text-info-500"
                   />
-                  <Text>Size updated</Text>
+                  <Text>{$t`Size updated`}</Text>
                 {:else}
                   <Icon icon={mdiTimerOutline} size="18" color="secondary" />
-                  <Text>Event</Text>
+                  <Text>{$t`Event`}</Text>
                 {/if}
               </HStack>
               <Text
@@ -160,22 +164,34 @@
             <HStack class="gap-2 flex-wrap pl-7">
               {#if entry.backupDuration != null}
                 <Badge size="tiny" color="secondary">
-                  Duration {formatDuration(entry.backupDuration)}
+                  {$t({
+                    message: "Duration {duration}",
+                    values: { duration: formatDuration(entry.backupDuration) },
+                  })}
                 </Badge>
               {/if}
               {#if entry.sizeBytes != null}
                 <Badge size="tiny" color="secondary">
-                  Size {getByteUnitString(entry.sizeBytes)}
+                  {$t({
+                    message: "Size {size}",
+                    values: { size: getByteUnitString(entry.sizeBytes) },
+                  })}
                 </Badge>
               {/if}
               {#if entry.started}
                 <Badge size="tiny" color="secondary">
-                  Started {isoDate(entry.started)}
+                  {$t({
+                    message: "Started {date}",
+                    values: { date: isoDate(entry.started) },
+                  })}
                 </Badge>
               {/if}
               {#if entry.backup}
                 <Badge size="tiny" color="secondary">
-                  Ended {isoDate(entry.backup)}
+                  {$t({
+                    message: "Ended {date}",
+                    values: { date: isoDate(entry.backup) },
+                  })}
                 </Badge>
               {/if}
             </HStack>

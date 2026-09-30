@@ -4,6 +4,7 @@
   import { createLogObserver } from "$lib/services/log.service.svelte";
   import { Alert, Modal, ModalBody, ProgressBar, Stack, Text } from "@immich/ui";
   import { onDestroy } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onFinish: () => void;
@@ -28,7 +29,7 @@
 <OnEvents {onTaskEnd} />
 
 <Modal
-  title={log.errors.length > 0 ? "Restore failed" : "Restoring"}
+  title={log.errors.length > 0 ? $t`Restore failed` : $t`Restoring`}
   size="small"
   onClose={log.errors.length > 0 ? onFinish : undefined}
 >

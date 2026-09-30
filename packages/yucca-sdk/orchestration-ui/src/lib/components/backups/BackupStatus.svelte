@@ -23,6 +23,7 @@
     Text,
   } from "@immich/ui";
   import type { Snippet } from "svelte";
+  import { msg, plural, t } from "svelte-i18n-lingui";
 
   type Props = {
     title: string;
@@ -53,77 +54,77 @@
   }: Props = $props();
 
   const phases: Record<BackupStatusType, [string, string, string]> = {
-    backup: ["Preparing backup", "Backing up", "Finalizing backup"],
-    restore: ["Preparing restore", "Restoring", "Finalizing restore"],
-    forget: ["Preparing prune", "Pruning", "Finalizing prune"],
+    backup: [msg`Preparing backup`, msg`Backing up`, msg`Finalizing backup`],
+    restore: [msg`Preparing restore`, msg`Restoring`, msg`Finalizing restore`],
+    forget: [msg`Preparing prune`, msg`Pruning`, msg`Finalizing prune`],
   };
 
   const succeeded: Record<BackupStatusType, string> = {
-    backup: "Your library was backed up successfully",
-    restore: "Your library was restored successfully",
-    forget: "Old backups were pruned successfully",
+    backup: msg`Your library was backed up successfully`,
+    restore: msg`Your library was restored successfully`,
+    forget: msg`Old backups were pruned successfully`,
   };
 
   const warned: Record<BackupStatusType, string> = {
-    backup: "Your library was backed up, with warnings",
-    restore: "Your library was restored, with warnings",
-    forget: "Old backups were pruned, with warnings",
+    backup: msg`Your library was backed up, with warnings`,
+    restore: msg`Your library was restored, with warnings`,
+    forget: msg`Old backups were pruned, with warnings`,
   };
 
   const failed: Record<BackupStatusType, string> = {
-    backup: "Your library could not be backed up",
-    restore: "Your library could not be restored",
-    forget: "Old backups could not be pruned",
+    backup: msg`Your library could not be backed up`,
+    restore: msg`Your library could not be restored`,
+    forget: msg`Old backups could not be pruned`,
   };
 
   const cancelled: Record<BackupStatusType, string> = {
-    backup: "Your backup was cancelled",
-    restore: "Your restore was cancelled",
-    forget: "Pruning old backups was cancelled",
+    backup: msg`Your backup was cancelled`,
+    restore: msg`Your restore was cancelled`,
+    forget: msg`Pruning old backups was cancelled`,
   };
 
   const reassurance: Record<BackupStatusType, string> = {
-    backup: "No changes were made to your existing backups.",
-    restore: "Your backups are untouched — nothing was lost.",
-    forget: "No backups were removed.",
+    backup: msg`No changes were made to your existing backups.`,
+    restore: msg`Your backups are untouched — nothing was lost.`,
+    forget: msg`No backups were removed.`,
   };
 
   const running: Record<BackupStatusType, string> = {
-    backup:
-      "You can close this window and the backup will continue in the background.",
-    restore:
-      "You can close this window and the restore will continue in the background.",
-    forget:
-      "You can close this window and the prune will continue in the background.",
+    backup: msg`You can close this window and the backup will continue in the background.`,
+    restore: msg`You can close this window and the restore will continue in the background.`,
+    forget: msg`You can close this window and the prune will continue in the background.`,
   };
 
   const phase = $derived(
     progress <= 0
-      ? phases[type][0]
+      ? $t(phases[type][0])
       : progress >= 0.95
-        ? phases[type][2]
-        : phases[type][1],
+        ? $t(phases[type][2])
+        : $t(phases[type][1]),
   );
 
   const headline = $derived.by(() => {
     switch (backupState) {
       case "connecting": {
-        return "Connecting…";
+        return $t`Connecting…`;
       }
       case "failed": {
-        return failed[type];
+        return $t(failed[type]);
       }
       case "cancelled": {
-        return cancelled[type];
+        return $t(cancelled[type]);
       }
       case "complete": {
-        return succeeded[type];
+        return $t(succeeded[type]);
       }
       case "warned": {
-        return warned[type];
+        return $t(warned[type]);
       }
       default: {
-        return `${phase} · ${Math.round(progress * 100)}%`;
+        return $t({
+          message: "{phase} · {percent}%",
+          values: { phase, percent: Math.round(progress * 100) },
+        });
       }
     }
   });
@@ -154,17 +155,21 @@
       <Heading size="small">{headline}</Heading>
 
       {#if backupState === "running" && start}
-        <Text color="muted">Started <RelativeTime time={start} /></Text>
+        <Text color="muted">{$t`Started`} <RelativeTime time={start} /></Text>
       {:else if backupState === "failed"}
-        <Text color="muted">{reassurance[type]}</Text>
+        <Text color="muted">{$t(reassurance[type])}</Text>
       {:else if duration}
-        <Text color="muted">Completed in {duration}</Text>
+        <Text color="muted">
+          {$t({ message: "Completed in {duration}", values: { duration } })}
+        </Text>
       {/if}
 
       {#if backupState === "warned" && errors.length > 0}
         <Text color="warning">
-          Completed with {errors.length}
-          {errors.length === 1 ? "warning" : "warnings"}.
+          {$plural(errors.length, {
+            one: "Completed with # warning.",
+            other: "Completed with # warnings.",
+          })}
         </Text>
       {/if}
     </Stack>
@@ -183,7 +188,7 @@
     <Stack gap={4}>
       {#if backupState === "failed" && onRetry}
         <HStack gap={4} class="items-center">
-          <Button shape="round" onclick={onRetry}>Try again</Button>
+          <Button shape="round" onclick={onRetry}>{$t`Try again`}</Button>
         </HStack>
       {/if}
 
@@ -202,7 +207,7 @@
   {/if}
 
   {#if backupState === "running"}
-    <Text color="muted">{running[type]}</Text>
+    <Text color="muted">{$t(running[type])}</Text>
   {:else if (backupState === "complete" || backupState === "warned") && details}
     <Text color="muted">{@render details()}</Text>
   {/if}

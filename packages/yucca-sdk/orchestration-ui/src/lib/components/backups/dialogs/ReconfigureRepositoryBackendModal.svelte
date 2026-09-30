@@ -3,6 +3,7 @@
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { useReconfigureRepositoryPrimaryBackend } from "$lib/services/repository.service";
   import { Text } from "@immich/ui";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -22,7 +23,7 @@
 </script>
 
 <SelectBackendModal
-  title="Select new service"
+  title={$t`Select new service`}
   disabled={reconfigure.isPending}
   onSelect={onSelectBackend}
   onCancel={onClose}
@@ -33,8 +34,7 @@
     {/if}
 
     <Text
-      >You may reset and reconfigure your backups by selecting one of the
-      following.</Text
+      >{$t`You may reset and reconfigure your backups by selecting one of the following.`}</Text
     >
   {/snippet}
 </SelectBackendModal>

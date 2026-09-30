@@ -6,7 +6,7 @@
   "license": "Source First License 1.1",
   "scripts": {
     "dev": "vite dev --port 5174",
-    "build": "vite build && npm run prepack",
+    "build": "npm run lingui:compile && vite build && npm run prepack",
     "preview": "vite preview --port 4174",
     "prepare": "svelte-kit sync || echo ''",
     "prepack": "svelte-kit sync && svelte-package && publint",
@@ -16,7 +16,9 @@
     "test": "npm run test:unit && npm run test:e2e",
     "test:e2e": "playwright test",
     "test:e2e:create": "playwright codegen http://localhost:36066",
-    "generate:fetch-client": "oazapfts --optimistic ../orchestration-api/openapi-specs.json src/lib/fetch-client.ts"
+    "generate:fetch-client": "oazapfts --optimistic ../orchestration-api/openapi-specs.json src/lib/fetch-client.ts",
+    "lingui:extract": "lingui extract",
+    "lingui:compile": "lingui compile --typescript"
   },
   "files": [
     "dist",
@@ -40,9 +42,13 @@
     }
   },
   "peerDependencies": {
-    "svelte": "^5.0.0"
+    "@lingui/core": "^5.8.0",
+    "svelte": "^5.0.0",
+    "svelte-i18n-lingui": "^0.2.2"
   },
   "devDependencies": {
+    "@lingui/cli": "catalog:",
+    "@lingui/core": "catalog:",
     "@playwright/test": "catalog:",
     "@sveltejs/adapter-auto": "catalog:",
     "@sveltejs/kit": "catalog:",
@@ -59,6 +65,7 @@
     "publint": "catalog:",
     "svelte": "catalog:",
     "svelte-check": "catalog:",
+    "svelte-i18n-lingui": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

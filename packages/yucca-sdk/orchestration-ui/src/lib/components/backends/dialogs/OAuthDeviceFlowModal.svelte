@@ -17,6 +17,7 @@
   } from "@immich/ui";
   import { onDestroy } from "svelte";
   import OnEvents from "../../util/OnEvents.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onCreate?: (backendId: string) => void;
@@ -50,7 +51,7 @@
 
 <OnEvents {onBackendCreate} />
 
-<Modal title="Logging into FUTO Backups" icon={false} {onClose}>
+<Modal title={$t`Logging into FUTO Backups`} icon={false} {onClose}>
   <ModalBody>
     {#if flow.state.userCode}
       <DeviceFlowCode {flow} />
@@ -63,7 +64,7 @@
   <ModalFooter>
     <HStack fullWidth>
       <Button shape="round" color="secondary" fullWidth onclick={onClose}>
-        Cancel
+        {$t`Cancel`}
       </Button>
       <DeviceFlowAction {flow} />
     </HStack>

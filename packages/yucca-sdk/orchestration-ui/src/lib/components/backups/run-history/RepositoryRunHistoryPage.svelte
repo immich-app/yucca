@@ -13,6 +13,7 @@
   import { Stack, type ActionItem } from "@immich/ui";
   import { mdiRadioboxBlank, mdiRadioboxMarked } from "@mdi/js";
   import RepositoryRunHistoryItem from "./RepositoryRunHistoryItem.svelte";
+  import { msg, t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -42,26 +43,26 @@
   };
 
   const sortOptions = [
-    { newest: true, title: "Newest first" },
-    { newest: false, title: "Oldest first" },
+    { newest: true, title: msg`Newest first` },
+    { newest: false, title: msg`Oldest first` },
   ];
 
   const statusOptions: { value: typeof status; title: string }[] = [
-    { value: "all", title: "All attempts" },
-    { value: "complete", title: "Successful only" },
-    { value: "warn", title: "With warnings only" },
-    { value: "failed", title: "Failed only" },
-    { value: "incomplete", title: "In progress only" },
+    { value: "all", title: msg`All attempts` },
+    { value: "complete", title: msg`Successful only` },
+    { value: "warn", title: msg`With warnings only` },
+    { value: "failed", title: msg`Failed only` },
+    { value: "incomplete", title: msg`In progress only` },
   ];
 
   const tick = (selected: boolean) =>
     selected ? mdiRadioboxMarked : mdiRadioboxBlank;
 
   const sort = $derived({
-    label: newestFirst ? "Newest first" : "Oldest first",
+    label: newestFirst ? $t`Newest first` : $t`Oldest first`,
     items: sortOptions.map(
       (option): ActionItem => ({
-        title: option.title,
+        title: $t(option.title),
         icon: tick(newestFirst === option.newest),
         onAction: () => (newestFirst = option.newest),
       }),
@@ -69,13 +70,14 @@
   });
 
   const filters = $derived({
-    label:
+    label: $t(
       statusOptions.find((option) => option.value === status)?.title ??
-      "Filters",
+        msg`Filters`,
+    ),
     active: status !== "all",
     items: statusOptions.map(
       (option): ActionItem => ({
-        title: option.title,
+        title: $t(option.title),
         icon: tick(status === option.value),
         onAction: () => onFilter(option.value),
       }),
@@ -116,7 +118,7 @@
 
 <Stack gap={4}>
   <ListToolbar
-    placeholder="Search backups"
+    placeholder={$t`Search backups`}
     {search}
     {onSearch}
     {sort}
@@ -130,7 +132,7 @@
       {/each}
 
       {#if filtered.length === 0}
-        <StackListPlaceholder>No backups found</StackListPlaceholder>
+        <StackListPlaceholder>{$t`No backups found`}</StackListPlaceholder>
       {/if}
     </Suspense>
   </StackList>

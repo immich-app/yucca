@@ -13,6 +13,7 @@
   import StackListPlaceholder from "../ui/StackListPlaceholder.svelte";
   import StackListItem from "../ui/StackListItem.svelte";
   import RelativeTime from "../util/RelativeTime.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repositories: LocalRepositoryDto[];
@@ -37,7 +38,7 @@
       ? []
       : [
           {
-            title: "View history",
+            title: $t`View history`,
             icon: mdiHistory,
             onAction: () =>
               void modalManager.open(MetricsHistoryModal, { repository }),
@@ -47,12 +48,12 @@
 
 <StackList>
   {#snippet title()}
-    Recent backups
+    {$t`Recent backups`}
   {/snippet}
 
   {#if recentAttempts.length === 0}
     <StackListPlaceholder>
-      Completed backups will appear here once your first backup runs.
+      {$t`Completed backups will appear here once your first backup runs.`}
     </StackListPlaceholder>
   {/if}
 
@@ -69,7 +70,11 @@
         <Icon icon={failed ? mdiCloudOffOutline : mdiCloudCheckOutline} />
       {/snippet}
 
-      {failed ? "Attempted" : outcome === "warn" ? "Backed up with warnings" : "Backed up"}
+      {failed
+        ? $t`Attempted`
+        : outcome === "warn"
+          ? $t`Backed up with warnings`
+          : $t`Backed up`}
       <RelativeTime time={repository.metrics.lastBackup!} />
     </StackListItem>
   {/each}

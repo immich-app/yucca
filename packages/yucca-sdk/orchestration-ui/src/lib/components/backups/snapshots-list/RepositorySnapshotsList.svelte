@@ -12,6 +12,7 @@
   } from "$lib/services/snapshot.service";
   import { Button, HStack } from "@immich/ui";
   import RepositorySnapshotsListItem from "./RepositorySnapshotsListItem.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -32,12 +33,12 @@
 
 <StackList>
   {#snippet title()}
-    Snapshots
+    {$t`Snapshots`}
   {/snippet}
 
   {#snippet action()}
     {#if onViewAll && query.data?.length}
-      <Button variant="ghost" size="small" onclick={onViewAll}>View all</Button>
+      <Button variant="ghost" size="small" onclick={onViewAll}>{$t`View all`}</Button>
     {/if}
   {/snippet}
 
@@ -52,7 +53,7 @@
       {/each}
 
       {#if snapshots.length === 0}
-        <StackListPlaceholder>No backups yet</StackListPlaceholder>
+        <StackListPlaceholder>{$t`No backups yet`}</StackListPlaceholder>
       {/if}
     {/snippet}
   </Suspense>
@@ -64,7 +65,7 @@
       size="small"
       variant="outline"
       onclick={() => handlePruneRepository(repository.id)}
-      >Clean up old backups now</Button
+      >{$t`Clean up old backups now`}</Button
     >
   </HStack>
 {/if}

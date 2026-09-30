@@ -8,6 +8,7 @@ import {
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
 import { createMutation, createQuery } from '@tanstack/svelte-query';
+import { gt } from 'svelte-i18n-lingui';
 
 export const IMMICH_DEFAULT_CRON = '0 3 * * *';
 
@@ -37,7 +38,8 @@ export const useConfigureImmichIntegration = () =>
     () => ({
       mutationFn: (dto: ConfigureImmichIntegrationRequestDto) =>
         configureImmichIntegration(dto),
-      onError: (error) => handleError(error, 'Failed to save backup settings'),
+      onError: (error) =>
+        handleError(error, gt`Failed to save backup settings`),
     }),
     () => queryClient,
   );
@@ -48,7 +50,7 @@ export const useConfigureAndStartImmichIntegration = () =>
       mutationFn: async () => {
         const { immichState } = await getIntegrations();
         if (!immichState) {
-          throw new Error('No Immich instance detected.');
+          throw new Error(gt`No Immich instance detected.`);
         }
 
         const { repositoryId } = await configureImmichIntegration({
@@ -62,7 +64,7 @@ export const useConfigureAndStartImmichIntegration = () =>
 
         return { repositoryId };
       },
-      onError: (error) => handleError(error, 'Failed to create backup'),
+      onError: (error) => handleError(error, gt`Failed to create backup`),
     }),
     () => queryClient,
   );

@@ -15,6 +15,7 @@
   import StepFinishSetup from "./steps/OnboardingStep1FinishSetup.svelte";
   import StepConnectAccount from "./steps/OnboardingStep2ConnectAccount.svelte";
   import StepSaveRecoveryKey from "./steps/OnboardingStep3SaveRecoveryKey.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     status: OnboardingStatusResponseDto;
@@ -70,7 +71,7 @@
 </script>
 
 {#if stage === "intro"}
-  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+  <Modal size="small" title={$t`FUTO Backups`} onClose={onCancel}>
     <ModalBody>
       <StepFinishSetup
         onContinue={() =>
@@ -82,7 +83,7 @@
 {:else if stage === "telemetry"}
   <Telemetry onContinue={onTelemetryConfirmed} {onCancel} />
 {:else if stage === "key"}
-  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+  <Modal size="small" title={$t`FUTO Backups`} onClose={onCancel}>
     <ModalBody>
       <StepSaveRecoveryKey
         {code}
@@ -101,7 +102,7 @@
     {onCancel}
   />
 {:else if stage === "connect"}
-  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
+  <Modal size="small" title={$t`FUTO Backups`} onClose={onCancel}>
     <ModalBody>
       <StepConnectAccount
         onConnect={() => handleStartYuccaLogin(onFinish)}

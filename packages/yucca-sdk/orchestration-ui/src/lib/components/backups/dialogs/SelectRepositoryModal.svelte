@@ -13,6 +13,7 @@
     Stack,
   } from "@immich/ui";
   import type { Snippet } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     title?: string;
@@ -26,7 +27,7 @@
   };
 
   const {
-    title = "Select Backup",
+    title,
     backendId,
     leadingContent,
     footerContent,
@@ -48,7 +49,7 @@
   );
 </script>
 
-<Modal {title} size="small" onClose={onCancel}>
+<Modal title={title ?? $t`Select Backup`} size="small" onClose={onCancel}>
   <ModalBody>
     <Stack>
       {@render leadingContent?.()}
@@ -65,17 +66,22 @@
               onclick={() => onSelect(repository.id)}
             >
               {#if !accessible}
-                Can't access, is your recovery key correct?
+                {$t`Can't access, is your recovery key correct?`}
               {:else if snapshots.length}
-                Last backup: {new Date(snapshots[0].time).toLocaleDateString()}
+                {$t({
+                  message: "Last backup: {date}",
+                  values: {
+                    date: new Date(snapshots[0].time).toLocaleDateString(),
+                  },
+                })}
               {:else}
-                No backups yet
+                {$t`No backups yet`}
               {/if}
             </StackListOption>
           {/each}
 
           {#if (sortedRepositories ?? []).length === 0}
-            <StackListPlaceholder>No backups found.</StackListPlaceholder>
+            <StackListPlaceholder>{$t`No backups found.`}</StackListPlaceholder>
           {/if}
         </Suspense>
       </StackList>
@@ -83,7 +89,7 @@
   </ModalBody>
   <ModalFooter>
     <HStack>
-      <Button variant="ghost" onclick={onCancel}>Cancel</Button>
+      <Button variant="ghost" onclick={onCancel}>{$t`Cancel`}</Button>
       {@render footerContent?.()}
     </HStack>
   </ModalFooter>

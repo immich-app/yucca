@@ -3,4 +3,4 @@
 #MISE depends=[":lingui"]
 set -e
 
-git status --porcelain -- "web/src/locales" | grep -q . && exit 1 || exit 0
+git status --porcelain -- src/lib/locales | grep -q . && exit 1 || exit 0

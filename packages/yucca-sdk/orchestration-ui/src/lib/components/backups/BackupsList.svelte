@@ -12,6 +12,7 @@
   import Suspense from "../util/Suspense.svelte";
   import BackupItem from "./BackupItem.svelte";
   import CreateRepositoryModal from "./dialogs/CreateRepositoryModal.svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     initialData?: RepositoryListResponseDto;
@@ -44,7 +45,7 @@
   {#if local}
     <Stack gap={2}>
       <StackList>
-        {#snippet title()}Backups on this machine{/snippet}
+        {#snippet title()}{$t`Backups on this machine`}{/snippet}
 
         <Suspense {query}>
           {#each localRepositories as repository (repository.id)}
@@ -53,7 +54,7 @@
 
           {#if localRepositories.length === 0}
             <StackListPlaceholder>
-              No backups on this machine yet.
+              {$t`No backups on this machine yet.`}
             </StackListPlaceholder>
           {/if}
         </Suspense>
@@ -64,7 +65,7 @@
           shape="round"
           size="tiny"
           variant="outline"
-          onclick={createNewBackup}>Create new backup</Button
+          onclick={createNewBackup}>{$t`Create new backup`}</Button
         >
       </HStack>
     </Stack>
@@ -72,7 +73,7 @@
 
   <StackList>
     {#snippet title()}
-      {local ? "Backups found elsewhere" : "Your Backups"}
+      {local ? $t`Backups found elsewhere` : $t`Your Backups`}
     {/snippet}
 
     <Suspense {query}>
@@ -82,7 +83,7 @@
 
       {#if remoteRepositories.length === 0}
         <StackListPlaceholder>
-          {local ? "No other backups found." : "No backups yet."}
+          {local ? $t`No other backups found.` : $t`No backups yet.`}
         </StackListPlaceholder>
       {/if}
     </Suspense>
