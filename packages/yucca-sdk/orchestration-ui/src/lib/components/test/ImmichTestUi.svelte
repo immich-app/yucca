@@ -35,6 +35,7 @@
   } from "@mdi/js";
   import { options } from "$lib/options";
   import { onDestroy } from "svelte";
+  import { MediaQuery } from "svelte/reactivity";
   import ImmichBackupsAdminNavButton from "../integrations/immich/ImmichBackupsAdminNavButton.svelte";
   import ImmichBackupsSidebarItem from "../integrations/immich/ImmichBackupsSidebarItem.svelte";
   import MockImmichPhotos from "./immich/MockImmichPhotos.svelte";
@@ -55,6 +56,9 @@
 
   const { onExit }: Props = $props();
   const { testUiRestore, demoPadding } = options;
+
+  const fullSidebar = new MediaQuery("min-width: 48rem");
+  let sidebarOpen = $derived(fullSidebar.current);
 
   let route = $state<
     | "photos"
@@ -99,9 +103,10 @@
           variant="ghost"
           size="medium"
           aria-label="Main menu"
+          aria-expanded={sidebarOpen}
           icon={mdiMenu}
-          onclick={() => {}}
-          class="sidebar:hidden"
+          onclick={() => (sidebarOpen = fullSidebar.current ? true : !sidebarOpen)}
+          class="md:hidden"
         />
         <Logo variant="inline" class="h-12" />
       </div>
@@ -196,7 +201,7 @@
     </div>
   </AppShellHeader>
 
-  <AppShellSidebar class="relative">
+  <AppShellSidebar class="relative" bind:open={sidebarOpen}>
     <div class="flex h-full flex-col pt-4 pr-2">
       {#if route !== "photos"}
         <ImmichBackupsAdminNavButton href="#" />

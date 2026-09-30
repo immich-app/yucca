@@ -4,6 +4,7 @@
     AppShellHeader,
     AppShellSidebar,
     Heading,
+    IconButton,
     NavbarItem,
     ThemeSwitcher,
   } from "@immich/ui";
@@ -11,27 +12,43 @@
     mdiBackupRestore,
     mdiClock,
     mdiCog,
+    mdiMenu,
     mdiViewDashboard,
   } from "@mdi/js";
   import GlobalSettings from "../settings/GlobalSettings.svelte";
   import BackupsList from "../backups/BackupsList.svelte";
   import DashboardPage from "../dashboard/DashboardPage.svelte";
   import ScheduleList from "../schedules/ScheduleList.svelte";
+  import { MediaQuery } from "svelte/reactivity";
 
-  let open = $state(true);
+  const fullSidebar = new MediaQuery("min-width: 48rem");
+  let open = $derived(fullSidebar.current);
   let route = $state("dashboard");
 </script>
 
 <AppShell class="h-full">
   <AppShellHeader>
     <div class="flex items-center justify-between w-full px-4 py-2">
-      <Heading>
-        <img
-          alt="App Name Here"
-          src="/app-name-here.png"
-          class="inline h-12"
+      <div class="flex items-center gap-1">
+        <IconButton
+          shape="round"
+          color="secondary"
+          variant="ghost"
+          size="medium"
+          aria-label="Main menu"
+          aria-expanded={open}
+          icon={mdiMenu}
+          onclick={() => (open = fullSidebar.current ? true : !open)}
+          class="md:hidden"
         />
-      </Heading>
+        <Heading>
+          <img
+            alt="App Name Here"
+            src="/app-name-here.png"
+            class="inline h-12"
+          />
+        </Heading>
+      </div>
       <ThemeSwitcher size="medium" color="secondary" />
     </div>
   </AppShellHeader>
