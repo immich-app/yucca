@@ -2,6 +2,7 @@
   import {
     CloseButton,
     HStack,
+    Logo,
     Modal,
     ModalBody,
     ModalHeader,
@@ -18,16 +19,10 @@
   const { onGetStarted, onLearnMore, onClose }: Props = $props();
 </script>
 
-<Modal
-  size="giant"
-  {onClose}
-  icon={false}
-  // this is a bit of a hack to remove the frames from base modal...
-  // twin code is in ViewStatusModal
-  class="[&>div>div:first-child]:border-b-0 [&>div>div:first-child]:pb-0"
->
+<Modal size="giant" {onClose}>
   <ModalHeader>
-    <HStack fullWidth class="justify-end">
+    <HStack fullWidth class="justify-between">
+      <Logo variant="icon" size="tiny" />
       <CloseButton onclick={onClose} />
     </HStack>
   </ModalHeader>

@@ -3,6 +3,6 @@
   import { t } from "svelte-i18n-lingui";
 </script>
 
-<Badge color="primary" shape="round" size="tiny" class="self-start">
+<Badge color="info" shape="round" size="small" class="self-start">
   {$t`FUTO Backups`}
 </Badge>
