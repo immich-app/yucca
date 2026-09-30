@@ -10,13 +10,12 @@
   import UpsellProtectYourImmichLibrary from "./UpsellProtectYourImmichLibrary.svelte";
 
   type Props = {
-    price: string;
     onGetStarted: () => void;
     onLearnMore: () => void;
     onClose: () => void;
   };
 
-  const { price, onGetStarted, onLearnMore, onClose }: Props = $props();
+  const { onGetStarted, onLearnMore, onClose }: Props = $props();
 </script>
 
 <Modal
@@ -35,7 +34,7 @@
 
   <ModalBody>
     <HStack gap={4} class="p-4 max-md:flex-wrap">
-      <UpsellProtectYourImmichLibrary {price} {onGetStarted} {onLearnMore} />
+      <UpsellProtectYourImmichLibrary {onGetStarted} {onLearnMore} />
 
       <UpsellHowItWorks />
     </HStack>

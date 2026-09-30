@@ -22,7 +22,6 @@
 
   const onUpsellModal = () =>
     void modalManager.open(UpsellModal, {
-      price: "$1",
       onGetStarted: () => void 0,
       onLearnMore: () => void 0,
     });

@@ -284,8 +284,6 @@
       />
     {:else if route === "settings"}
       <ImmichBackupsPage
-        price="$1"
-        includedStorage="50 GB"
         questions={[
           {
             title: "Already back up your library elsewhere?",

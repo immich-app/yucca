@@ -192,6 +192,10 @@ msgstr "Attempted"
 msgid "Automatic backups"
 msgstr "Automatic backups"
 
+#: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
+msgid "Automatic backups run in the background"
+msgstr "Automatic backups run in the background"
+
 #: src/lib/components/schedules/RepositoryPicker.svelte
 msgid "Available"
 msgstr "Available"
@@ -452,6 +456,10 @@ msgstr "Choose target folder"
 msgid "Choose what Immich includes in each backup."
 msgstr "Choose what Immich includes in each backup."
 
+#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
+msgid "Choose where your backups live"
+msgstr "Choose where your backups live"
+
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
 msgid "Clean up old backups now"
 msgstr "Clean up old backups now"
@@ -467,10 +475,6 @@ msgstr "Clear"
 #: src/lib/components/onboarding/dialogs/BackupsRecoveryKeyModal.svelte
 msgid "Close"
 msgstr "Close"
-
-#: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "Cloud copy while your originals stay local"
-msgstr "Cloud copy while your originals stay local"
 
 #: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Completed backups will appear here once your first backup runs."
@@ -508,7 +512,6 @@ msgid "Connect FUTO account"
 msgstr "Connect FUTO account"
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "Connect your FUTO account"
 msgstr "Connect your FUTO account"
 
@@ -940,12 +943,16 @@ msgid "FUTO Backups"
 msgstr "FUTO Backups"
 
 #: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "FUTO Backups adds hosted cloud backup storage to your existing Immich setup, so you have another copy if something happens locally."
-msgstr "FUTO Backups adds hosted cloud backup storage to your existing Immich setup, so you have another copy if something happens locally."
+msgid "FUTO Backups adds backup support to your existing Immich setup, giving you more ways to protect your library if something goes wrong."
+msgstr "FUTO Backups adds backup support to your existing Immich setup, giving you more ways to protect your library if something goes wrong."
 
 #: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
 msgid "FUTO Backups already creates the same database backups as Immich."
 msgstr "FUTO Backups already creates the same database backups as Immich."
+
+#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
+msgid "FUTO Cloud, local storage, or another supported option."
+msgstr "FUTO Cloud, local storage, or another supported option."
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Generated photo previews, can be recreated later."
@@ -1053,10 +1060,6 @@ msgstr "Include these backup settings, so they survive a restore."
 msgid "Included: {names}"
 msgstr "Included: {names}"
 
-#: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
-msgid "Includes {includedStorage} of backup storage. Additional storage billed by usage."
-msgstr "Includes {includedStorage} of backup storage. Additional storage billed by usage."
-
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Incomplete"
 msgstr "Incomplete"
@@ -1088,8 +1091,8 @@ msgid "Keep this key somewhere safe. It is required to restore your backups."
 msgstr "Keep this key somewhere safe. It is required to restore your backups."
 
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
-msgid "Keep your Immich library safe with our secure, hosted backups solution."
-msgstr "Keep your Immich library safe with our secure, hosted backups solution."
+msgid "Keep your Immich library protected with backups stored locally, remotely, or in the cloud."
+msgstr "Keep your Immich library protected with backups stored locally, remotely, or in the cloud."
 
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
 msgid "Last backup"
@@ -1679,8 +1682,12 @@ msgid "Restore from {name}"
 msgstr "Restore from {name}"
 
 #: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "Restore if your local storage fails"
-msgstr "Restore if your local storage fails"
+msgid "Restore from backup snapshots when needed"
+msgstr "Restore from backup snapshots when needed"
+
+#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
+msgid "Restore in one click"
+msgstr "Restore in one click"
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow4Restore.svelte
 msgid "Restore progress"
@@ -1691,8 +1698,8 @@ msgid "Restore the Immich database"
 msgstr "Restore the Immich database"
 
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
-msgid "Restore your photos, videos, metadata, database, and configuration from a backup snapshot."
-msgstr "Restore your photos, videos, metadata, database, and configuration from a backup snapshot."
+msgid "Restore your files from an earlier backup whenever you want to return to a previous version."
+msgstr "Restore your files from an earlier backup whenever you want to return to a previous version."
 
 #: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 msgid "restored"
@@ -1787,10 +1794,6 @@ msgstr "Search backups"
 msgid "Search snapshots"
 msgstr "Search snapshots"
 
-#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
-msgid "Securely connect FUTO Backups to Immich."
-msgstr "Securely connect FUTO Backups to Immich."
-
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "Select {name}"
 msgstr "Select {name}"
@@ -1849,10 +1852,6 @@ msgstr "Skip to content"
 msgid "Slow down backup uploads without affecting restores. Leave empty for no limit."
 msgstr "Slow down backup uploads without affecting restores. Leave empty for no limit."
 
-#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
-msgid "Snapshot restore"
-msgstr "Snapshot restore"
-
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
 #: src/lib/services/repository.service.ts
 msgid "Snapshots"
@@ -1892,14 +1891,6 @@ msgstr "Started {date}"
 #: src/lib/services/repository.service.ts
 msgid "Started backup"
 msgstr "Started backup"
-
-#: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
-msgid "Starting at {price}/month"
-msgstr "Starting at {price}/month"
-
-#: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "Starting at {price}/month. Additional storage billed by usage."
-msgstr "Starting at {price}/month. Additional storage billed by usage."
 
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "Status"
@@ -2178,13 +2169,13 @@ msgstr "Your backup was cancelled"
 msgid "Your Backups"
 msgstr "Your Backups"
 
-#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
-msgid "Your backups are protected with E2EE encryption, so only your recovery key can restore them."
-msgstr "Your backups are protected with E2EE encryption, so only your recovery key can restore them."
-
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Your backups are untouched — nothing was lost."
 msgstr "Your backups are untouched — nothing was lost."
+
+#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
+msgid "Your backups stay encrypted and can only be restored with your recovery key."
+msgstr "Your backups stay encrypted and can only be restored with your recovery key."
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Your email isn't part of the beta yet."

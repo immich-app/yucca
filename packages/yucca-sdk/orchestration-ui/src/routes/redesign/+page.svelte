@@ -156,7 +156,6 @@
   <FakeModal size="giant">
     <HStack class="p-4">
       <UpsellProtectImmichLibrary
-        price="$4"
         onGetStarted={() => void 0}
         onLearnMore={() => void 0}
       />
@@ -186,8 +185,6 @@
         <CardBody class="p-8">
           <HStack gap={8} class="justify-between">
             <UpsellFutoBackups
-              price="$4"
-              includedStorage="50 GB"
               onGetStarted={() => void 0}
             />
             <UpsellHowItWorks color="secondary" />
