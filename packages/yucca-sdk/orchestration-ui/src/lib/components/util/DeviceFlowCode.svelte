@@ -26,11 +26,13 @@
       aria-label={$t`Copy code`}
     />
   </Stack>
+</Stack>
 
+<div role="status">
   {#if flow.state.opened}
-    <HStack>
+    <HStack class="mt-4">
       <LoadingSpinner />
       <Text>{$t`Waiting for you to confirm login...`}</Text>
     </HStack>
   {/if}
-</Stack>
+</div>

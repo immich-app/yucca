@@ -55,11 +55,15 @@
   <ModalBody>
     {#if flow.state.userCode}
       <DeviceFlowCode {flow} />
-    {:else if flow.state.error}
-      <Text color="danger">{flow.state.error}</Text>
-    {:else}
+    {:else if !flow.state.error}
       <LoadingSpinner />
     {/if}
+
+    <div role="alert">
+      {#if !flow.state.userCode && flow.state.error}
+        <Text color="danger">{flow.state.error}</Text>
+      {/if}
+    </div>
   </ModalBody>
   <ModalFooter>
     <HStack fullWidth>
