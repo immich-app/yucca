@@ -1147,6 +1147,10 @@ msgstr ""
 msgid "Link this server to your FUTO Backups subscription"
 msgstr ""
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Load more"
+msgstr ""
+
 #: src/lib/components/backends/dialogs/CreateLocalBackendModal.svelte
 msgid "Local directory to store backups."
 msgstr ""

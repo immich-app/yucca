@@ -6,6 +6,7 @@
   import {
     Alert,
     Badge,
+    Button,
     getByteUnitString,
     HStack,
     Icon,
@@ -201,9 +202,14 @@
 
       {#if query.hasNextPage}
         <div bind:this={sentinel} class="flex justify-center py-4">
-          {#if query.isFetchingNextPage}
-            <LoadingSpinner />
-          {/if}
+          <Button
+            variant="ghost"
+            size="small"
+            loading={query.isFetchingNextPage}
+            onclick={() => void query.fetchNextPage()}
+          >
+            {$t`Load more`}
+          </Button>
         </div>
       {/if}
     {/if}
