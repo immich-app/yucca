@@ -2,6 +2,7 @@
   import StackList from "$lib/components/ui/StackList.svelte";
   import type { FilesystemListingResponseDto } from "$lib/fetch-client";
   import { handleGetFileListing } from "$lib/services/filesystem.service";
+  import { FocusGroup } from "$lib/utils/focus";
   import {
     Button,
     FormModal,
@@ -51,13 +52,26 @@
   // svelte-ignore state_referenced_locally
   const selected = new SvelteSet(initial);
   let listing: FilesystemListingResponseDto | undefined = $state();
+  const id = $props.id();
+  const browseRows = new FocusGroup(`${id}-browse`);
+  const removeSelectedButtons = new FocusGroup(`${id}-remove-selected`);
 
-  const browse = async (path?: string) => {
+  const load = async (path?: string) => {
     listing = undefined;
     listing = await (handleGetListing ?? handleGetFileListing)(path);
   };
 
-  onMount(() => void browse());
+  onMount(() => void load());
+
+  const browse = async (path: string) => {
+    await load(path);
+    await browseRows.focusAt(0);
+  };
+
+  const removeSelected = (path: string, index: number) => {
+    selected.delete(path);
+    void removeSelectedButtons.focusAt(index, browseRows);
+  };
 
   const sortedItems = $derived(
     listing
@@ -117,7 +131,7 @@
           {#snippet title()}
             {$t`Selected paths`}
           {/snippet}
-          {#each [...selected] as path (path)}
+          {#each [...selected] as path, index (path)}
             <HStack gap={2} class="items-center px-4 py-3">
               <Text class="grow truncate" title={path}>{path}</Text>
               <IconButton
@@ -125,7 +139,8 @@
                 aria-label={$t({ message: "Remove {path}", values: { path } })}
                 size="tiny"
                 variant="ghost"
-                onclick={() => selected.delete(path)}
+                {...removeSelectedButtons.attributes()}
+                onclick={() => removeSelected(path, index)}
               />
             </HStack>
           {/each}
@@ -169,6 +184,7 @@
               aria-label={$t`Go up`}
               size="tiny"
               variant="ghost"
+              {...browseRows.attributes()}
               onclick={() => browse(listing!.parent)}
             />
           {/if}
@@ -187,6 +203,7 @@
               {#if item.isDirectory}
                 <ListButton
                   leadingIcon={mdiFolderOutline}
+                  {...browseRows.attributes()}
                   onclick={() => browse(item.path)}
                   class="flex-1 justify-start"
                 >

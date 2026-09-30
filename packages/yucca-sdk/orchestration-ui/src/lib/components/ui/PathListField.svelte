@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FilesystemListingResponseDto } from "$lib/fetch-client";
+  import { FocusGroup } from "$lib/utils/focus";
   import {
     Button,
     Heading,
@@ -41,6 +42,15 @@
     handleGetListing,
   }: Props = $props();
 
+  const id = $props.id();
+  const removeButtons = new FocusGroup(`${id}-remove`);
+  const manageButton = new FocusGroup(`${id}-manage`);
+
+  const remove = (path: string, index: number) => {
+    paths.delete(path);
+    void removeButtons.focusAt(index, manageButton);
+  };
+
   const openPicker = () =>
     modalManager.show(PathPickerModal, {
       title: pickerTitle,
@@ -60,7 +70,7 @@
 
   {#if paths.size > 0}
     <StackList>
-      {#each [...paths] as path (path)}
+      {#each [...paths] as path, index (path)}
         <StackListItem>
           <Text class="grow truncate" title={path}>{path}</Text>
 
@@ -70,7 +80,8 @@
               aria-label={$t({ message: "Remove {path}", values: { path } })}
               size="tiny"
               variant="ghost"
-              onclick={() => paths.delete(path)}
+              {...removeButtons.attributes()}
+              onclick={() => remove(path, index)}
             />
           {/snippet}
         </StackListItem>
@@ -82,7 +93,13 @@
     </HStack>
   {/if}
 
-  <Button class="w-fit" size="small" variant="ghost" onclick={openPicker}>
+  <Button
+    class="w-fit"
+    size="small"
+    variant="ghost"
+    {...manageButton.attributes()}
+    onclick={openPicker}
+  >
     {paths.size > 0 ? addLabel : manageLabel}
   </Button>
 </Stack>
