@@ -224,7 +224,7 @@
     {:else}
       {#each groups as group (group.key)}
         {#if applicable(group).length > 0}
-          <Stack gap={1}>
+          <div>
             <Field
               label={$t(group.label)}
               description={$t(group.description)}
@@ -240,16 +240,18 @@
               />
             </Field>
 
-            {#if group.warning && !group.required && !isChecked(group)}
-              <Text size="small" color={group.warningColor}>
-                {$t(group.warning)}
-              </Text>
-            {/if}
-          </Stack>
+            <div aria-live="polite">
+              {#if group.warning && !group.required && !isChecked(group)}
+                <Text size="small" color={group.warningColor} class="mt-1">
+                  {$t(group.warning)}
+                </Text>
+              {/if}
+            </div>
+          </div>
         {/if}
       {/each}
 
-      <Stack gap={1}>
+      <div>
         <Field
           label={$t`Backup configuration`}
           description={$t`Include these backup settings, so they survive a restore.`}
@@ -257,12 +259,14 @@
           <Switch bind:checked={backupConfiguration} />
         </Field>
 
-        {#if !backupConfiguration}
-          <Text size="small" color="warning">
-            {$t`You will need to reconfigure backups from scratch after restoring.`}
-          </Text>
-        {/if}
-      </Stack>
+        <div aria-live="polite">
+          {#if !backupConfiguration}
+            <Text size="small" color="warning" class="mt-1">
+              {$t`You will need to reconfigure backups from scratch after restoring.`}
+            </Text>
+          {/if}
+        </div>
+      </div>
 
       <Field
         label={$t`External libraries`}
