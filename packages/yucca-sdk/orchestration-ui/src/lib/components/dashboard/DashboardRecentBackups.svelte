@@ -71,7 +71,7 @@
       {/snippet}
 
       {failed
-        ? $t`Attempted`
+        ? $t`Failed`
         : outcome === "warn"
           ? $t`Backed up with warnings`
           : $t`Backed up`}

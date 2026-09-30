@@ -185,7 +185,6 @@ msgid "An unknown error occurred"
 msgstr "An unknown error occurred"
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
-#: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Attempted"
 msgstr "Attempted"
 
@@ -724,6 +723,7 @@ msgstr "External libraries"
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
+#: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Failed"
 msgstr "Failed"
 

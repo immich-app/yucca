@@ -34,7 +34,7 @@
 <OnEvents {onIntegrationUpdate} />
 
 <div class={configured ? "" : "mx-4 mb-2"}>
-  <a {href} class={shell}>
+  <a {href} class={shell} aria-current={active ? "page" : undefined}>
     <Icon
       icon={configured ? mdiCloudUploadOutline : mdiCloudUpload}
       size="1.375em"
