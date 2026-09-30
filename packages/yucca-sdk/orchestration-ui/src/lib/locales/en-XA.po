@@ -545,6 +545,10 @@ msgstr ""
 msgid "Continue to login"
 msgstr ""
 
+#: src/lib/utils/clipboard.ts
+msgid "Copied to clipboard"
+msgstr ""
+
 #: src/lib/components/util/DeviceFlowCode.svelte
 msgid "Copy code"
 msgstr ""
@@ -1978,6 +1982,10 @@ msgstr ""
 #: src/lib/components/backups/BackupStatus.svelte
 #: src/lib/components/util/DeviceFlowAction.svelte
 msgid "Try again"
+msgstr ""
+
+#: src/lib/utils/clipboard.ts
+msgid "Unable to copy to clipboard"
 msgstr ""
 
 #: ../../web/src/routes/link/discord/+page.svelte

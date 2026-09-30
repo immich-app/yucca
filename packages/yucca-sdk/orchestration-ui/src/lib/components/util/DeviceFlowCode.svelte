@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { DeviceFlow } from "$lib/services/deviceFlow.service.svelte";
+  import { copyToClipboard } from "$lib/utils/clipboard";
   import { Code, HStack, IconButton, LoadingSpinner, Stack, Text } from "@immich/ui";
   import { mdiContentCopy } from "@mdi/js";
   import { t } from "svelte-i18n-lingui";
@@ -10,9 +11,7 @@
 
   const { flow }: Props = $props();
 
-  function onCopy() {
-    navigator.clipboard.writeText(flow.state.userCode!);
-  }
+  const onCopy = () => copyToClipboard(flow.state.userCode!);
 </script>
 
 <Stack gap={4}>
