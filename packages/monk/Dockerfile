@@ -3,7 +3,7 @@ ARG ALPINE_VERSION=3.23
 # ceph CLI, and the mon hosts already hold every layer of this base for the
 # cluster daemons, so the pull cost is only the binary layer. Bump together
 # with the cluster ceph version (ansible ceph_upgrade_target_image).
-ARG CEPH_IMAGE=quay.io/ceph/ceph:v20.2.2@sha256:6b4b5ae33acd3d736eb26d2a19238bce71a22f9cfb99cca887ba6312d0957644
+ARG CEPH_IMAGE=quay.io/ceph/ceph:v20.2.4@sha256:6bb1c8a42fbc0bf87938946990b65174466997bc11c31eb5a323225a779fd8f9
 
 FROM golang:1.27-alpine${ALPINE_VERSION} AS builder
 WORKDIR /app
