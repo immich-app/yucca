@@ -664,6 +664,10 @@ msgstr "Download Full Log"
 msgid "Download recovery key"
 msgstr "Download recovery key"
 
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Downloaded"
+msgstr "Downloaded"
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Duration {duration}"
 msgstr "Duration {duration}"

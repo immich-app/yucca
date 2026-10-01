@@ -3,6 +3,7 @@
   import { Button, Card, CardBody, HStack, Text, VStack } from "@immich/ui";
   import {
     mdiAsterisk,
+    mdiCheck,
     mdiContentCopy,
     mdiDownloadOutline,
     mdiPrinterOutline,
@@ -22,6 +23,8 @@
       .map((line) => line.match(/.{1,4}/g)!.join(" "))
       .join("\n"),
   );
+
+  let downloaded = $state(false);
 
   const print = () => window.print();
 
@@ -48,6 +51,8 @@
 
       URL.revokeObjectURL(url);
     }
+
+    downloaded = true;
   };
 
   const copyCode = () => copyToClipboard(code);
@@ -82,10 +87,11 @@
   <Button
     shape="round"
     variant="outline"
-    leadingIcon={mdiDownloadOutline}
+    leadingIcon={downloaded ? mdiCheck : mdiDownloadOutline}
+    class={downloaded ? "bg-primary/10" : undefined}
     onclick={saveFile}
   >
-    {$t`Download recovery key`}
+    {downloaded ? $t`Downloaded` : $t`Download recovery key`}
   </Button>
 
   <HStack>
