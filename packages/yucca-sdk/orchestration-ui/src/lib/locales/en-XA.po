@@ -188,6 +188,10 @@ msgstr ""
 msgid "Automatic backups"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Automatic backups are paused. # scheduled backups or start one manually."
+msgstr ""
+
 #: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
 msgid "Automatic backups run in the background"
 msgstr ""
@@ -366,7 +370,6 @@ msgid "Backups on this machine"
 msgstr ""
 
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
-#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Backups paused"
 msgstr ""
@@ -703,6 +706,10 @@ msgstr ""
 
 #: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
 msgid "Edit {name}"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Enable"
 msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
