@@ -1,12 +1,10 @@
 <script lang="ts">
   import OnboardingBootstrapError from "$lib/components/onboarding/OnboardingBootstrapError.svelte";
-  import OnboardingStepFinishSetup from "$lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte";
   import OnboardingStepChooseStorage from "$lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte";
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepConfirmRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
-  import OnboardingStepImportRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte";
   import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
   import OnboardingStepTelemetry from "$lib/components/onboarding/steps/OnboardingStepTelemetry.svelte";
   import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
@@ -28,11 +26,9 @@
 
   type Stage =
     | "idle"
-    | "intro"
     | "telemetry"
     | "storage"
     | "connect"
-    | "key-import"
     | "key"
     | "key-confirm"
     | "backup"
@@ -48,7 +44,7 @@
   let code = $state("");
   let status: OnboardingStatusResponseDto | undefined = $state();
   let stage: Stage = $state("idle");
-  let resume: Stage = $state("intro");
+  let resume: Stage = $state("storage");
   let confirming = $state(false);
 
   const defaults = useConfigureAndStartImmichIntegration();
@@ -63,13 +59,13 @@
         return;
       }
 
+      resume = data.hasTelemetry === "none" ? "telemetry" : "storage";
+
       if (data.hasOnboardedKey) {
         if (data.hasBackup) {
           stage = "finished";
           return;
         }
-
-        resume = data.hasTelemetry === "none" ? "telemetry" : "storage";
       } else {
         const { recoveryKey } = await handleCurrentRecoveryKey();
         code = recoveryKey;
@@ -102,16 +98,6 @@
     }
   };
 
-  const onImportedKey = async (key: string) => {
-    try {
-      await handleConfirmRecoveryKey();
-      code = key;
-      stage = "storage";
-    } catch {
-      // no-op
-    }
-  };
-
   const onStartBackup = () =>
     defaults.mutate(undefined, { onSuccess: ({ repositoryId }) => {
         stage = "finished";
@@ -132,17 +118,6 @@
 
 {#if status?.status === "error" && stage !== "idle"}
   <OnboardingBootstrapError error={status.error} onQuit={onCancel} />
-{:else if stage === "intro"}
-  <OnboardingStepModal
-    title={$t`Finish setting up FUTO Backups`}
-    onClose={onCancel}
-  >
-    <OnboardingStepFinishSetup
-      onContinue={() =>
-        (stage = status?.hasTelemetry === "none" ? "telemetry" : "storage")}
-      onImportKey={() => (stage = "key-import")}
-    />
-  </OnboardingStepModal>
 {:else if stage === "telemetry"}
   <OnboardingStepModal
     title={$t`Telemetry required for closed beta`}
@@ -164,14 +139,6 @@
     onClose={onCancel}
   >
     <OnboardingStepConnectAccount {onConnect} />
-  </OnboardingStepModal>
-{:else if stage === "key-import"}
-  <OnboardingStepModal title={$t`Import recovery key`} onClose={onCancel}>
-    <OnboardingStepImportRecoveryKey
-      onBack={() => (stage = "intro")}
-      onImported={onImportedKey}
-      {onCancel}
-    />
   </OnboardingStepModal>
 {:else if stage === "key"}
   <OnboardingStepModal title={$t`Save your recovery key`} onClose={onCancel}>

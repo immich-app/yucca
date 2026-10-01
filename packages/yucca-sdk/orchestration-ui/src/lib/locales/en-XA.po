@@ -928,7 +928,6 @@ msgstr ""
 msgid "Finish setting up backups"
 msgstr ""
 
-#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Finish setting up FUTO Backups"
 msgstr ""
@@ -1076,7 +1075,6 @@ msgstr ""
 
 #: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
 #: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
-#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Import recovery key"
 msgstr ""
