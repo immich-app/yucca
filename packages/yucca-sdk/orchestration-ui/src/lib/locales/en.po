@@ -249,8 +249,17 @@ msgid "Backup"
 msgstr "Backup"
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/services/runHistory.service.ts
 msgid "Backup cancelled"
 msgstr "Backup cancelled"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Backup complete"
+msgstr "Backup complete"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Backup completed with warnings"
+msgstr "Backup completed with warnings"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/utils/format.ts
@@ -270,6 +279,7 @@ msgid "Backup did not complete"
 msgstr "Backup did not complete"
 
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+#: src/lib/services/runHistory.service.ts
 msgid "Backup failed"
 msgstr "Backup failed"
 
@@ -569,6 +579,10 @@ msgstr "Copy"
 #: src/lib/components/util/DeviceFlowCode.svelte
 msgid "Copy code"
 msgstr "Copy code"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Could not finish backing up."
+msgstr "Could not finish backing up."
 
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "Could not reach FUTO Backups. Check your connection."
@@ -1172,6 +1186,10 @@ msgstr "Learn More"
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones."
 msgstr "Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones."
+
+#: src/lib/services/runHistory.service.ts
+msgid "Library successfully backed up."
+msgstr "Library successfully backed up."
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 msgid "Lift the limit while you are asleep."
@@ -1925,6 +1943,10 @@ msgstr "Snapshots"
 msgid "Snapshots for {name}"
 msgstr "Snapshots for {name}"
 
+#: src/lib/services/runHistory.service.ts
+msgid "Some files could not be backed up. Check the backup log for details."
+msgstr "Some files could not be backed up. Check the backup log for details."
+
 #: src/lib/components/onboarding/OnboardingBootstrapError.svelte
 msgid "Something went wrong"
 msgstr "Something went wrong"
@@ -2022,6 +2044,10 @@ msgstr "Telemetry required for closed beta"
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "That account does not own this instance. Log in with the account it was connected with."
 msgstr "That account does not own this instance. Log in with the account it was connected with."
+
+#: src/lib/services/runHistory.service.ts
+msgid "The backup was stopped before it finished."
+msgstr "The backup was stopped before it finished."
 
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "This folder is empty"

@@ -249,7 +249,16 @@ msgid "Backup"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/services/runHistory.service.ts
 msgid "Backup cancelled"
+msgstr ""
+
+#: src/lib/services/runHistory.service.ts
+msgid "Backup complete"
+msgstr ""
+
+#: src/lib/services/runHistory.service.ts
+msgid "Backup completed with warnings"
 msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
@@ -270,6 +279,7 @@ msgid "Backup did not complete"
 msgstr ""
 
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+#: src/lib/services/runHistory.service.ts
 msgid "Backup failed"
 msgstr ""
 
@@ -568,6 +578,10 @@ msgstr ""
 
 #: src/lib/components/util/DeviceFlowCode.svelte
 msgid "Copy code"
+msgstr ""
+
+#: src/lib/services/runHistory.service.ts
+msgid "Could not finish backing up."
 msgstr ""
 
 #: src/lib/services/deviceFlow.service.svelte.ts
@@ -1171,6 +1185,10 @@ msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones."
+msgstr ""
+
+#: src/lib/services/runHistory.service.ts
+msgid "Library successfully backed up."
 msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
@@ -1925,6 +1943,10 @@ msgstr ""
 msgid "Snapshots for {name}"
 msgstr ""
 
+#: src/lib/services/runHistory.service.ts
+msgid "Some files could not be backed up. Check the backup log for details."
+msgstr ""
+
 #: src/lib/components/onboarding/OnboardingBootstrapError.svelte
 msgid "Something went wrong"
 msgstr ""
@@ -2021,6 +2043,10 @@ msgstr ""
 
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "That account does not own this instance. Log in with the account it was connected with."
+msgstr ""
+
+#: src/lib/services/runHistory.service.ts
+msgid "The backup was stopped before it finished."
 msgstr ""
 
 #: src/lib/components/ui/PathPickerModal.svelte

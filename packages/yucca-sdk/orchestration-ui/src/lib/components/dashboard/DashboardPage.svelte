@@ -7,6 +7,7 @@
   import { getProvider } from "$lib/providers";
   import { getReadableErrorMessage } from "$lib/utils/handle-error";
   import { Alert, LoadingSpinner, Stack } from "@immich/ui";
+  import BackupTaskMonitor from "../backups/BackupTaskMonitor.svelte";
   import OnEvents from "../util/OnEvents.svelte";
   import DashboardAvgBackupTime from "./DashboardAvgBackupTime.svelte";
   import DashboardBackupHealth from "./DashboardBackupHealth.svelte";
@@ -32,6 +33,7 @@
 </script>
 
 <OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
+<BackupTaskMonitor />
 
 {#if query.isLoading}
   <LoadingSpinner />
