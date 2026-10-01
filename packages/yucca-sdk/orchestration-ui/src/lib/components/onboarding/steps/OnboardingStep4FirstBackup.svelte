@@ -48,7 +48,7 @@
   {actions}
   badge={false}
 >
-  <Stack gap={4}>
+  <Stack gap={6} class="bg-primary-50 rounded-2xl p-6">
     {#each settings as setting (setting.title)}
       <HStack gap={4}>
         <Icon
@@ -58,8 +58,8 @@
         />
 
         <Stack>
-          <Text fontWeight="semi-bold" size="small">{setting.title}</Text>
-          <Text size="small" color="muted">{setting.value}</Text>
+          <Text fontWeight="semi-bold">{setting.title}</Text>
+          <Text>{setting.value}</Text>
         </Stack>
       </HStack>
     {/each}
