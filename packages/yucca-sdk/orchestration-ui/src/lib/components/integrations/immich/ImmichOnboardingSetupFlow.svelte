@@ -9,10 +9,7 @@
   import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
   import OnboardingStepTelemetry from "$lib/components/onboarding/steps/OnboardingStepTelemetry.svelte";
   import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
-  import {
-    handleSetupLocalStorage,
-    handleStartYuccaLogin,
-  } from "$lib/services/backend.service";
+  import { handleStartYuccaLogin } from "$lib/services/backend.service";
   import {
     IMMICH_DEFAULT_CRON,
     useConfigureAndStartImmichIntegration,
@@ -94,11 +91,6 @@
     handleStartYuccaLogin(onBackendReady);
   };
 
-  const onLocalStorage = () => {
-    storageLocation = $t`Local Storage`;
-    handleSetupLocalStorage(onBackendReady);
-  };
-
   const onConfirmKey = async () => {
     confirming = true;
 
@@ -171,7 +163,7 @@
     title={$t`Connect your FUTO account`}
     onClose={onCancel}
   >
-    <OnboardingStepConnectAccount {onConnect} {onLocalStorage} />
+    <OnboardingStepConnectAccount {onConnect} />
   </OnboardingStepModal>
 {:else if stage === "key-import"}
   <OnboardingStepModal title={$t`Import recovery key`} onClose={onCancel}>

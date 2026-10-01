@@ -1188,7 +1188,6 @@ msgstr "Local directory to store backups."
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
-#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 msgid "Local Storage"
 msgstr "Local Storage"
