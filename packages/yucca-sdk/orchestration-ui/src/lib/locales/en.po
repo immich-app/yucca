@@ -389,6 +389,10 @@ msgstr "Billing issues"
 msgid "Browse"
 msgstr "Browse"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Buddy Backups"
+msgstr "Buddy Backups"
+
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
 msgid "Built for Immich"
 msgstr "Built for Immich"
@@ -452,6 +456,7 @@ msgstr "Choose target folder"
 msgid "Choose what Immich includes in each backup."
 msgstr "Choose what Immich includes in each backup."
 
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "Choose where your backups live"
 msgstr "Choose where your backups live"
@@ -472,6 +477,10 @@ msgstr "Clear"
 msgid "Close"
 msgstr "Close"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Coming soon"
+msgstr "Coming soon"
+
 #: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Completed backups will appear here once your first backup runs."
 msgstr "Completed backups will appear here once your first backup runs."
@@ -490,6 +499,10 @@ msgstr "Configure"
 #: src/lib/i18n.spec.ts
 msgid "Configure {name}"
 msgstr "Configure {name}"
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Confirm"
+msgstr "Confirm"
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
 msgid "Confirm restore from snapshot"
@@ -927,6 +940,10 @@ msgstr "From"
 msgid "Full speed during quiet hours"
 msgstr "Full speed during quiet hours"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "FUTO Account"
+msgstr "FUTO Account"
+
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
@@ -944,6 +961,10 @@ msgstr "FUTO Backups adds backup support to your existing Immich setup, giving y
 #: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
 msgid "FUTO Backups already creates the same database backups as Immich."
 msgstr "FUTO Backups already creates the same database backups as Immich."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "FUTO Cloud"
+msgstr "FUTO Cloud"
 
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "FUTO Cloud, local storage, or another supported option."
@@ -974,6 +995,10 @@ msgstr "Go back"
 msgid "Go up"
 msgstr "Go up"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Hosted"
+msgstr "Hosted"
+
 #: src/lib/components/backends/BackendItem.svelte
 msgid "Hosted cloud backup storage"
 msgstr "Hosted cloud backup storage"
@@ -981,6 +1006,10 @@ msgstr "Hosted cloud backup storage"
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "Hosted cloud backup storage for your Immich library."
 msgstr "Hosted cloud backup storage for your Immich library."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Hosted cloud backup storage from FUTO."
+msgstr "Hosted cloud backup storage from FUTO."
 
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "How it works"
@@ -1053,6 +1082,10 @@ msgstr "In-progress or incomplete"
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Include these backup settings, so they survive a restore."
 msgstr "Include these backup settings, so they survive a restore."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Included"
+msgstr "Included"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Included: {names}"
@@ -1414,6 +1447,10 @@ msgstr "No snapshots in this repository."
 msgid "Not backed up"
 msgstr "Not backed up"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Not included"
+msgstr "Not included"
+
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
 msgid "Not restoring backup configuration"
 msgstr "Not restoring backup configuration"
@@ -1748,6 +1785,10 @@ msgstr "Run backups automatically"
 msgid "Run History for {name}"
 msgstr "Run History for {name}"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "S3 Bucket"
+msgstr "S3 Bucket"
+
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backups/BackupItem.svelte
 msgid "S3 Server"
@@ -1812,6 +1853,10 @@ msgstr "Select files instead"
 #: src/lib/components/backups/dialogs/ReconfigureRepositoryBackendModal.svelte
 msgid "Select new service"
 msgstr "Select new service"
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Select where a copy of your Immich library should be stored."
+msgstr "Select where a copy of your Immich library should be stored."
 
 #: src/lib/components/ui/PathPickerModal.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
@@ -1914,6 +1959,18 @@ msgstr "Storage location"
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "Storage Used"
 msgstr "Storage Used"
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Store backups on storage shared by someone you trust."
+msgstr "Store backups on storage shared by someone you trust."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Store backups on storage you manage."
+msgstr "Store backups on storage you manage."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Subscription"
+msgstr "Subscription"
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Success"

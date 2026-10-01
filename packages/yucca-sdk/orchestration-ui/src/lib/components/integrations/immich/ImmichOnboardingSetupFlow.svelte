@@ -1,6 +1,7 @@
 <script lang="ts">
   import OnboardingBootstrapError from "$lib/components/onboarding/OnboardingBootstrapError.svelte";
   import OnboardingStepFinishSetup from "$lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte";
+  import OnboardingStepChooseStorage from "$lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte";
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
@@ -31,6 +32,7 @@
     | "idle"
     | "intro"
     | "telemetry"
+    | "storage"
     | "connect"
     | "key-import"
     | "key"
@@ -69,7 +71,7 @@
           return;
         }
 
-        resume = data.hasTelemetry === "none" ? "telemetry" : "connect";
+        resume = data.hasTelemetry === "none" ? "telemetry" : "storage";
       } else {
         const { recoveryKey } = await handleCurrentRecoveryKey();
         code = recoveryKey;
@@ -82,7 +84,7 @@
 
   const afterTelemetry = () =>
     (stage =
-      status?.hasOnboardedKey && status.hasBackup ? "finished" : "connect");
+      status?.hasOnboardedKey && status.hasBackup ? "finished" : "storage");
 
   const onBackendReady = () =>
     (stage = status?.hasOnboardedKey ? "backup" : "key");
@@ -112,7 +114,7 @@
     try {
       await handleConfirmRecoveryKey();
       code = key;
-      stage = "connect";
+      stage = "storage";
     } catch {
       // no-op
     }
@@ -145,7 +147,7 @@
   >
     <OnboardingStepFinishSetup
       onContinue={() =>
-        (stage = status?.hasTelemetry === "none" ? "telemetry" : "connect")}
+        (stage = status?.hasTelemetry === "none" ? "telemetry" : "storage")}
       onImportKey={() => (stage = "key-import")}
     />
   </OnboardingStepModal>
@@ -155,6 +157,14 @@
     onClose={onCancel}
   >
     <OnboardingStepTelemetry onContinue={afterTelemetry} {onCancel} />
+  </OnboardingStepModal>
+{:else if stage === "storage"}
+  <OnboardingStepModal
+    title={$t`Choose where your backups live`}
+    size="giant"
+    onClose={onCancel}
+  >
+    <OnboardingStepChooseStorage onConfirm={() => (stage = "connect")} />
   </OnboardingStepModal>
 {:else if stage === "connect"}
   <OnboardingStepModal
