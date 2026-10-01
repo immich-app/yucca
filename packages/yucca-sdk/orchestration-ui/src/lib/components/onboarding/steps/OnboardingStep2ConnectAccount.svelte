@@ -14,8 +14,8 @@
   const { onConnect, onLocalStorage }: Props = $props();
 
   const outcomes = $derived([
-    $t`Link this server to your FUTO Backups subscription`,
-    $t`Allow Immich to upload encrypted backups`,
+    $t`Link this Immich server to your FUTO account`,
+    $t`Set up FUTO Cloud as your backup storage`,
     $t`Return you here to finish setup`,
   ]);
 
@@ -30,7 +30,7 @@
 </script>
 
 <OnboardingStepLayout
-  description={$t`Connect your FUTO account to this Immich server so FUTO Backups can store your encrypted backups.`}
+  description={$t`Connect your FUTO account to use FUTO Cloud for backup storage.`}
   {actions}
 >
   <Stack gap={3}>

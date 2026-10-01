@@ -172,10 +172,6 @@ msgstr ""
 msgid "All libraries"
 msgstr ""
 
-#: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-msgid "Allow Immich to upload encrypted backups"
-msgstr ""
-
 #: src/lib/components/backends/BackendItem.svelte
 msgid "An S3-compatible server"
 msgstr ""
@@ -526,7 +522,7 @@ msgid "Connect your FUTO account"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-msgid "Connect your FUTO account to this Immich server so FUTO Backups can store your encrypted backups."
+msgid "Connect your FUTO account to use FUTO Cloud for backup storage."
 msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
@@ -1178,7 +1174,7 @@ msgid "Link Discord account @{0} to {1}?"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-msgid "Link this server to your FUTO Backups subscription"
+msgid "Link this Immich server to your FUTO account"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
@@ -1869,6 +1865,10 @@ msgstr ""
 
 #: src/lib/components/integrations/immich/ImmichBackupsAdminNavButton.svelte
 msgid "Set up Backups"
+msgstr ""
+
+#: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
+msgid "Set up FUTO Cloud as your backup storage"
 msgstr ""
 
 #: src/lib/components/dashboard/DashboardInstall.svelte
