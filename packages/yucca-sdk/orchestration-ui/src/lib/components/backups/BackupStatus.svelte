@@ -92,7 +92,7 @@
   };
 
   const running: Record<BackupStatusType, string> = {
-    backup: msg`You can close this window and the backup will continue in the background.`,
+    backup: msg`Immich is backing up your library. You can close this window and continue using Immich while the backup runs in the background.`,
     restore: msg`You can close this window and the restore will continue in the background.`,
     forget: msg`You can close this window and the prune will continue in the background.`,
   };

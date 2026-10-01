@@ -1070,6 +1070,10 @@ msgstr ""
 msgid "Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard."
 msgstr ""
 
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Immich is backing up your library. You can close this window and continue using Immich while the backup runs in the background."
+msgstr ""
+
 #: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
 #: src/lib/services/repository.service.ts
 msgid "Import"
@@ -2231,10 +2235,6 @@ msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Write-only"
-msgstr ""
-
-#: src/lib/components/backups/BackupStatus.svelte
-msgid "You can close this window and the backup will continue in the background."
 msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
