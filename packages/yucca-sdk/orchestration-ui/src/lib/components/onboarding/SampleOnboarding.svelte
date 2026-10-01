@@ -9,9 +9,9 @@
     handleCurrentRecoveryKey,
   } from "$lib/services/onboarding.service";
   import { onMount } from "svelte";
-  import ImportKey from "./stages/OnboardingStageKeyImport.svelte";
   import StepFinishSetup from "./steps/OnboardingStep1FinishSetup.svelte";
   import StepConnectAccount from "./steps/OnboardingStep2ConnectAccount.svelte";
+  import StepImportRecoveryKey from "./steps/OnboardingStepImportRecoveryKey.svelte";
   import StepModal from "./steps/OnboardingStepModal.svelte";
   import StepSaveRecoveryKey from "./steps/OnboardingStep3SaveRecoveryKey.svelte";
   import StepTelemetry from "./steps/OnboardingStepTelemetry.svelte";
@@ -94,14 +94,16 @@
     />
   </StepModal>
 {:else if stage === "key-import"}
-  <ImportKey
-    onStart={() => (stage = "intro")}
-    onImported={(key) => {
-      code = key;
-      stage = "key";
-    }}
-    {onCancel}
-  />
+  <StepModal title={$t`Import recovery key`} onClose={onCancel}>
+    <StepImportRecoveryKey
+      onBack={() => (stage = "intro")}
+      onImported={(key) => {
+        code = key;
+        stage = "key";
+      }}
+      {onCancel}
+    />
+  </StepModal>
 {:else if stage === "connect"}
   <StepModal title={$t`Connect your FUTO account`} onClose={onCancel}>
     <StepConnectAccount

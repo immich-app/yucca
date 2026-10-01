@@ -1,10 +1,10 @@
 <script lang="ts">
   import OnboardingBootstrapError from "$lib/components/onboarding/OnboardingBootstrapError.svelte";
-  import OnboardingStageKeyImport from "$lib/components/onboarding/stages/OnboardingStageKeyImport.svelte";
   import OnboardingStepFinishSetup from "$lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte";
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
+  import OnboardingStepImportRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte";
   import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
   import OnboardingStepTelemetry from "$lib/components/onboarding/steps/OnboardingStepTelemetry.svelte";
   import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
@@ -164,11 +164,13 @@
     <OnboardingStepConnectAccount {onConnect} {onLocalStorage} />
   </OnboardingStepModal>
 {:else if stage === "key-import"}
-  <OnboardingStageKeyImport
-    onStart={() => (stage = "intro")}
-    onImported={onImportedKey}
-    {onCancel}
-  />
+  <OnboardingStepModal title={$t`Import recovery key`} onClose={onCancel}>
+    <OnboardingStepImportRecoveryKey
+      onBack={() => (stage = "intro")}
+      onImported={onImportedKey}
+      {onCancel}
+    />
+  </OnboardingStepModal>
 {:else if stage === "key"}
   <OnboardingStepModal title={$t`Save your recovery key`} onClose={onCancel}>
     <OnboardingStepSaveRecoveryKey

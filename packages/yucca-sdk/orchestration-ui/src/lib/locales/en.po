@@ -206,7 +206,7 @@ msgstr "Avg. Backup Time"
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow2SelectSnapshot.svelte
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 #: src/lib/components/ui/PageLayout.svelte
 msgid "Back"
 msgstr "Back"
@@ -410,7 +410,7 @@ msgstr "Can't read repository."
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 #: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Cancel"
 msgstr "Cancel"
@@ -1035,7 +1035,10 @@ msgstr "Import a different key"
 msgid "Import key"
 msgstr "Import key"
 
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Import recovery key"
 msgstr "Import recovery key"
 
@@ -1601,7 +1604,7 @@ msgstr "Reconfigure"
 msgid "Recovery key"
 msgstr "Recovery key"
 
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 msgid "Recovery Key"
 msgstr "Recovery Key"
 
@@ -1758,7 +1761,7 @@ msgstr "S3 Server"
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 #: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 #: src/lib/components/settings/SettingsNotifications.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "Save"
