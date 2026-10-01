@@ -4,6 +4,7 @@
   import OnboardingStepChooseStorage from "$lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte";
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
+  import OnboardingStepConfirmRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
   import OnboardingStepImportRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte";
   import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
@@ -33,6 +34,7 @@
     | "connect"
     | "key-import"
     | "key"
+    | "key-confirm"
     | "backup"
     | "finished";
 
@@ -177,8 +179,19 @@
   <OnboardingStepModal title={$t`Save your recovery key`} onClose={onCancel}>
     <OnboardingStepSaveRecoveryKey
       {code}
-      onContinue={onConfirmKey}
+      onContinue={() => (stage = "key-confirm")}
+    />
+  </OnboardingStepModal>
+{:else if stage === "key-confirm"}
+  <OnboardingStepModal
+    title={$t`Confirm your recovery key`}
+    onClose={onCancel}
+  >
+    <OnboardingStepConfirmRecoveryKey
+      {code}
       loading={confirming}
+      onConfirm={onConfirmKey}
+      onBack={() => (stage = "key")}
     />
   </OnboardingStepModal>
 {:else if stage === "backup"}

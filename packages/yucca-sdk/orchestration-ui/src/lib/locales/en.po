@@ -497,6 +497,7 @@ msgid "Configure {name}"
 msgstr "Configure {name}"
 
 #: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
 msgid "Confirm"
 msgstr "Confirm"
 
@@ -507,6 +508,10 @@ msgstr "Confirm restore from snapshot"
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 msgid "Confirm rollback"
 msgstr "Confirm rollback"
+
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+msgid "Confirm your recovery key"
+msgstr "Confirm your recovery key"
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
 msgid "Connect account"
@@ -705,6 +710,10 @@ msgstr "Enter a valid cron expression, for example */15 * * * *"
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
 msgstr "Enter an invite code to continue."
+
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+msgid "Enter your recovery key to confirm you saved it correctly."
+msgstr "Enter your recovery key to confirm you saved it correctly."
 
 #: src/lib/components/backups/BackupItem.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
@@ -1640,9 +1649,14 @@ msgstr "Reconfigure"
 msgid "Recovery key"
 msgstr "Recovery key"
 
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
 #: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 msgid "Recovery Key"
 msgstr "Recovery Key"
+
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+msgid "Recovery key does not match. Check you entered it exactly as saved."
+msgstr "Recovery key does not match. Check you entered it exactly as saved."
 
 #: src/lib/services/backend.service.ts
 msgid "Remove"
@@ -2116,6 +2130,7 @@ msgstr "View history"
 msgid "View Log"
 msgstr "View Log"
 
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
 #: src/lib/services/immich.integration.service.ts
 msgid "View recovery key"
 msgstr "View recovery key"

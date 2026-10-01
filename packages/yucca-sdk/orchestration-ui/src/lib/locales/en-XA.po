@@ -497,6 +497,7 @@ msgid "Configure {name}"
 msgstr "Test String {name}"
 
 #: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
 msgid "Confirm"
 msgstr ""
 
@@ -506,6 +507,10 @@ msgstr ""
 
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 msgid "Confirm rollback"
+msgstr ""
+
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+msgid "Confirm your recovery key"
 msgstr ""
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
@@ -704,6 +709,10 @@ msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
+msgstr ""
+
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+msgid "Enter your recovery key to confirm you saved it correctly."
 msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
@@ -1640,8 +1649,13 @@ msgstr ""
 msgid "Recovery key"
 msgstr ""
 
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
 #: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 msgid "Recovery Key"
+msgstr ""
+
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+msgid "Recovery key does not match. Check you entered it exactly as saved."
 msgstr ""
 
 #: src/lib/services/backend.service.ts
@@ -2116,6 +2130,7 @@ msgstr ""
 msgid "View Log"
 msgstr ""
 
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
 #: src/lib/services/immich.integration.service.ts
 msgid "View recovery key"
 msgstr ""
