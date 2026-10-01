@@ -6,6 +6,7 @@
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
+  import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
   import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
   import {
     handleSetupLocalStorage,
@@ -21,7 +22,7 @@
     handleOnboardingStatus,
   } from "$lib/services/onboarding.service";
   import { handleCreateBackup } from "$lib/services/repository.service";
-  import { LoadingSpinner, Modal, ModalBody } from "@immich/ui";
+  import { LoadingSpinner } from "@immich/ui";
   import cronstrue from "cronstrue";
   import { onMount, type Snippet } from "svelte";
   import { t } from "svelte-i18n-lingui";
@@ -138,23 +139,25 @@
 {#if status?.status === "error" && stage !== "idle"}
   <OnboardingBootstrapError error={status.error} onQuit={onCancel} />
 {:else if stage === "intro"}
-  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
-    <ModalBody>
-      <OnboardingStepFinishSetup
-        onContinue={() =>
-          (stage = status?.hasTelemetry === "none" ? "telemetry" : "connect")}
-        onImportKey={() => (stage = "key-import")}
-      />
-    </ModalBody>
-  </Modal>
+  <OnboardingStepModal
+    title={$t`Finish setting up FUTO Backups`}
+    onClose={onCancel}
+  >
+    <OnboardingStepFinishSetup
+      onContinue={() =>
+        (stage = status?.hasTelemetry === "none" ? "telemetry" : "connect")}
+      onImportKey={() => (stage = "key-import")}
+    />
+  </OnboardingStepModal>
 {:else if stage === "telemetry"}
   <OnboardingStageTelemetry onContinue={afterTelemetry} {onCancel} />
 {:else if stage === "connect"}
-  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
-    <ModalBody>
-      <OnboardingStepConnectAccount {onConnect} {onLocalStorage} />
-    </ModalBody>
-  </Modal>
+  <OnboardingStepModal
+    title={$t`Connect your FUTO account`}
+    onClose={onCancel}
+  >
+    <OnboardingStepConnectAccount {onConnect} {onLocalStorage} />
+  </OnboardingStepModal>
 {:else if stage === "key-import"}
   <OnboardingStageKeyImport
     onStart={() => (stage = "intro")}
@@ -162,24 +165,20 @@
     {onCancel}
   />
 {:else if stage === "key"}
-  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
-    <ModalBody>
-      <OnboardingStepSaveRecoveryKey
-        {code}
-        onContinue={onConfirmKey}
-        loading={confirming}
-      />
-    </ModalBody>
-  </Modal>
+  <OnboardingStepModal title={$t`Save your recovery key`} onClose={onCancel}>
+    <OnboardingStepSaveRecoveryKey
+      {code}
+      onContinue={onConfirmKey}
+      loading={confirming}
+    />
+  </OnboardingStepModal>
 {:else if stage === "backup"}
-  <Modal size="small" title="FUTO Backups" onClose={onCancel}>
-    <ModalBody>
-      <OnboardingStepFirstBackup
-        {schedule}
-        {storageLocation}
-        {onStartBackup}
-        loading={defaults.isPending}
-      />
-    </ModalBody>
-  </Modal>
+  <OnboardingStepModal title={$t`Start your first backup`} onClose={onCancel}>
+    <OnboardingStepFirstBackup
+      {schedule}
+      {storageLocation}
+      {onStartBackup}
+      loading={defaults.isPending}
+    />
+  </OnboardingStepModal>
 {/if}

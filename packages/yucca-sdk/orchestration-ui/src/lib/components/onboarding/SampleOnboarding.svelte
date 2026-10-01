@@ -8,12 +8,12 @@
     handleConfirmRecoveryKey,
     handleCurrentRecoveryKey,
   } from "$lib/services/onboarding.service";
-  import { Modal, ModalBody } from "@immich/ui";
   import { onMount } from "svelte";
   import ImportKey from "./stages/OnboardingStageKeyImport.svelte";
   import Telemetry from "./stages/OnboardingStageTelemetry.svelte";
   import StepFinishSetup from "./steps/OnboardingStep1FinishSetup.svelte";
   import StepConnectAccount from "./steps/OnboardingStep2ConnectAccount.svelte";
+  import StepModal from "./steps/OnboardingStepModal.svelte";
   import StepSaveRecoveryKey from "./steps/OnboardingStep3SaveRecoveryKey.svelte";
   import { t } from "svelte-i18n-lingui";
 
@@ -71,27 +71,23 @@
 </script>
 
 {#if stage === "intro"}
-  <Modal focusOnOpen size="small" title={$t`FUTO Backups`} onClose={onCancel}>
-    <ModalBody>
-      <StepFinishSetup
-        onContinue={() =>
-          (stage = status.hasTelemetry === "none" ? "telemetry" : "key")}
-        onImportKey={() => (stage = "key-import")}
-      />
-    </ModalBody>
-  </Modal>
+  <StepModal title={$t`Finish setting up FUTO Backups`} onClose={onCancel}>
+    <StepFinishSetup
+      onContinue={() =>
+        (stage = status.hasTelemetry === "none" ? "telemetry" : "key")}
+      onImportKey={() => (stage = "key-import")}
+    />
+  </StepModal>
 {:else if stage === "telemetry"}
   <Telemetry onContinue={onTelemetryConfirmed} {onCancel} />
 {:else if stage === "key"}
-  <Modal focusOnOpen size="small" title={$t`FUTO Backups`} onClose={onCancel}>
-    <ModalBody>
-      <StepSaveRecoveryKey
-        {code}
-        onContinue={onConfirmKey}
-        loading={confirming}
-      />
-    </ModalBody>
-  </Modal>
+  <StepModal title={$t`Save your recovery key`} onClose={onCancel}>
+    <StepSaveRecoveryKey
+      {code}
+      onContinue={onConfirmKey}
+      loading={confirming}
+    />
+  </StepModal>
 {:else if stage === "key-import"}
   <ImportKey
     onStart={() => (stage = "intro")}
@@ -102,12 +98,10 @@
     {onCancel}
   />
 {:else if stage === "connect"}
-  <Modal focusOnOpen size="small" title={$t`FUTO Backups`} onClose={onCancel}>
-    <ModalBody>
-      <StepConnectAccount
-        onConnect={() => handleStartYuccaLogin(onFinish)}
-        onLocalStorage={() => handleSetupLocalStorage(onFinish)}
-      />
-    </ModalBody>
-  </Modal>
+  <StepModal title={$t`Connect your FUTO account`} onClose={onCancel}>
+    <StepConnectAccount
+      onConnect={() => handleStartYuccaLogin(onFinish)}
+      onLocalStorage={() => handleSetupLocalStorage(onFinish)}
+    />
+  </StepModal>
 {/if}

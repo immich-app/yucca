@@ -44,7 +44,6 @@
 </script>
 
 <OnboardingStepLayout
-  title={$t`Start your first backup`}
   description={$t`Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard.`}
   {actions}
 >

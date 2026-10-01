@@ -216,21 +216,21 @@
   <hr />
 
   <Heading>Backups Onboarding - Intro</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Finish setting up FUTO Backups">
     <OnboardingStepFinishSetup onContinue={() => void 0} />
   </FakeModal>
 
   <hr />
 
   <Heading>Backups Onboarding - Step 1</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Connect your FUTO account">
     <OnboardingStepConnectAccount onConnect={() => void 0} />
   </FakeModal>
 
   <hr />
 
   <Heading>Backups Onboarding - Step 2</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Save your recovery key">
     <OnboardingStepSaveRecoveryKey
       code="DF4B0C72D2FC2DEEA7B0CDDF1DAF4056T3G3NDJEY5H339826KL209132H2J9ML9"
       onContinue={() => void 0}
@@ -240,7 +240,7 @@
   <hr />
 
   <Heading>Backups Onboarding - Step 3</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Start your first backup">
     <OnboardingStepFirstBackup
       schedule="Every day at 3:00 AM"
       storageLocation="FUTO Backups"

@@ -27,7 +27,6 @@
 </script>
 
 <OnboardingStepLayout
-  title={$t`Save your recovery key`}
   description={$t`You'll need this key to restore your encrypted backups. Save it somewhere safe before continuing. FUTO cannot recover this key if it is lost.`}
   {actions}
 >

@@ -30,7 +30,6 @@
 </script>
 
 <OnboardingStepLayout
-  title={$t`Connect your FUTO account`}
   description={$t`Connect your FUTO account to this Immich server so FUTO Backups can store your encrypted backups.`}
   {actions}
 >

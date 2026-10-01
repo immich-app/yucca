@@ -511,7 +511,8 @@ msgstr ""
 msgid "Connect FUTO account"
 msgstr ""
 
-#: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Connect your FUTO account"
 msgstr ""
 
@@ -909,7 +910,8 @@ msgstr ""
 msgid "Finish setting up backups"
 msgstr ""
 
-#: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Finish setting up FUTO Backups"
 msgstr ""
 
@@ -932,9 +934,6 @@ msgstr ""
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
-#: src/lib/components/onboarding/SampleOnboarding.svelte
-#: src/lib/components/onboarding/SampleOnboarding.svelte
-#: src/lib/components/onboarding/SampleOnboarding.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
 #: src/lib/components/onboarding/upsell/UpsellFutoBackupsBadge.svelte
@@ -1769,8 +1768,9 @@ msgstr ""
 msgid "Save to password manager"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
-#: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "Save your recovery key"
 msgstr ""
@@ -1874,8 +1874,8 @@ msgstr ""
 msgid "Start time"
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
-#: src/lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte
 msgid "Start your first backup"
 msgstr ""
 
