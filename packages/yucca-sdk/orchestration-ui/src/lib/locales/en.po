@@ -367,6 +367,7 @@ msgstr "Backups on this machine"
 
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Backups paused"
 msgstr "Backups paused"
 

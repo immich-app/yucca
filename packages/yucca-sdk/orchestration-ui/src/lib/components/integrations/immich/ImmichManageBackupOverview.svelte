@@ -66,9 +66,13 @@
     {:else}
       {$t`Estimated`} <FormatBytes bytes={repository.metrics.sizeBytes} />
     {/if} &middot;
-    <span class="lowercase">
-      {cronstrue.toString(schedule.cron, { verbose: true })}
-    </span>
+    {#if status.kind === "paused"}
+      {$t`Backups paused`}
+    {:else}
+      <span class="lowercase">
+        {cronstrue.toString(schedule.cron, { verbose: true })}
+      </span>
+    {/if}
 
     {#snippet trailing()}
       {@const running = status.kind === "running"}
