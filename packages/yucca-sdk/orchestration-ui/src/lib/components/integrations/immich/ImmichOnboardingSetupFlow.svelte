@@ -44,7 +44,6 @@
   let code = $state("");
   let status: OnboardingStatusResponseDto | undefined = $state();
   let stage: Stage = $state("idle");
-  let resume: Stage = $state("storage");
   let confirming = $state(false);
 
   const defaults = useConfigureAndStartImmichIntegration();
@@ -59,8 +58,6 @@
         return;
       }
 
-      resume = data.hasTelemetry === "none" ? "telemetry" : "storage";
-
       if (data.hasOnboardedKey) {
         if (data.hasBackup) {
           stage = "finished";
@@ -73,7 +70,8 @@
     });
   });
 
-  const onStart = () => (stage = resume);
+  const onStart = () =>
+    (stage = status?.hasTelemetry === "none" ? "telemetry" : "storage");
   const onCancel = () => (stage = "idle");
 
   const afterTelemetry = () =>
