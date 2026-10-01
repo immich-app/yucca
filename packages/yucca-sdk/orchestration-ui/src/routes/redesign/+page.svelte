@@ -574,6 +574,7 @@
           ? "Backup complete"
           : "Backing up your library"}
         remaining="About 8 minutes remaining"
+        onCancel={() => void 0}
         type="backup"
         state={demoState}
         progress={demoProgress}

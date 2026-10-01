@@ -7,6 +7,7 @@
   import { options } from "$lib/options";
   import { createLogObserver } from "$lib/services/log.service.svelte";
   import { useRun, useRunEventHandler } from "$lib/services/runHistory.service";
+  import { handleCancelTask } from "$lib/services/task.service";
   import { formatDuration } from "$lib/utils/format";
   import {
     CloseButton,
@@ -162,6 +163,7 @@
       errors={log.errors}
       currentFiles={log.status.currentFiles}
       onRetry={retry}
+      onCancel={run ? () => void handleCancelTask(run.repositoryId) : undefined}
     >
       {#snippet details()}
         {#if log.summary && type === "backup"}

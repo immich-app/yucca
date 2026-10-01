@@ -38,6 +38,7 @@
     currentFiles?: string[];
     advanced?: Snippet;
     onRetry?: () => void;
+    onCancel?: () => void;
   };
 
   const {
@@ -53,6 +54,7 @@
     currentFiles = [],
     advanced,
     onRetry,
+    onCancel,
   }: Props = $props();
 
   const phases: Record<BackupStatusType, [string, string, string]> = {
@@ -83,6 +85,12 @@
     backup: msg`Your backup was cancelled`,
     restore: msg`Your restore was cancelled`,
     forget: msg`Pruning old backups was cancelled`,
+  };
+
+  const cancelLabels: Record<BackupStatusType, string> = {
+    backup: msg`Cancel backup`,
+    restore: msg`Cancel restore`,
+    forget: msg`Cancel prune`,
   };
 
   const reassurance: Record<BackupStatusType, string> = {
@@ -217,6 +225,15 @@
 
   {#if backupState === "running"}
     <Text color="muted">{$t(running[type])}</Text>
+
+    {#if onCancel}
+      <HStack gap={4} wrap>
+        <!-- <Button shape="round">{$t`Pause backup`}</Button> -->
+        <Button variant="ghost" color="danger" shape="round" onclick={onCancel}
+          >{$t(cancelLabels[type])}</Button
+        >
+      </HStack>
+    {/if}
   {:else if (backupState === "complete" || backupState === "warned") && details}
     <Text color="muted">{@render details()}</Text>
   {/if}

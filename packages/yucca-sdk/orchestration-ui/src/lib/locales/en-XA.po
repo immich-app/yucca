@@ -421,8 +421,17 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
+#: src/lib/components/backups/BackupStatus.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Cancel backup"
+msgstr ""
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Cancel prune"
+msgstr ""
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Cancel restore"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte

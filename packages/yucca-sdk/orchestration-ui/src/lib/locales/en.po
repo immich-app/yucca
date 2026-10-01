@@ -421,9 +421,18 @@ msgstr "Can't read repository."
 msgid "Cancel"
 msgstr "Cancel"
 
+#: src/lib/components/backups/BackupStatus.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Cancel backup"
 msgstr "Cancel backup"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Cancel prune"
+msgstr "Cancel prune"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Cancel restore"
+msgstr "Cancel restore"
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Cancelled"
