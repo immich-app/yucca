@@ -411,7 +411,7 @@ msgstr ""
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Cancel"
 msgstr ""
 
@@ -538,9 +538,9 @@ msgid "Connections are the sources of data that back up to us. Right now, that's
 msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Continue"
 msgstr ""
 
@@ -1937,7 +1937,9 @@ msgstr ""
 msgid "Target"
 msgstr ""
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Telemetry required for closed beta"
 msgstr ""
 
@@ -2067,7 +2069,7 @@ msgstr ""
 msgid "Warnings"
 msgstr ""
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "We collect usage and diagnostic data to understand how FUTO Backups is used and to find problems."
 msgstr ""
 
@@ -2221,7 +2223,7 @@ msgstr ""
 msgid "Your media uploaded directly to Immich."
 msgstr ""
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Your photos, files, and recovery key are never collected and never leave your device unencrypted."
 msgstr ""
 

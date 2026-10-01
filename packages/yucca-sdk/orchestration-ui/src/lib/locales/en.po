@@ -411,7 +411,7 @@ msgstr "Can't read repository."
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
 #: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Cancel"
 msgstr "Cancel"
 
@@ -538,9 +538,9 @@ msgid "Connections are the sources of data that back up to us. Right now, that's
 msgstr "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
 
 #: ../../web/src/routes/login/invite/+page.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Continue"
 msgstr "Continue"
 
@@ -1937,7 +1937,9 @@ msgstr "Successful only"
 msgid "Target"
 msgstr "Target"
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Telemetry required for closed beta"
 msgstr "Telemetry required for closed beta"
 
@@ -2067,7 +2069,7 @@ msgstr "Warning"
 msgid "Warnings"
 msgstr "Warnings"
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "We collect usage and diagnostic data to understand how FUTO Backups is used and to find problems."
 msgstr "We collect usage and diagnostic data to understand how FUTO Backups is used and to find problems."
 
@@ -2221,7 +2223,7 @@ msgstr "Your library was restored, with warnings"
 msgid "Your media uploaded directly to Immich."
 msgstr "Your media uploaded directly to Immich."
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Your photos, files, and recovery key are never collected and never leave your device unencrypted."
 msgstr "Your photos, files, and recovery key are never collected and never leave your device unencrypted."
 

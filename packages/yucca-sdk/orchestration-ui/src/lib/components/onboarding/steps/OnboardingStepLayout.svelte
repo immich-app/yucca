@@ -17,21 +17,31 @@
   import UpsellFutoBackupsBadge from "../upsell/UpsellFutoBackupsBadge.svelte";
 
   type Props = {
-    description: string;
+    description?: string;
     actions: OnboardingStepAction[];
+    badge?: boolean;
     children?: Snippet;
   };
 
-  const { description, actions, children }: Props = $props();
+  const {
+    description,
+    actions,
+    badge = true,
+    children,
+  }: Props = $props();
 
   const enabledActions = $derived(actions.filter(isEnabled));
   const busy = $derived(enabledActions.some((action) => action.loading));
 </script>
 
 <Stack gap={5} class="py-2">
-  <UpsellFutoBackupsBadge />
+  {#if badge}
+    <UpsellFutoBackupsBadge />
+  {/if}
 
-  <Text>{description}</Text>
+  {#if description}
+    <Text>{description}</Text>
+  {/if}
 
   {#if children}
     {@render children()}

@@ -1,12 +1,12 @@
 <script lang="ts">
   import OnboardingBootstrapError from "$lib/components/onboarding/OnboardingBootstrapError.svelte";
   import OnboardingStageKeyImport from "$lib/components/onboarding/stages/OnboardingStageKeyImport.svelte";
-  import OnboardingStageTelemetry from "$lib/components/onboarding/stages/OnboardingStageTelemetry.svelte";
   import OnboardingStepFinishSetup from "$lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte";
   import OnboardingStepConnectAccount from "$lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte";
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
   import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
+  import OnboardingStepTelemetry from "$lib/components/onboarding/steps/OnboardingStepTelemetry.svelte";
   import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
   import {
     handleSetupLocalStorage,
@@ -150,7 +150,12 @@
     />
   </OnboardingStepModal>
 {:else if stage === "telemetry"}
-  <OnboardingStageTelemetry onContinue={afterTelemetry} {onCancel} />
+  <OnboardingStepModal
+    title={$t`Telemetry required for closed beta`}
+    onClose={onCancel}
+  >
+    <OnboardingStepTelemetry onContinue={afterTelemetry} {onCancel} />
+  </OnboardingStepModal>
 {:else if stage === "connect"}
   <OnboardingStepModal
     title={$t`Connect your FUTO account`}

@@ -10,11 +10,11 @@
   } from "$lib/services/onboarding.service";
   import { onMount } from "svelte";
   import ImportKey from "./stages/OnboardingStageKeyImport.svelte";
-  import Telemetry from "./stages/OnboardingStageTelemetry.svelte";
   import StepFinishSetup from "./steps/OnboardingStep1FinishSetup.svelte";
   import StepConnectAccount from "./steps/OnboardingStep2ConnectAccount.svelte";
   import StepModal from "./steps/OnboardingStepModal.svelte";
   import StepSaveRecoveryKey from "./steps/OnboardingStep3SaveRecoveryKey.svelte";
+  import StepTelemetry from "./steps/OnboardingStepTelemetry.svelte";
   import { t } from "svelte-i18n-lingui";
 
   type Props = {
@@ -79,7 +79,12 @@
     />
   </StepModal>
 {:else if stage === "telemetry"}
-  <Telemetry onContinue={onTelemetryConfirmed} {onCancel} />
+  <StepModal
+    title={$t`Telemetry required for closed beta`}
+    onClose={onCancel}
+  >
+    <StepTelemetry onContinue={onTelemetryConfirmed} {onCancel} />
+  </StepModal>
 {:else if stage === "key"}
   <StepModal title={$t`Save your recovery key`} onClose={onCancel}>
     <StepSaveRecoveryKey
