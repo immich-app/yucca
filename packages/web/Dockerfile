@@ -14,7 +14,7 @@
 ARG ALPINE_VERSION=3.23
 # Pinned alpine runtime base. NOTE: this digest is alpine:3.23's, so it must NOT
 # be appended to the node/golang base tags (which reuse ${ALPINE_VERSION}).
-ARG ALPINE_IMAGE=alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+ARG ALPINE_IMAGE=alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 # Manifest stage: keep only package.jsons + workspace files so the pnpm-install
 # layer is cached on lockfile/manifest changes only (not every src edit).
