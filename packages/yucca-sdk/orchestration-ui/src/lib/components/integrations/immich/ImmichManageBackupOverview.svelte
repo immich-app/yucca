@@ -56,7 +56,7 @@
 </script>
 
 <StackList>
-  <StackListItem title={$t`Your library`} footerColor={appearance.color}>
+  <StackListItem title={$t`Your library backup`} footerColor={appearance.color}>
     {#snippet icon()}
       <Icon icon={mdiArchiveOutline} />
     {/snippet}

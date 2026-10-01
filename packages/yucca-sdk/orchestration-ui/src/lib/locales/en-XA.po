@@ -2300,7 +2300,7 @@ msgid "Your instance will return to how it was when this snapshot was taken."
 msgstr ""
 
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
-msgid "Your library"
+msgid "Your library backup"
 msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
