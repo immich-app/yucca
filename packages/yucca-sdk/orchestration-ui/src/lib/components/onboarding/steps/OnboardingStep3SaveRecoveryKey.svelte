@@ -1,6 +1,7 @@
 <script lang="ts">
   import RecoveryKeyDisplay from "$lib/components/onboarding/RecoveryKeyDisplay.svelte";
-  import { Checkbox, HStack, Stack, Text } from "@immich/ui";
+  import { Alert, Checkbox, HStack, Stack, Text } from "@immich/ui";
+  import { mdiInformationOutline } from "@mdi/js";
   import OnboardingStepLayout, {
     type OnboardingStepAction,
   } from "./OnboardingStepLayout.svelte";
@@ -32,6 +33,10 @@
   badge={false}
 >
   <Stack gap={4}>
+    <Alert color="warning" icon={mdiInformationOutline} size="small">
+      {$t`FUTO cannot restore your backups without this key.`}
+    </Alert>
+
     <RecoveryKeyDisplay {code} />
 
     <HStack gap={3} class="items-center">

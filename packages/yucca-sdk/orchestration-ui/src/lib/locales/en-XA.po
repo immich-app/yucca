@@ -958,6 +958,10 @@ msgstr ""
 msgid "FUTO Backups already creates the same database backups as Immich."
 msgstr ""
 
+#: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
+msgid "FUTO cannot restore your backups without this key."
+msgstr ""
+
 #: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
 msgid "FUTO Cloud"
 msgstr ""
