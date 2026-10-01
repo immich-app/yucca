@@ -70,9 +70,9 @@
   };
 </script>
 
-<Card color="primary" class="shadow-none">
-  <CardBody class="flex justify-center">
-    <Text size="large" fontWeight="semi-bold"
+<Card color="primary" class="shadow-none border-none">
+  <CardBody class="flex justify-center py-8">
+    <Text size="large" fontWeight="semi-bold" class="tracking-wider"
       ><pre><code>{code}</code></pre></Text
     >
   </CardBody>
