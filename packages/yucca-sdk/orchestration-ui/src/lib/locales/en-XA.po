@@ -557,12 +557,12 @@ msgstr ""
 msgid "Copied to clipboard"
 msgstr ""
 
-#: src/lib/components/util/DeviceFlowCode.svelte
-msgid "Copy code"
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Copy"
 msgstr ""
 
-#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
-msgid "Copy recovery key"
+#: src/lib/components/util/DeviceFlowCode.svelte
+msgid "Copy code"
 msgstr ""
 
 #: src/lib/services/deviceFlow.service.svelte.ts
@@ -656,12 +656,12 @@ msgstr ""
 msgid "Discord account linked. You can head back to Discord."
 msgstr ""
 
-#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
-msgid "Download"
-msgstr ""
-
 #: src/lib/services/runHistory.service.ts
 msgid "Download Full Log"
+msgstr ""
+
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Download recovery key"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte

@@ -82,20 +82,20 @@
   <Button
     shape="round"
     variant="outline"
-    leadingIcon={mdiContentCopy}
-    onclick={copyCode}
+    leadingIcon={mdiDownloadOutline}
+    onclick={saveFile}
   >
-    {$t`Copy recovery key`}
+    {$t`Download recovery key`}
   </Button>
 
   <HStack>
     <Button
-      leadingIcon={mdiDownloadOutline}
+      leadingIcon={mdiContentCopy}
       variant="ghost"
       shape="round"
-      onclick={saveFile}
+      onclick={copyCode}
     >
-      {$t`Download`}
+      {$t`Copy`}
     </Button>
     <Button
       leadingIcon={mdiPrinterOutline}

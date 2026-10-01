@@ -557,13 +557,13 @@ msgstr "Continue to login"
 msgid "Copied to clipboard"
 msgstr "Copied to clipboard"
 
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Copy"
+msgstr "Copy"
+
 #: src/lib/components/util/DeviceFlowCode.svelte
 msgid "Copy code"
 msgstr "Copy code"
-
-#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
-msgid "Copy recovery key"
-msgstr "Copy recovery key"
 
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "Could not reach FUTO Backups. Check your connection."
@@ -656,13 +656,13 @@ msgstr "Disable write-only"
 msgid "Discord account linked. You can head back to Discord."
 msgstr "Discord account linked. You can head back to Discord."
 
-#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
-msgid "Download"
-msgstr "Download"
-
 #: src/lib/services/runHistory.service.ts
 msgid "Download Full Log"
 msgstr "Download Full Log"
+
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Download recovery key"
+msgstr "Download recovery key"
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Duration {duration}"
