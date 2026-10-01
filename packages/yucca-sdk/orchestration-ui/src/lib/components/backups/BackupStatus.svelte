@@ -32,6 +32,7 @@
     progress?: number;
     start?: string;
     duration?: string;
+    remaining?: string;
     errors?: string[];
     details?: Snippet;
     currentFiles?: string[];
@@ -46,6 +47,7 @@
     progress = 0,
     start,
     duration,
+    remaining,
     errors = [],
     details,
     currentFiles = [],
@@ -157,7 +159,9 @@
       <Heading tag="h3" size="small">{headline}</Heading>
       <p role="status" class="sr-only">{announcement}</p>
 
-      {#if backupState === "running" && start}
+      {#if backupState === "running" && remaining}
+        <Text>{remaining}</Text>
+      {:else if backupState === "running" && start}
         <Text color="muted">{$t`Started`} <RelativeTime time={start} /></Text>
       {:else if backupState === "failed"}
         <Text color="muted">{$t(reassurance[type])}</Text>

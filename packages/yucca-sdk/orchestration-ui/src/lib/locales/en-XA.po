@@ -49,10 +49,6 @@ msgstr ""
 msgid "{done} with warnings"
 msgstr ""
 
-#: src/lib/services/log.service.svelte.ts
-msgid "{duration} remaining"
-msgstr ""
-
 #: src/lib/components/backends/BackendItem.svelte
 msgid "{name} (primary)"
 msgstr ""
@@ -120,6 +116,10 @@ msgstr ""
 
 #: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
 msgid "A memorable name for this backup"
+msgstr ""
+
+#: src/lib/services/log.service.svelte.ts
+msgid "About {duration} remaining"
 msgstr ""
 
 #: src/lib/components/backends/BackendItem.svelte

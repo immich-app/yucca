@@ -158,6 +158,7 @@
       progress={log.status.progress}
       start={run?.start}
       {duration}
+      remaining={log.status.text}
       errors={log.errors}
       currentFiles={log.status.currentFiles}
       onRetry={retry}

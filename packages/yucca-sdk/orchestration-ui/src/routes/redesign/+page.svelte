@@ -573,6 +573,7 @@
         title={demoState === "complete"
           ? "Backup complete"
           : "Backing up your library"}
+        remaining="About 8 minutes remaining"
         type="backup"
         state={demoState}
         progress={demoProgress}
