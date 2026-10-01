@@ -188,7 +188,7 @@
       aria-label={phase}
       valueLabel={`${Math.round(progress * 100)}%`}
       shape="round"
-      size="tiny"
+      size="small"
       class="bg-primary-100 border-none"
     />
   {/if}
