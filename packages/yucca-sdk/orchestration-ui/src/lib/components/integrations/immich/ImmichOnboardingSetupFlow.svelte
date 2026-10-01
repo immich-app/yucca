@@ -46,7 +46,6 @@
   const { fallback, children }: Props = $props();
 
   let code = $state("");
-  let storageLocation = $state("FUTO Backups");
   let status: OnboardingStatusResponseDto | undefined = $state();
   let stage: Stage = $state("idle");
   let resume: Stage = $state("intro");
@@ -89,7 +88,6 @@
     (stage = status?.hasOnboardedKey ? "backup" : "key");
 
   const onConnect = () => {
-    storageLocation = "FUTO Backups";
     handleStartYuccaLogin(onBackendReady);
   };
 
@@ -198,7 +196,7 @@
   <OnboardingStepModal title={$t`Start your first backup`} onClose={onCancel}>
     <OnboardingStepFirstBackup
       {schedule}
-      {storageLocation}
+      storageLocation={$t`FUTO Cloud`}
       {onStartBackup}
       loading={defaults.isPending}
     />

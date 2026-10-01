@@ -975,6 +975,7 @@ msgstr ""
 msgid "FUTO cannot restore your backups without this key."
 msgstr ""
 
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
 msgid "FUTO Cloud"
 msgstr ""

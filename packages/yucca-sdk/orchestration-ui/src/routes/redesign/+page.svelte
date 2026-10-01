@@ -243,7 +243,7 @@
   <FakeModal size="small" title="Start your first backup">
     <OnboardingStepFirstBackup
       schedule="Every day at 3:00 AM"
-      storageLocation="FUTO Backups"
+      storageLocation="FUTO Cloud"
       onStartBackup={() => void 0}
     />
   </FakeModal>
