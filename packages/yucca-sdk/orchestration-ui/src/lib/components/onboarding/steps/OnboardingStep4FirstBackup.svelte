@@ -46,6 +46,7 @@
 <OnboardingStepLayout
   description={$t`Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard.`}
   {actions}
+  badge={false}
 >
   <Stack gap={4}>
     {#each settings as setting (setting.title)}

@@ -32,6 +32,7 @@
 <OnboardingStepLayout
   description={$t`Connect your FUTO account to use FUTO Cloud for backup storage.`}
   {actions}
+  badge={false}
 >
   <Stack gap={3}>
     <Text fontWeight="semi-bold" size="small">{$t`This will:`}</Text>

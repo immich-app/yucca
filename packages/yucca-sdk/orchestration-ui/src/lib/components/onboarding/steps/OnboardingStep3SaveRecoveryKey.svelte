@@ -29,6 +29,7 @@
 <OnboardingStepLayout
   description={$t`You'll need this key to restore your encrypted backups. Save it somewhere safe before continuing. FUTO cannot recover this key if it is lost.`}
   {actions}
+  badge={false}
 >
   <Stack gap={4}>
     <RecoveryKeyDisplay {code} />
