@@ -114,7 +114,7 @@ msgid "A folder on this computer"
 msgstr "A folder on this computer"
 
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 msgid "A folder on this computer."
 msgstr "A folder on this computer."
 
@@ -320,10 +320,6 @@ msgstr "Backup missing on service"
 msgid "Backup name"
 msgstr "Backup name"
 
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
-msgid "Backup options"
-msgstr "Backup options"
-
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 msgid "Backup Paths"
@@ -409,7 +405,7 @@ msgstr "Can't read repository."
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 #: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 #: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Cancel"
@@ -934,7 +930,7 @@ msgstr "Full speed during quiet hours"
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
 #: src/lib/components/onboarding/upsell/UpsellFutoBackupsBadge.svelte
 #: src/lib/components/settings/SettingsBilling.svelte
@@ -1164,7 +1160,7 @@ msgstr "Local directory to store backups."
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
 #: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 msgid "Local Storage"
 msgstr "Local Storage"
 
@@ -1835,7 +1831,7 @@ msgid "Setup on Immich"
 msgstr "Setup on Immich"
 
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 msgid "Simple, hosted backups."
 msgstr "Simple, hosted backups."
 
@@ -2101,7 +2097,7 @@ msgstr "When your next FUTO Backups charge will occur."
 msgid "Where do you want this backup restored to?"
 msgstr "Where do you want this backup restored to?"
 
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
 msgid "Where would you like to restore from?"
 msgstr "Where would you like to restore from?"
 

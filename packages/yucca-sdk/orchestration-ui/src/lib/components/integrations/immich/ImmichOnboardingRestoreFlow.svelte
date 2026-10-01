@@ -1,6 +1,6 @@
 <script lang="ts">
   import OnboardingBootstrapError from "$lib/components/onboarding/OnboardingBootstrapError.svelte";
-  import OnboardingStageBackupServices from "$lib/components/onboarding/stages/OnboardingStageBackupServices.svelte";
+  import OnboardingStepBackupServices from "$lib/components/onboarding/steps/OnboardingStepBackupServices.svelte";
   import OnboardingStepImportRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte";
   import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
   import OnboardingStepTelemetry from "$lib/components/onboarding/steps/OnboardingStepTelemetry.svelte";
@@ -78,11 +78,15 @@
     />
   </OnboardingStepModal>
 {:else if stage === "backup-service"}
-  <OnboardingStageBackupServices
-    onNext={() => (stage = "restore-point")}
-    onCancel={onExit}
-    restore
-  />
+  <OnboardingStepModal
+    title={$t`Where would you like to restore from?`}
+    onClose={onExit}
+  >
+    <OnboardingStepBackupServices
+      onNext={() => (stage = "restore-point")}
+      onCancel={onExit}
+    />
+  </OnboardingStepModal>
 {:else if stage === "key-reimport"}
   <OnboardingStepModal
     title={$t`Import recovery key`}
