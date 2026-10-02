@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.48.0](https://github.com/immich-app/yucca/compare/v0.47.0...v0.48.0) (2026-10-02)
+
+
+### Features
+
+* bring ui up to designs ([#723](https://github.com/immich-app/yucca/issues/723)) ([9b9fbc9](https://github.com/immich-app/yucca/commit/9b9fbc9c531463872e51e8421348cbd4cdbe81dc))
+
+
+### Bug Fixes
+
+* **yucca sdk:** accessibility fixes ([#721](https://github.com/immich-app/yucca/issues/721)) ([6b843fa](https://github.com/immich-app/yucca/commit/6b843fad3561937f126d84e3e190a7300d0d5d53))
+* **yucca sdk:** warn loudly if db dump/prune fails ([#724](https://github.com/immich-app/yucca/issues/724)) ([1896da4](https://github.com/immich-app/yucca/commit/1896da4bfc7e487164acd568415567c6fc0b0663))
+
 ## [0.47.0](https://github.com/immich-app/yucca/compare/v0.46.0...v0.47.0) (2026-09-30)
 
 
