@@ -8,6 +8,12 @@ export class TaskCancelledError extends Error {
   }
 }
 
+export class TaskWarningsError extends AggregateError {
+  constructor(errors: Error[]) {
+    super(errors, 'Task finished with warnings');
+  }
+}
+
 export function getTaskStatus(error?: unknown): TaskStatus {
   if (!error) {
     return TaskStatus.Complete;
@@ -17,7 +23,7 @@ export function getTaskStatus(error?: unknown): TaskStatus {
     return TaskStatus.Cancelled;
   }
 
-  if (error instanceof ResticBackupCommandCouldNotReadSourceDataError) {
+  if (error instanceof ResticBackupCommandCouldNotReadSourceDataError || error instanceof TaskWarningsError) {
     return TaskStatus.Warn;
   }
 
@@ -25,6 +31,14 @@ export function getTaskStatus(error?: unknown): TaskStatus {
 }
 
 export function writeError(stream: WriteStream, error: unknown) {
+  if (error instanceof AggregateError) {
+    for (const innerError of error.errors) {
+      writeError(stream, innerError);
+    }
+
+    return;
+  }
+
   const events = Array.isArray((error as { error?: unknown })?.error)
     ? ((error as { error: unknown[] }).error as object[])
     : [{ message_type: 'error', error: `${error}` }];

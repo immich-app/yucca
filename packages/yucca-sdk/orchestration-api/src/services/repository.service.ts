@@ -41,7 +41,7 @@ import { RunHistoryRepository } from '../repositories/runHistory.repository';
 import { RunningTasksRepository } from '../repositories/runningTasks.repository';
 import { StorageRepository } from '../repositories/storage.repository';
 import { RepositoryLocalMetricsTable } from '../schema/tables/repositoryLocalMetrics.table';
-import { getTaskStatus } from '../utils/errors';
+import { getTaskStatus, TaskWarningsError } from '../utils/errors';
 import { DEFAULT_RETENTION_POLICY, RetentionPolicy } from '../utils/restic';
 import { BootstrapService } from './bootstrap.service';
 import { TelemetryService } from './telemetry.service';
@@ -583,6 +583,7 @@ export class RepositoryService {
 
       try {
         const taskSignal = this.tasks.startTask(id, TaskType.Backup, logId, signal);
+        const warnings: Error[] = [];
         const tags = [];
 
         let immichHooks: ImmichIntegration['hooks'] | undefined;
@@ -608,6 +609,8 @@ export class RepositoryService {
                 repositoryId: id,
                 error,
               });
+
+              warnings.push(new Error(`Database dump failed: ${error}`, { cause: error }));
             }
           }
         }
@@ -628,6 +631,8 @@ export class RepositoryService {
               repositoryId: id,
               error,
             });
+
+            warnings.push(new Error(`Database backup cleanup failed: ${error}`, { cause: error }));
           }
         }
 
@@ -637,6 +642,10 @@ export class RepositoryService {
           this.telemetry.submitStructuredLog('Finished prune on primary backend', {
             repositoryId: id,
           });
+        }
+
+        if (warnings.length > 0) {
+          throw new TaskWarningsError(warnings);
         }
 
         void finish();
