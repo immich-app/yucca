@@ -122,15 +122,23 @@
 
   const sampleQuestions = [
     {
-      title: "Is FUTO Backups the same as an Immich product key?",
+      title: "Where can I store my backups?",
       answer: "Sample answer copy for the FAQ preview.",
     },
     {
-      title: "How is FUTO Backups priced?",
+      title: "Does my Immich product key include FUTO Backups?",
       answer: "Sample answer copy for the FAQ preview.",
     },
     {
-      title: "Can I use local storage instead?",
+      title: "Do I need FUTO Backups to use Immich?",
+      answer: "Sample answer copy for the FAQ preview.",
+    },
+    {
+      title: "How is FUTO Cloud priced?",
+      answer: "Sample answer copy for the FAQ preview.",
+    },
+    {
+      title: "What does FUTO Backups protect?",
       answer: "Sample answer copy for the FAQ preview.",
     },
   ];
@@ -156,7 +164,6 @@
   <FakeModal size="giant">
     <HStack class="p-4">
       <UpsellProtectImmichLibrary
-        price="$4"
         onGetStarted={() => void 0}
         onLearnMore={() => void 0}
       />
@@ -186,8 +193,6 @@
         <CardBody class="p-8">
           <HStack gap={8} class="justify-between">
             <UpsellFutoBackups
-              price="$4"
-              includedStorage="50 GB"
               onGetStarted={() => void 0}
             />
             <UpsellHowItWorks color="secondary" />
@@ -211,21 +216,21 @@
   <hr />
 
   <Heading>Backups Onboarding - Intro</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Finish setting up FUTO Backups">
     <OnboardingStepFinishSetup onContinue={() => void 0} />
   </FakeModal>
 
   <hr />
 
   <Heading>Backups Onboarding - Step 1</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Connect your FUTO account">
     <OnboardingStepConnectAccount onConnect={() => void 0} />
   </FakeModal>
 
   <hr />
 
   <Heading>Backups Onboarding - Step 2</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Save your recovery key">
     <OnboardingStepSaveRecoveryKey
       code="DF4B0C72D2FC2DEEA7B0CDDF1DAF4056T3G3NDJEY5H339826KL209132H2J9ML9"
       onContinue={() => void 0}
@@ -235,10 +240,10 @@
   <hr />
 
   <Heading>Backups Onboarding - Step 3</Heading>
-  <FakeModal size="small">
+  <FakeModal size="small" title="Start your first backup">
     <OnboardingStepFirstBackup
       schedule="Every day at 3:00 AM"
-      storageLocation="FUTO Backups"
+      storageLocation="FUTO Cloud"
       onStartBackup={() => void 0}
     />
   </FakeModal>
@@ -568,6 +573,8 @@
         title={demoState === "complete"
           ? "Backup complete"
           : "Backing up your library"}
+        remaining="About 8 minutes remaining"
+        onCancel={() => void 0}
         type="backup"
         state={demoState}
         progress={demoProgress}

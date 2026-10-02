@@ -3,6 +3,7 @@
   import { Button, Card, CardBody, HStack, Text, VStack } from "@immich/ui";
   import {
     mdiAsterisk,
+    mdiCheck,
     mdiContentCopy,
     mdiDownloadOutline,
     mdiPrinterOutline,
@@ -22,6 +23,8 @@
       .map((line) => line.match(/.{1,4}/g)!.join(" "))
       .join("\n"),
   );
+
+  let downloaded = $state(false);
 
   const print = () => window.print();
 
@@ -48,6 +51,8 @@
 
       URL.revokeObjectURL(url);
     }
+
+    downloaded = true;
   };
 
   const copyCode = () => copyToClipboard(code);
@@ -70,9 +75,9 @@
   };
 </script>
 
-<Card color="primary" class="shadow-none">
-  <CardBody class="flex justify-center">
-    <Text size="large" fontWeight="semi-bold"
+<Card color="primary" class="shadow-none border-none">
+  <CardBody class="flex justify-center py-8">
+    <Text size="large" fontWeight="semi-bold" class="tracking-wider"
       ><pre><code>{code}</code></pre></Text
     >
   </CardBody>
@@ -82,20 +87,21 @@
   <Button
     shape="round"
     variant="outline"
-    leadingIcon={mdiContentCopy}
-    onclick={copyCode}
+    leadingIcon={downloaded ? mdiCheck : mdiDownloadOutline}
+    class={downloaded ? "bg-primary/10" : undefined}
+    onclick={saveFile}
   >
-    {$t`Copy recovery key`}
+    {downloaded ? $t`Downloaded` : $t`Download recovery key`}
   </Button>
 
   <HStack>
     <Button
-      leadingIcon={mdiDownloadOutline}
+      leadingIcon={mdiContentCopy}
       variant="ghost"
       shape="round"
-      onclick={saveFile}
+      onclick={copyCode}
     >
-      {$t`Download`}
+      {$t`Copy`}
     </Button>
     <Button
       leadingIcon={mdiPrinterOutline}

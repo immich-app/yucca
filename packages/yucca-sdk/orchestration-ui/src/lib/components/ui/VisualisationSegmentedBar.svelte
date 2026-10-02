@@ -1,47 +1,39 @@
 <script lang="ts">
-  import { Badge, HStack, Stack, Text } from "@immich/ui";
+  import { HStack, Stack, Text } from "@immich/ui";
 
   type Segment = {
     value: number;
     label: string;
     color: string;
-    badge: "success" | "warning" | "danger" | "secondary" | "info";
   };
 
   type Props = {
-    title: string;
-    summary: string;
     segments: Segment[];
   };
 
-  const { title, summary, segments }: Props = $props();
+  const { segments }: Props = $props();
 </script>
 
-<Stack>
-  <HStack class="justify-between">
-    <Text size="large">{title}</Text>
-    <Text color="secondary">{summary}</Text>
-  </HStack>
-
-  <div
-    style="display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 2px;"
-  >
+<Stack gap={4}>
+  <div class="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
     {#each segments as segment (segment.label)}
       {#if segment.value > 0}
-        <div
-          style="flex: {segment.value}; background: {segment.color}; border-radius: 3px;"
-        ></div>
+        <div style="flex: {segment.value}; background: {segment.color};"></div>
       {/if}
     {/each}
   </div>
 
-  <HStack wrap>
+  <HStack gap={8} wrap>
     {#each segments as segment (segment.label)}
       {#if segment.value > 0}
-        <Badge size="tiny" color={segment.badge}>
-          {segment.value}
-          {segment.label}
-        </Badge>
+        <HStack gap={3} class="items-center">
+          <span
+            class="size-4 shrink-0 rounded-sm"
+            style="background: {segment.color};"
+            aria-hidden="true"
+          ></span>
+          <Text>{segment.label} - {segment.value}</Text>
+        </HStack>
       {/if}
     {/each}
   </HStack>

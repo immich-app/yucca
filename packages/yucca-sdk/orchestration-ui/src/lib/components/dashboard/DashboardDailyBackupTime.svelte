@@ -2,6 +2,7 @@
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { formatDuration } from "$lib/utils/format";
   import { Card, CardBody } from "@immich/ui";
+  import { mdiCalendarClock } from "@mdi/js";
   import { t } from "svelte-i18n-lingui";
   import VisualisationGauge from "../ui/VisualisationGauge.svelte";
 
@@ -26,6 +27,7 @@
   <CardBody>
     <VisualisationGauge
       title={$t`Daily Backup Time`}
+      icon={mdiCalendarClock}
       content={dailyBackupTime != null ? formatDuration(dailyBackupTime) : "—"}
     />
   </CardBody>

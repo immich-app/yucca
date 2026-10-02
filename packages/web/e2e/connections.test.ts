@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
 const login = async (page: import('@playwright/test').Page) => {
   await page.goto('http://localhost:36033/');
   await page.waitForLoadState('networkidle');
-  await page.getByRole('button', { name: 'Login' }).click();
+  await page.getByRole('link', { name: 'Login' }).click();
 
   await expect(page.getByRole('heading', { name: 'Sign-in' })).toBeVisible();
   await page.getByPlaceholder('Enter any login').fill('connections-e2e');

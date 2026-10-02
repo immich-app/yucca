@@ -32,11 +32,13 @@
     progress?: number;
     start?: string;
     duration?: string;
+    remaining?: string;
     errors?: string[];
     details?: Snippet;
     currentFiles?: string[];
     advanced?: Snippet;
     onRetry?: () => void;
+    onCancel?: () => void;
   };
 
   const {
@@ -46,11 +48,13 @@
     progress = 0,
     start,
     duration,
+    remaining,
     errors = [],
     details,
     currentFiles = [],
     advanced,
     onRetry,
+    onCancel,
   }: Props = $props();
 
   const phases: Record<BackupStatusType, [string, string, string]> = {
@@ -83,6 +87,12 @@
     forget: msg`Pruning old backups was cancelled`,
   };
 
+  const cancelLabels: Record<BackupStatusType, string> = {
+    backup: msg`Cancel backup`,
+    restore: msg`Cancel restore`,
+    forget: msg`Cancel prune`,
+  };
+
   const reassurance: Record<BackupStatusType, string> = {
     backup: msg`No changes were made to your existing backups.`,
     restore: msg`Your backups are untouched — nothing was lost.`,
@@ -90,7 +100,7 @@
   };
 
   const running: Record<BackupStatusType, string> = {
-    backup: msg`You can close this window and the backup will continue in the background.`,
+    backup: msg`Immich is backing up your library. You can close this window and continue using Immich while the backup runs in the background.`,
     restore: msg`You can close this window and the restore will continue in the background.`,
     forget: msg`You can close this window and the prune will continue in the background.`,
   };
@@ -157,7 +167,9 @@
       <Heading tag="h3" size="small">{headline}</Heading>
       <p role="status" class="sr-only">{announcement}</p>
 
-      {#if backupState === "running" && start}
+      {#if backupState === "running" && remaining}
+        <Text>{remaining}</Text>
+      {:else if backupState === "running" && start}
         <Text color="muted">{$t`Started`} <RelativeTime time={start} /></Text>
       {:else if backupState === "failed"}
         <Text color="muted">{$t(reassurance[type])}</Text>
@@ -184,7 +196,7 @@
       aria-label={phase}
       valueLabel={`${Math.round(progress * 100)}%`}
       shape="round"
-      size="tiny"
+      size="small"
       class="bg-primary-100 border-none"
     />
   {/if}
@@ -213,6 +225,14 @@
 
   {#if backupState === "running"}
     <Text color="muted">{$t(running[type])}</Text>
+
+    {#if onCancel}
+      <HStack gap={4} wrap>
+        <Button variant="ghost" color="danger" shape="round" onclick={onCancel}
+          >{$t(cancelLabels[type])}</Button
+        >
+      </HStack>
+    {/if}
   {:else if (backupState === "complete" || backupState === "warned") && details}
     <Text color="muted">{@render details()}</Text>
   {/if}

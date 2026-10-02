@@ -17,12 +17,12 @@
     {
       icon: mdiShieldKey,
       title: $t`Encrypted by design`,
-      description: $t`Your backups are protected with E2EE encryption, so only your recovery key can restore them.`,
+      description: $t`Your backups stay encrypted and can only be restored with your recovery key.`,
     },
     {
       icon: mdiImageRefreshOutline,
-      title: $t`Snapshot restore`,
-      description: $t`Restore your photos, videos, metadata, database, and configuration from a backup snapshot.`,
+      title: $t`Restore in one click`,
+      description: $t`Restore your files from an earlier backup whenever you want to return to a previous version.`,
     },
     {
       icon: mdiHistory,

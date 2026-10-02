@@ -1,5 +1,6 @@
 <script lang="ts">
   import BackendsList from "$lib/components/backends/BackendsList.svelte";
+  import BackupTaskMonitor from "$lib/components/backups/BackupTaskMonitor.svelte";
   import RepositoryRunHistory from "$lib/components/backups/run-history/RepositoryRunHistory.svelte";
   import RepositorySnapshotsList from "$lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte";
   import PageLayout from "$lib/components/ui/PageLayout.svelte";
@@ -32,6 +33,7 @@
 </script>
 
 <OnEvents {...useImmichBackupStatusEventHandler()} />
+<BackupTaskMonitor />
 
 <PageLayout title={$t`Backups`} actions={[ViewRecoveryKey, Configure]}>
   <Container size="medium" center>

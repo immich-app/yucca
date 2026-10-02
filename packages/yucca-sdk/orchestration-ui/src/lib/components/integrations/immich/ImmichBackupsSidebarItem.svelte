@@ -20,9 +20,10 @@
 
   type Props = {
     href: string;
+    onclick?: () => void;
   };
 
-  const { href }: Props = $props();
+  const { href, onclick }: Props = $props();
 
   const backup = useImmichBackupStatus();
 
@@ -80,6 +81,7 @@
 
 <a
   {href}
+  {onclick}
   class="flex w-full cursor-pointer items-center gap-2 px-3 py-3 text-start text-sm {tints[
     appearance.color
   ]}"

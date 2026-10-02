@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { Card, CardBody, Heading, HStack, Stack } from "@immich/ui";
+  import { Card, CardBody } from "@immich/ui";
   import type { Snippet } from "svelte";
+  import Section from "./Section.svelte";
 
   type Props = {
     title?: Snippet;
@@ -11,20 +12,10 @@
   const { title, action, children }: Props = $props();
 </script>
 
-<Stack gap={2}>
-  {#if title || action}
-    <HStack class="items-center justify-between px-1">
-      {#if title}
-        <Heading tag="h2" size="tiny">{@render title()}</Heading>
-      {/if}
-
-      {@render action?.()}
-    </HStack>
-  {/if}
-
+<Section {title} {action}>
   <Card class="border-primary-100 shadow-none">
     <CardBody class="divide-y p-0">
       {@render children?.()}
     </CardBody>
   </Card>
-</Stack>
+</Section>

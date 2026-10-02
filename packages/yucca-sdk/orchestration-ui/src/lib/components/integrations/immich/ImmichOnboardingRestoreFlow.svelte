@@ -1,8 +1,9 @@
 <script lang="ts">
   import OnboardingBootstrapError from "$lib/components/onboarding/OnboardingBootstrapError.svelte";
-  import OnboardingStageBackupServices from "$lib/components/onboarding/stages/OnboardingStageBackupServices.svelte";
-  import OnboardingStageKeyImport from "$lib/components/onboarding/stages/OnboardingStageKeyImport.svelte";
-  import OnboardingStageTelemetry from "$lib/components/onboarding/stages/OnboardingStageTelemetry.svelte";
+  import OnboardingStepBackupServices from "$lib/components/onboarding/steps/OnboardingStepBackupServices.svelte";
+  import OnboardingStepImportRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte";
+  import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
+  import OnboardingStepTelemetry from "$lib/components/onboarding/steps/OnboardingStepTelemetry.svelte";
   import RestorePointFlow from "$lib/components/onboarding/restore-point-flow/RestorePointFlow.svelte";
   import type { OnboardingStatusResponseDto } from "$lib/fetch-client";
   import {
@@ -11,6 +12,7 @@
   } from "$lib/services/onboarding.service";
   import { LoadingSpinner } from "@immich/ui";
   import { onMount } from "svelte";
+  import { t } from "svelte-i18n-lingui";
 
   type Props = {
     onExit: () => void;
@@ -54,28 +56,47 @@
 {:else if status.status === "error"}
   <OnboardingBootstrapError error={status.error} onQuit={onExit} />
 {:else if stage === "telemetry"}
-  <OnboardingStageTelemetry
-    onContinue={() =>
-      (stage = status?.hasOnboardedKey
-        ? status.hasBackend
-          ? "restore-point"
-          : "backup-service"
-        : "key-import")}
-    onCancel={onExit}
-  />
+  <OnboardingStepModal
+    title={$t`Telemetry required for closed beta`}
+    onClose={onExit}
+  >
+    <OnboardingStepTelemetry
+      onContinue={() =>
+        (stage = status?.hasOnboardedKey
+          ? status.hasBackend
+            ? "restore-point"
+            : "backup-service"
+          : "key-import")}
+      onCancel={onExit}
+    />
+  </OnboardingStepModal>
 {:else if stage === "key-import"}
-  <OnboardingStageKeyImport onImported={onKeyImported} onCancel={onExit} />
+  <OnboardingStepModal title={$t`Import recovery key`} onClose={onExit}>
+    <OnboardingStepImportRecoveryKey
+      onImported={onKeyImported}
+      onCancel={onExit}
+    />
+  </OnboardingStepModal>
 {:else if stage === "backup-service"}
-  <OnboardingStageBackupServices
-    onNext={() => (stage = "restore-point")}
-    onCancel={onExit}
-    restore
-  />
+  <OnboardingStepModal
+    title={$t`Where would you like to restore from?`}
+    onClose={onExit}
+  >
+    <OnboardingStepBackupServices
+      onNext={() => (stage = "restore-point")}
+      onCancel={onExit}
+    />
+  </OnboardingStepModal>
 {:else if stage === "key-reimport"}
-  <OnboardingStageKeyImport
-    onImported={() => (stage = "restore-point")}
-    onCancel={() => (stage = "restore-point")}
-  />
+  <OnboardingStepModal
+    title={$t`Import recovery key`}
+    onClose={() => (stage = "restore-point")}
+  >
+    <OnboardingStepImportRecoveryKey
+      onImported={() => (stage = "restore-point")}
+      onCancel={() => (stage = "restore-point")}
+    />
+  </OnboardingStepModal>
 {:else if stage === "restore-point"}
   <RestorePointFlow
     onImportKey={() => (stage = "key-reimport")}

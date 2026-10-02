@@ -3,26 +3,27 @@
   import { useMetricsHistory } from "$lib/services/metricsHistory.service";
   import { formatDuration } from "$lib/utils/format";
   import { getReadableErrorMessage } from "$lib/utils/handle-error";
+  import type { RepositoryMetricsHistoryDto } from "@futo-org/backups-api-client";
   import {
     Alert,
-    Badge,
     Button,
     getByteUnitString,
-    HStack,
     Icon,
     LoadingSpinner,
     Modal,
     ModalBody,
-    Stack,
     Text,
   } from "@immich/ui";
   import {
-    mdiAlertCircleOutline,
-    mdiCheckCircleOutline,
+    mdiCloudAlertOutline,
+    mdiCloudCancelOutline,
+    mdiCloudCheckOutline,
+    mdiCloudUploadOutline,
     mdiDatabaseOutline,
-    mdiPlayCircleOutline,
     mdiTimerOutline,
   } from "@mdi/js";
+  import StackList from "../../ui/StackList.svelte";
+  import StackListItem from "../../ui/StackListItem.svelte";
   import RelativeTime from "../../util/RelativeTime.svelte";
   import { tick } from "svelte";
   import { t } from "svelte-i18n-lingui";
@@ -42,6 +43,69 @@
   );
 
   const isoDate = (value: string) => new Date(value).toLocaleString();
+
+  const describe = (entry: RepositoryMetricsHistoryDto) => {
+    if (entry.started != null) {
+      return {
+        title: $t`Backup started`,
+        icon: mdiCloudUploadOutline,
+        color: "primary",
+      } as const;
+    }
+
+    switch (entry.backupStatus) {
+      case "complete": {
+        return {
+          title: $t`Backup finished`,
+          icon: mdiCloudCheckOutline,
+          color: "success",
+        } as const;
+      }
+      case "warn": {
+        return {
+          title: $t`Backup finished with warnings`,
+          icon: mdiCloudAlertOutline,
+          color: "warning",
+        } as const;
+      }
+      case "incomplete": {
+        return {
+          title: $t`Backup incomplete`,
+          icon: mdiCloudAlertOutline,
+          color: "warning",
+        } as const;
+      }
+      case "cancelled": {
+        return {
+          title: $t`Backup cancelled`,
+          icon: mdiCloudCancelOutline,
+          color: "warning",
+        } as const;
+      }
+    }
+
+    if (entry.backup != null) {
+      return {
+        title: $t`Backup failed`,
+        icon: mdiCloudAlertOutline,
+        color: "danger",
+      } as const;
+    }
+
+    if (entry.sizeBytes != null) {
+      return {
+        title: $t`Size updated`,
+        icon: mdiDatabaseOutline,
+        color: "primary",
+      } as const;
+    }
+
+    return {
+      title: $t`Event`,
+      icon: mdiTimerOutline,
+      color: "primary",
+    } as const;
+  };
 
   let sentinel = $state<HTMLDivElement | null>(null);
   let historyEnd = $state<HTMLDivElement>();
@@ -72,10 +136,14 @@
   });
 </script>
 
-<Modal title={$t({
+<Modal
+  title={$t({
     message: "Metrics history for {name}",
     values: { name: repository.name },
-  })} size="large" {onClose}>
+  })}
+  size="medium"
+  {onClose}
+>
   <ModalBody>
     {#if query.isLoading}
       <LoadingSpinner />
@@ -86,128 +154,44 @@
         {$t`No metrics history yet.`}
       </Text>
     {:else}
-      <Stack gap={0} class="divide-y rounded-2xl border overflow-hidden">
+      <StackList>
         {#each entries as entry (entry.id)}
-          {@const isStart = entry.started != null}
-          {@const isEnd = entry.backup != null}
-          {@const isSize = entry.sizeBytes != null && !isStart && !isEnd}
-          {@const status = entry.backupStatus}
-          <Stack gap={1} class="px-4 py-3">
-            <HStack class="justify-between gap-4">
-              <HStack class="gap-2">
-                {#if isStart}
-                  <Icon
-                    icon={mdiPlayCircleOutline}
-                    size="18"
-                    class="text-info-500"
-                  />
-                  <Text>{$t`Backup started`}</Text>
-                {:else if status === 'complete'}
-                  <Icon
-                    icon={mdiCheckCircleOutline}
-                    size="18"
-                    class="text-success-500"
-                  />
-                  <Text>{$t`Backup finished`}</Text>
-                  <Badge size="tiny" color="success">{$t`Success`}</Badge>
-                {:else if status === 'warn'}
-                  <Icon
-                    icon={mdiAlertCircleOutline}
-                    size="18"
-                    class="text-warning-500"
-                  />
-                  <Text>{$t`Backup finished`}</Text>
-                  <Badge size="tiny" color="warning">{$t`Warning`}</Badge>
-                {:else if status === 'incomplete'}
-                  <Icon
-                    icon={mdiAlertCircleOutline}
-                    size="18"
-                    class="text-warning-500"
-                  />
-                  <Text>{$t`Backup incomplete`}</Text>
-                  <Badge size="tiny" color="warning">{$t`Incomplete`}</Badge>
-                {:else if status === 'failed'}
-                  <Icon
-                    icon={mdiAlertCircleOutline}
-                    size="18"
-                    class="text-danger-500"
-                  />
-                  <Text>{$t`Backup finished`}</Text>
-                  <Badge size="tiny" color="danger">{$t`Failed`}</Badge>
-                {:else if status === 'cancelled'}
-                  <Icon
-                    icon={mdiAlertCircleOutline}
-                    size="18"
-                    class="text-warning-500"
-                  />
-                  <Text>{$t`Backup cancelled`}</Text>
-                  <Badge size="tiny" color="warning">{$t`Cancelled`}</Badge>
-                {:else if isEnd}
-                  <Icon
-                    icon={mdiAlertCircleOutline}
-                    size="18"
-                    class="text-danger-500"
-                  />
-                  <Text>{$t`Backup finished`}</Text>
-                  <Badge size="tiny" color="danger">{$t`Failed`}</Badge>
-                {:else if isSize}
-                  <Icon
-                    icon={mdiDatabaseOutline}
-                    size="18"
-                    class="text-info-500"
-                  />
-                  <Text>{$t`Size updated`}</Text>
-                {:else}
-                  <Icon icon={mdiTimerOutline} size="18" color="secondary" />
-                  <Text>{$t`Event`}</Text>
-                {/if}
-              </HStack>
+          {@const appearance = describe(entry)}
+          <StackListItem title={appearance.title} color={appearance.color}>
+            {#snippet icon()}
+              <Icon icon={appearance.icon} />
+            {/snippet}
+
+            {#if entry.started}
+              {$t({
+                message: "Started {date}",
+                values: { date: isoDate(entry.started) },
+              })}
+            {:else if entry.backupDuration != null}
+              {$t({
+                message: "Duration: {duration}",
+                values: { duration: formatDuration(entry.backupDuration) },
+              })}
+            {:else if entry.sizeBytes != null}
+              {$t({
+                message: "Size {size}",
+                values: { size: getByteUnitString(entry.sizeBytes) },
+              })}
+            {/if}
+
+            {#snippet trailing()}
               <Text
                 color="secondary"
                 size="small"
+                class="shrink-0"
                 title={isoDate(entry.createdAt)}
               >
                 <RelativeTime time={entry.createdAt} />
               </Text>
-            </HStack>
-
-            <HStack class="gap-2 flex-wrap pl-7">
-              {#if entry.backupDuration != null}
-                <Badge size="tiny" color="secondary">
-                  {$t({
-                    message: "Duration {duration}",
-                    values: { duration: formatDuration(entry.backupDuration) },
-                  })}
-                </Badge>
-              {/if}
-              {#if entry.sizeBytes != null}
-                <Badge size="tiny" color="secondary">
-                  {$t({
-                    message: "Size {size}",
-                    values: { size: getByteUnitString(entry.sizeBytes) },
-                  })}
-                </Badge>
-              {/if}
-              {#if entry.started}
-                <Badge size="tiny" color="secondary">
-                  {$t({
-                    message: "Started {date}",
-                    values: { date: isoDate(entry.started) },
-                  })}
-                </Badge>
-              {/if}
-              {#if entry.backup}
-                <Badge size="tiny" color="secondary">
-                  {$t({
-                    message: "Ended {date}",
-                    values: { date: isoDate(entry.backup) },
-                  })}
-                </Badge>
-              {/if}
-            </HStack>
-          </Stack>
+            {/snippet}
+          </StackListItem>
         {/each}
-      </Stack>
+      </StackList>
 
       {#if query.hasNextPage}
         <div bind:this={sentinel} class="flex justify-center py-4">

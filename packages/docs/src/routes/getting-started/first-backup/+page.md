@@ -8,6 +8,10 @@ Once the app is installed, setup takes three things: connecting your account, sa
 
 Immich asks you to connect your account first and shows the recovery key after. The standalone app does it the other way round. Either way you do both.
 
+## Choose where your backups live
+
+Immich starts by asking where your backups should be stored. Currently only FUTO Cloud is available.
+
 ## Connect your account
 
 The **Connect your FUTO account** step links the machine to the account you signed up with.
@@ -26,7 +30,7 @@ If the popup is blocked, allow popups for the app and select **Try again**. Ther
 
 You are shown a 64-character key and asked to confirm "I saved my recovery key somewhere safe" before you can continue.
 
-**Do not skip past this.** Your backups are encrypted with this key before they leave your machine, and FUTO does not have a copy. Without it, your backups cannot be read by anyone, including you. Use the **Copy recovery key**, **Download** or **Print** buttons and put it somewhere you will still have it if this machine dies.
+**Do not skip past this.** Your backups are encrypted with this key before they leave your machine, and FUTO does not have a copy. Without it, your backups cannot be read by anyone, including you. Use the **Download recovery key**, **Copy** or **Print** buttons and put it somewhere you will still have it if this machine dies.
 
 [Your recovery key](/guides/recovery-key) explains what it protects and how to use it later.
 

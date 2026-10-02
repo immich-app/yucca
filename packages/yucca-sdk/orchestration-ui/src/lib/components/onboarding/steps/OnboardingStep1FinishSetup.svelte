@@ -30,7 +30,6 @@
 </script>
 
 <OnboardingStepLayout
-  title={$t`Finish setting up FUTO Backups`}
   description={$t`Your subscription is active. Finish setup to create your recovery key and start backing up your Immich library.`}
   {actions}
 >
