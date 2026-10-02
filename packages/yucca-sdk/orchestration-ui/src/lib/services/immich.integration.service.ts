@@ -104,12 +104,16 @@ export const toImmichBackupStatus = (
     return { kind: 'running' };
   }
 
+  const outcome = getBackupOutcome(data.repository?.metrics);
+  const lastBackup = data.repository?.metrics.lastBackup;
+
+  if (lastBackup && (outcome === 'failed' || outcome === 'warn')) {
+    return { kind: outcome, lastBackup };
+  }
+
   if (data.schedule?.paused) {
     return { kind: 'paused' };
   }
-
-  const outcome = getBackupOutcome(data.repository?.metrics);
-  const lastBackup = data.repository?.metrics.lastBackup;
 
   if (lastBackup && outcome !== 'never') {
     return { kind: outcome, lastBackup };

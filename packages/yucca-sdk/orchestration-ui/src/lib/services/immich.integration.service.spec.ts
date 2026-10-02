@@ -34,6 +34,23 @@ describe('toImmichBackupStatus', () => {
     });
   });
 
+  it.each(['failed', 'warn'] as const)(
+    'reports a %s last backup over a paused schedule',
+    (lastBackupStatus) => {
+      const status = paused({
+        ...backedUp,
+        repository: {
+          metrics: { ...backedUp.repository!.metrics, lastBackupStatus },
+        },
+      } as ImmichBackupStatusDto);
+
+      expect(toImmichBackupStatus(status, false)).toEqual({
+        kind: lastBackupStatus,
+        lastBackup: '2026-09-30T12:00:00.000Z',
+      });
+    },
+  );
+
   it('reports a running backup over a paused schedule', () => {
     const running = {
       ...paused(backedUp),
