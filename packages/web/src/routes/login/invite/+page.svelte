@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FutoBackupsLogo from "$lib/components/FutoBackupsLogo.svelte";
   import { page } from "$app/state";
   import { defaults } from "@futo-org/backups-api-client";
   import {
@@ -45,7 +46,7 @@
     <Card>
       <CardBody>
         <VStack>
-          <Heading tag="h1">FUTO Backups</Heading>
+          <Heading tag="h1"><FutoBackupsLogo class="h-12" /></Heading>
           {#if notAllowed}
             <Alert color="warning"
               >{$t`Your email isn't part of the beta yet.`}</Alert

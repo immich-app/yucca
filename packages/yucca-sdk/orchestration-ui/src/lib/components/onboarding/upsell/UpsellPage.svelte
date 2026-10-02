@@ -12,13 +12,11 @@
   };
 
   type Props = {
-    price: string;
-    includedStorage: string;
     questions: Question[];
     onGetStarted: () => void;
   };
 
-  const { price, includedStorage, questions, onGetStarted }: Props = $props();
+  const { questions, onGetStarted }: Props = $props();
 </script>
 
 <Container size="large" center>
@@ -26,7 +24,7 @@
     <Card color="primary" class="shadow-none">
       <CardBody class="p-8">
         <HStack gap={8} class="justify-between max-md:flex-wrap">
-          <UpsellExplainFutoBackups {price} {includedStorage} {onGetStarted} />
+          <UpsellExplainFutoBackups {onGetStarted} />
 
           <UpsellHowItWorks color="secondary" />
         </HStack>

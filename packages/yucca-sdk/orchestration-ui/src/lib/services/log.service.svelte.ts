@@ -111,7 +111,7 @@ export function createLogObserver(logId: string) {
               ? event.bytes_done < event.total_bytes
               : event.percent_done < 100)
               ? gt({
-                  message: '{duration} remaining',
+                  message: 'About {duration} remaining',
                   values: {
                     duration: formatDuration(event.seconds_remaining * 1000),
                   },

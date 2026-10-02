@@ -10,18 +10,17 @@
   import { mdiDotsVertical } from "@mdi/js";
   import type { Snippet } from "svelte";
   import { t } from "svelte-i18n-lingui";
-
-  type Color = "primary" | "success" | "warning" | "danger";
+  import IconTile, { tints, type TileColor } from "./IconTile.svelte";
 
   type Props = {
     class?: string;
     title?: string;
-    color?: Color;
+    color?: TileColor;
     icon?: Snippet;
     children: Snippet;
     trailing?: Snippet;
     footer?: Snippet;
-    footerColor?: Color;
+    footerColor?: TileColor;
     actions?: ActionItem[];
   };
 
@@ -36,23 +35,12 @@
     footerColor = "primary",
     actions = [],
   }: Props = $props();
-
-  const tints: Record<Color, string> = {
-    primary: "bg-primary-50 text-primary",
-    success: "bg-success-50 text-success-700",
-    warning: "bg-warning-50 text-warning-800",
-    danger: "bg-danger-50 text-danger-700",
-  };
 </script>
 
 <div>
   <HStack gap={4} class={`${className} items-center px-5 py-4`}>
     {#if icon}
-      <div
-        class={`flex size-10 shrink-0 items-center justify-center rounded-lg text-xl ${tints[color]}`}
-      >
-        {@render icon()}
-      </div>
+      <IconTile {color}>{@render icon()}</IconTile>
     {/if}
 
     {#if title}

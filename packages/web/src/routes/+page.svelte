@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FutoBackupsLogo from "$lib/components/FutoBackupsLogo.svelte";
   import { defaults } from "@futo-org/backups-api-client";
   import { Button, Card, CardBody, Heading, VStack } from "@immich/ui";
   import { t } from "svelte-i18n-lingui";
@@ -11,7 +12,7 @@
     <Card>
       <CardBody>
         <VStack>
-          <Heading tag="h1">FUTO Backups</Heading>
+          <Heading tag="h1"><FutoBackupsLogo class="h-12" /></Heading>
           <Button href={defaults.baseUrl + "api/auth/oidc/login"}
             >{$t`Login`}</Button
           >

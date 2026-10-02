@@ -1,11 +1,21 @@
 import { sdk } from '$lib';
 import ViewStatusModal from '$lib/components/backups/dialogs/ViewStatusModal.svelte';
 import { SocketEvent } from '$lib/events';
-import { getRun, getRunHistory, type RunDto } from '$lib/fetch-client';
+import {
+  getRun,
+  getRunHistory,
+  type RunDto,
+  type RunStatus,
+} from '$lib/fetch-client';
 import { getProvider } from '$lib/providers';
 import { queryClient } from '$lib/query-client';
 import { handleError } from '$lib/utils/handle-error';
-import { modalManager, type ActionItem } from '@immich/ui';
+import {
+  modalManager,
+  toastManager,
+  type ActionItem,
+  type ToastShow,
+} from '@immich/ui';
 import { createQuery } from '@tanstack/svelte-query';
 import { gt, msg } from 'svelte-i18n-lingui';
 
@@ -72,6 +82,54 @@ export const useRunEventHandler = () => {
               )
             : void 0,
       );
+    },
+  };
+};
+
+export const useBackupTaskMonitor = () => {
+  const watching = new Set<string>();
+
+  return {
+    onRunCreate(event: SocketEvent<{ run: RunDto }>) {
+      if (
+        event.data.run.type === 'backup' ||
+        event.data.run.type === 'schedule'
+      ) {
+        watching.add(event.data.run.id);
+      }
+    },
+    onRunUpdate(event: SocketEvent<{ runId: string; run: Partial<RunDto> }>) {
+      const { runId, run } = event.data;
+      if (!watching.has(runId) || !run.status || run.status === 'incomplete') {
+        return;
+      }
+
+      watching.delete(runId);
+
+      const alerts: Record<Exclude<RunStatus, 'incomplete'>, ToastShow> = {
+        complete: {
+          color: 'success',
+          title: gt`Backup complete`,
+          description: gt`Library successfully backed up.`,
+        },
+        warn: {
+          color: 'warning',
+          title: gt`Backup completed with warnings`,
+          description: gt`Some files could not be backed up. Check the backup log for details.`,
+        },
+        failed: {
+          color: 'danger',
+          title: gt`Backup failed`,
+          description: gt`Could not finish backing up.`,
+        },
+        cancelled: {
+          color: 'secondary',
+          title: gt`Backup cancelled`,
+          description: gt`The backup was stopped before it finished.`,
+        },
+      };
+
+      toastManager.show(alerts[run.status], { closable: true });
     },
   };
 };

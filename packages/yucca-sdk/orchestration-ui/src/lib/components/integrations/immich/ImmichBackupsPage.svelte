@@ -10,8 +10,6 @@
   };
 
   type Props = {
-    price: string;
-    includedStorage: string;
     questions: Question[];
     onConfigure: () => void;
     onViewAttempts: () => void;
@@ -19,8 +17,6 @@
   };
 
   const {
-    price,
-    includedStorage,
     questions,
     onConfigure,
     onViewAttempts,
@@ -30,7 +26,7 @@
 
 <ImmichOnboardingSetupFlow>
   {#snippet fallback(onStart)}
-    <UpsellPage {price} {includedStorage} {questions} onGetStarted={onStart} />
+    <UpsellPage {questions} onGetStarted={onStart} />
   {/snippet}
 
   <ImmichManageBackupPage {onConfigure} {onViewAttempts} {onViewSnapshots} />

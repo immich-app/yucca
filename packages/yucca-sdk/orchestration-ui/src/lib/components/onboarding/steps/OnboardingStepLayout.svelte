@@ -12,30 +12,36 @@
 </script>
 
 <script lang="ts">
-  import { Button, Heading, HStack, isEnabled, Stack, Text } from "@immich/ui";
+  import { Button, HStack, isEnabled, Stack, Text } from "@immich/ui";
   import type { Snippet } from "svelte";
   import UpsellFutoBackupsBadge from "../upsell/UpsellFutoBackupsBadge.svelte";
 
   type Props = {
-    title: string;
-    description: string;
+    description?: string;
     actions: OnboardingStepAction[];
+    badge?: boolean;
     children?: Snippet;
   };
 
-  const { title, description, actions, children }: Props = $props();
+  const {
+    description,
+    actions,
+    badge = true,
+    children,
+  }: Props = $props();
 
   const enabledActions = $derived(actions.filter(isEnabled));
   const busy = $derived(enabledActions.some((action) => action.loading));
 </script>
 
 <Stack gap={5} class="py-2">
-  <UpsellFutoBackupsBadge />
+  {#if badge}
+    <UpsellFutoBackupsBadge />
+  {/if}
 
-  <Stack gap={2}>
-    <Heading tag="h2" size="medium" color="primary" fontWeight="bold">{title}</Heading>
+  {#if description}
     <Text>{description}</Text>
-  </Stack>
+  {/if}
 
   {#if children}
     {@render children()}

@@ -5,17 +5,16 @@
   import { t } from "svelte-i18n-lingui";
 
   type Props = {
-    price: string;
     onGetStarted: () => void;
     onLearnMore: () => void;
   };
 
-  const { price, onGetStarted, onLearnMore }: Props = $props();
+  const { onGetStarted, onLearnMore }: Props = $props();
 
   const benefits = $derived([
-    $t`Cloud copy while your originals stay local`,
+    $t`Automatic backups run in the background`,
     $t`Encrypted backups protect your data`,
-    $t`Restore if your local storage fails`,
+    $t`Restore from backup snapshots when needed`,
   ]);
 </script>
 
@@ -28,7 +27,7 @@
     >
 
     <Text>
-      {$t`FUTO Backups adds hosted cloud backup storage to your existing Immich setup, so you have another copy if something happens locally.`}
+      {$t`FUTO Backups adds backup support to your existing Immich setup, giving you more ways to protect your library if something goes wrong.`}
     </Text>
   </Stack>
 
@@ -44,13 +43,6 @@
       </HStack>
     {/each}
   </Stack>
-
-  <Text fontWeight="semi-bold">
-    {$t({
-      message: "Starting at {price}/month. Additional storage billed by usage.",
-      values: { price },
-    })}
-  </Text>
 
   <HStack gap={6} wrap class="items-center">
     <Button shape="round" onclick={onGetStarted}>{$t`Get Started`}</Button>

@@ -5,8 +5,8 @@
 
   const steps = $derived([
     {
-      title: $t`Connect your FUTO account`,
-      description: $t`Securely connect FUTO Backups to Immich.`,
+      title: $t`Choose where your backups live`,
+      description: $t`FUTO Cloud, local storage, or another supported option.`,
     },
     {
       title: $t`Save your recovery key`,

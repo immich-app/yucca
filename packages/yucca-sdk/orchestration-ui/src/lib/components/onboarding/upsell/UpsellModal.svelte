@@ -2,6 +2,7 @@
   import {
     CloseButton,
     HStack,
+    Logo,
     Modal,
     ModalBody,
     ModalHeader,
@@ -10,32 +11,25 @@
   import UpsellProtectYourImmichLibrary from "./UpsellProtectYourImmichLibrary.svelte";
 
   type Props = {
-    price: string;
     onGetStarted: () => void;
     onLearnMore: () => void;
     onClose: () => void;
   };
 
-  const { price, onGetStarted, onLearnMore, onClose }: Props = $props();
+  const { onGetStarted, onLearnMore, onClose }: Props = $props();
 </script>
 
-<Modal
-  size="giant"
-  {onClose}
-  icon={false}
-  // this is a bit of a hack to remove the frames from base modal...
-  // twin code is in ViewStatusModal
-  class="[&>div>div:first-child]:border-b-0 [&>div>div:first-child]:pb-0"
->
+<Modal size="giant" {onClose}>
   <ModalHeader>
-    <HStack fullWidth class="justify-end">
+    <HStack fullWidth class="justify-between">
+      <Logo variant="icon" size="tiny" />
       <CloseButton onclick={onClose} />
     </HStack>
   </ModalHeader>
 
   <ModalBody>
     <HStack gap={4} class="p-4 max-md:flex-wrap">
-      <UpsellProtectYourImmichLibrary {price} {onGetStarted} {onLearnMore} />
+      <UpsellProtectYourImmichLibrary {onGetStarted} {onLearnMore} />
 
       <UpsellHowItWorks />
     </HStack>

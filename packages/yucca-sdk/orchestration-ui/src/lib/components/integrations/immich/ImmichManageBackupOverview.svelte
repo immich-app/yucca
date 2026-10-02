@@ -5,6 +5,7 @@
   import type { LocalRepositoryDto, ScheduleDto } from "$lib/fetch-client";
   import type { ImmichBackupStatus } from "$lib/services/immich.integration.service";
   import { handleCreateBackup } from "$lib/services/repository.service";
+  import { handleResumeSchedule } from "$lib/services/schedule.service";
   import { handleCancelTask } from "$lib/services/task.service";
   import { Button, FormatBytes, Icon } from "@immich/ui";
   import {
@@ -17,7 +18,7 @@
     mdiStopCircleOutline,
   } from "@mdi/js";
   import cronstrue from "cronstrue";
-  import { t } from "svelte-i18n-lingui";
+  import { T, t } from "svelte-i18n-lingui";
 
   type Props = {
     repository: LocalRepositoryDto;
@@ -56,7 +57,7 @@
 </script>
 
 <StackList>
-  <StackListItem title={$t`Your library`} footerColor={appearance.color}>
+  <StackListItem title={$t`Your library backup`} footerColor={appearance.color}>
     {#snippet icon()}
       <Icon icon={mdiArchiveOutline} />
     {/snippet}
@@ -66,9 +67,13 @@
     {:else}
       {$t`Estimated`} <FormatBytes bytes={repository.metrics.sizeBytes} />
     {/if} &middot;
-    <span class="lowercase">
-      {cronstrue.toString(schedule.cron, { verbose: true })}
-    </span>
+    {#if status.kind === "paused"}
+      {$t`Backups paused`}
+    {:else}
+      <span class="lowercase">
+        {cronstrue.toString(schedule.cron, { verbose: true })}
+      </span>
+    {/if}
 
     {#snippet trailing()}
       {@const running = status.kind === "running"}
@@ -107,7 +112,16 @@
       {:else if status.kind === "complete"}
         {$t`Last backup successful`} <RelativeTime time={status.lastBackup} />
       {:else if status.kind === "paused"}
-        {$t`Backups paused`}
+        <span>
+          <T msg="Automatic backups are paused. # scheduled backups or start one manually.">
+            <button
+              type="button"
+              class="cursor-pointer font-medium underline"
+              onclick={() => void handleResumeSchedule(schedule.id, schedule.name)}
+              >{$t`Enable`}</button
+            >
+          </T>
+        </span>
       {:else}
         {$t`Backup is yet to run.`}
       {/if}

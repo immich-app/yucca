@@ -13,10 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: ../../web/src/routes/dashboard/connections/+page.svelte
-msgid "{0} repositories"
-msgstr "{0} repositories"
-
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
 msgid "{count} changed"
 msgstr "{count} changed"
@@ -48,10 +44,6 @@ msgstr "{count} skipped"
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "{done} with warnings"
 msgstr "{done} with warnings"
-
-#: src/lib/services/log.service.svelte.ts
-msgid "{duration} remaining"
-msgstr "{duration} remaining"
 
 #: src/lib/components/backends/BackendItem.svelte
 msgid "{name} (primary)"
@@ -85,6 +77,10 @@ msgstr "{num, plural, one {# backup removed} other {# backups removed}}"
 msgid "{num, plural, one {# file} other {# files}}"
 msgstr "{num, plural, one {# file} other {# files}}"
 
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+msgid "{num, plural, one {# repository} other {# repositories}}"
+msgstr "{num, plural, one {# repository} other {# repositories}}"
+
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "{num, plural, one {Completed with # warning.} other {Completed with # warnings.}}"
 msgstr "{num, plural, one {Completed with # warning.} other {Completed with # warnings.}}"
@@ -114,13 +110,17 @@ msgid "A folder on this computer"
 msgstr "A folder on this computer"
 
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 msgid "A folder on this computer."
 msgstr "A folder on this computer."
 
 #: src/lib/components/backups/dialogs/CreateRepositoryModal.svelte
 msgid "A memorable name for this backup"
 msgstr "A memorable name for this backup"
+
+#: src/lib/services/log.service.svelte.ts
+msgid "About {duration} remaining"
+msgstr "About {duration} remaining"
 
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/settings/SettingsBilling.svelte
@@ -172,10 +172,6 @@ msgstr "All attempts"
 msgid "All libraries"
 msgstr "All libraries"
 
-#: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-msgid "Allow Immich to upload encrypted backups"
-msgstr "Allow Immich to upload encrypted backups"
-
 #: src/lib/components/backends/BackendItem.svelte
 msgid "An S3-compatible server"
 msgstr "An S3-compatible server"
@@ -192,6 +188,14 @@ msgstr "Attempted"
 msgid "Automatic backups"
 msgstr "Automatic backups"
 
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Automatic backups are paused. # scheduled backups or start one manually."
+msgstr "Automatic backups are paused. # scheduled backups or start one manually."
+
+#: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
+msgid "Automatic backups run in the background"
+msgstr "Automatic backups run in the background"
+
 #: src/lib/components/schedules/RepositoryPicker.svelte
 msgid "Available"
 msgstr "Available"
@@ -202,7 +206,7 @@ msgstr "Avg. Backup Time"
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow2SelectSnapshot.svelte
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 #: src/lib/components/ui/PageLayout.svelte
 msgid "Back"
 msgstr "Back"
@@ -249,8 +253,17 @@ msgid "Backup"
 msgstr "Backup"
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+#: src/lib/services/runHistory.service.ts
 msgid "Backup cancelled"
 msgstr "Backup cancelled"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Backup complete"
+msgstr "Backup complete"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Backup completed with warnings"
+msgstr "Backup completed with warnings"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/utils/format.ts
@@ -269,7 +282,9 @@ msgstr "Backup Contents"
 msgid "Backup did not complete"
 msgstr "Backup did not complete"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
+#: src/lib/services/runHistory.service.ts
 msgid "Backup failed"
 msgstr "Backup failed"
 
@@ -278,15 +293,16 @@ msgid "Backup failures"
 msgstr "Backup failures"
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Backup finished"
 msgstr "Backup finished"
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Backup finished with warnings"
+msgstr "Backup finished with warnings"
+
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
-msgid "Backup Health"
-msgstr "Backup Health"
+msgid "Backup health"
+msgstr "Backup health"
 
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Backup in progress"
@@ -315,10 +331,6 @@ msgstr "Backup missing on service"
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Backup name"
 msgstr "Backup name"
-
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
-msgid "Backup options"
-msgstr "Backup options"
 
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
 #: src/lib/components/backups/dialogs/ConfigureRepositoryModal.svelte
@@ -389,6 +401,10 @@ msgstr "Billing issues"
 msgid "Browse"
 msgstr "Browse"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Buddy Backups"
+msgstr "Buddy Backups"
+
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
 msgid "Built for Immich"
 msgstr "Built for Immich"
@@ -405,19 +421,24 @@ msgstr "Can't read repository."
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 #: src/lib/components/backups/dialogs/SelectRepositoryModal.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Cancel"
 msgstr "Cancel"
 
+#: src/lib/components/backups/BackupStatus.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Cancel backup"
 msgstr "Cancel backup"
 
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Cancelled"
-msgstr "Cancelled"
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Cancel prune"
+msgstr "Cancel prune"
+
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Cancel restore"
+msgstr "Cancel restore"
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
 msgid "Cancelled {noun}"
@@ -452,6 +473,11 @@ msgstr "Choose target folder"
 msgid "Choose what Immich includes in each backup."
 msgstr "Choose what Immich includes in each backup."
 
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
+msgid "Choose where your backups live"
+msgstr "Choose where your backups live"
+
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
 msgid "Clean up old backups now"
 msgstr "Clean up old backups now"
@@ -468,9 +494,9 @@ msgstr "Clear"
 msgid "Close"
 msgstr "Close"
 
-#: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "Cloud copy while your originals stay local"
-msgstr "Cloud copy while your originals stay local"
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Coming soon"
+msgstr "Coming soon"
 
 #: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Completed backups will appear here once your first backup runs."
@@ -491,6 +517,11 @@ msgstr "Configure"
 msgid "Configure {name}"
 msgstr "Configure {name}"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+msgid "Confirm"
+msgstr "Confirm"
+
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
 msgid "Confirm restore from snapshot"
 msgstr "Confirm restore from snapshot"
@@ -498,6 +529,10 @@ msgstr "Confirm restore from snapshot"
 #: src/lib/components/backups/dialogs/RollbackSnapshotModal.svelte
 msgid "Confirm rollback"
 msgstr "Confirm rollback"
+
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+msgid "Confirm your recovery key"
+msgstr "Confirm your recovery key"
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
 msgid "Connect account"
@@ -507,14 +542,14 @@ msgstr "Connect account"
 msgid "Connect FUTO account"
 msgstr "Connect FUTO account"
 
-#: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Connect your FUTO account"
 msgstr "Connect your FUTO account"
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-msgid "Connect your FUTO account to this Immich server so FUTO Backups can store your encrypted backups."
-msgstr "Connect your FUTO account to this Immich server so FUTO Backups can store your encrypted backups."
+msgid "Connect your FUTO account to use FUTO Cloud for backup storage."
+msgstr "Connect your FUTO account to use FUTO Cloud for backup storage."
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Connecting…"
@@ -534,9 +569,9 @@ msgid "Connections are the sources of data that back up to us. Right now, that's
 msgstr "Connections are the sources of data that back up to us. Right now, that's mostly Immich."
 
 #: ../../web/src/routes/login/invite/+page.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Continue"
 msgstr "Continue"
 
@@ -548,13 +583,17 @@ msgstr "Continue to login"
 msgid "Copied to clipboard"
 msgstr "Copied to clipboard"
 
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Copy"
+msgstr "Copy"
+
 #: src/lib/components/util/DeviceFlowCode.svelte
 msgid "Copy code"
 msgstr "Copy code"
 
-#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
-msgid "Copy recovery key"
-msgstr "Copy recovery key"
+#: src/lib/services/runHistory.service.ts
+msgid "Could not finish backing up."
+msgstr "Could not finish backing up."
 
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "Could not reach FUTO Backups. Check your connection."
@@ -591,10 +630,6 @@ msgstr "Daily"
 #: src/lib/components/dashboard/DashboardDailyBackupTime.svelte
 msgid "Daily Backup Time"
 msgstr "Daily Backup Time"
-
-#: ../../web/src/routes/dashboard/+page.svelte
-msgid "Dashboard"
-msgstr "Dashboard"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Database and metadata"
@@ -647,21 +682,29 @@ msgstr "Disable write-only"
 msgid "Discord account linked. You can head back to Discord."
 msgstr "Discord account linked. You can head back to Discord."
 
-#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
-msgid "Download"
-msgstr "Download"
-
 #: src/lib/services/runHistory.service.ts
 msgid "Download Full Log"
 msgstr "Download Full Log"
 
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Download recovery key"
+msgstr "Download recovery key"
+
+#: src/lib/components/onboarding/RecoveryKeyDisplay.svelte
+msgid "Downloaded"
+msgstr "Downloaded"
+
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Duration {duration}"
-msgstr "Duration {duration}"
+msgid "Duration: {duration}"
+msgstr "Duration: {duration}"
 
 #: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
 msgid "Edit {name}"
 msgstr "Edit {name}"
+
+#: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
+msgid "Enable"
+msgstr "Enable"
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 #: src/lib/utils/format.ts
@@ -676,10 +719,6 @@ msgstr "Encrypted backups protect your data"
 msgid "Encrypted by design"
 msgstr "Encrypted by design"
 
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Ended {date}"
-msgstr "Ended {date}"
-
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Enter a backup name."
 msgstr "Enter a backup name."
@@ -692,6 +731,10 @@ msgstr "Enter a valid cron expression, for example */15 * * * *"
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Enter an invite code to continue."
 msgstr "Enter an invite code to continue."
+
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+msgid "Enter your recovery key to confirm you saved it correctly."
+msgstr "Enter your recovery key to confirm you saved it correctly."
 
 #: src/lib/components/backups/BackupItem.svelte
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
@@ -720,8 +763,6 @@ msgid "External libraries"
 msgstr "External libraries"
 
 #: src/lib/components/backups/BackupItem.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
 #: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Failed"
@@ -906,7 +947,7 @@ msgstr "Finalizing restore"
 msgid "Finish setting up backups"
 msgstr "Finish setting up backups"
 
-#: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Finish setting up FUTO Backups"
 msgstr "Finish setting up FUTO Backups"
 
@@ -926,13 +967,14 @@ msgstr "From"
 msgid "Full speed during quiet hours"
 msgstr "Full speed during quiet hours"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "FUTO Account"
+msgstr "FUTO Account"
+
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
-#: src/lib/components/onboarding/SampleOnboarding.svelte
-#: src/lib/components/onboarding/SampleOnboarding.svelte
-#: src/lib/components/onboarding/SampleOnboarding.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
 #: src/lib/components/onboarding/upsell/UpsellFutoBackupsBadge.svelte
 #: src/lib/components/settings/SettingsBilling.svelte
@@ -940,12 +982,25 @@ msgid "FUTO Backups"
 msgstr "FUTO Backups"
 
 #: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "FUTO Backups adds hosted cloud backup storage to your existing Immich setup, so you have another copy if something happens locally."
-msgstr "FUTO Backups adds hosted cloud backup storage to your existing Immich setup, so you have another copy if something happens locally."
+msgid "FUTO Backups adds backup support to your existing Immich setup, giving you more ways to protect your library if something goes wrong."
+msgstr "FUTO Backups adds backup support to your existing Immich setup, giving you more ways to protect your library if something goes wrong."
 
 #: src/lib/components/integrations/immich/ImmichDatabaseDumpAlert.svelte
 msgid "FUTO Backups already creates the same database backups as Immich."
 msgstr "FUTO Backups already creates the same database backups as Immich."
+
+#: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
+msgid "FUTO cannot restore your backups without this key."
+msgstr "FUTO cannot restore your backups without this key."
+
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "FUTO Cloud"
+msgstr "FUTO Cloud"
+
+#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
+msgid "FUTO Cloud, local storage, or another supported option."
+msgstr "FUTO Cloud, local storage, or another supported option."
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Generated photo previews, can be recreated later."
@@ -972,6 +1027,10 @@ msgstr "Go back"
 msgid "Go up"
 msgstr "Go up"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Hosted"
+msgstr "Hosted"
+
 #: src/lib/components/backends/BackendItem.svelte
 msgid "Hosted cloud backup storage"
 msgstr "Hosted cloud backup storage"
@@ -979,6 +1038,10 @@ msgstr "Hosted cloud backup storage"
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "Hosted cloud backup storage for your Immich library."
 msgstr "Hosted cloud backup storage for your Immich library."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Hosted cloud backup storage from FUTO."
+msgstr "Hosted cloud backup storage from FUTO."
 
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "How it works"
@@ -1012,6 +1075,10 @@ msgstr "Immich database backups are still enabled"
 msgid "Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard."
 msgstr "Immich has prepared recommended settings for your first backup. You can update these anytime from the Backups dashboard."
 
+#: src/lib/components/backups/BackupStatus.svelte
+msgid "Immich is backing up your library. You can close this window and continue using Immich while the backup runs in the background."
+msgstr "Immich is backing up your library. You can close this window and continue using Immich while the backup runs in the background."
+
 #: src/lib/components/backups/dialogs/ImportRepositoryModal.svelte
 #: src/lib/services/repository.service.ts
 msgid "Import"
@@ -1026,10 +1093,14 @@ msgid "Import a different key"
 msgstr "Import a different key"
 
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
+#: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
 msgid "Import key"
 msgstr "Import key"
 
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Import recovery key"
 msgstr "Import recovery key"
 
@@ -1049,21 +1120,13 @@ msgstr "In-progress or incomplete"
 msgid "Include these backup settings, so they survive a restore."
 msgstr "Include these backup settings, so they survive a restore."
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Included"
+msgstr "Included"
+
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Included: {names}"
 msgstr "Included: {names}"
-
-#: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
-msgid "Includes {includedStorage} of backup storage. Additional storage billed by usage."
-msgstr "Includes {includedStorage} of backup storage. Additional storage billed by usage."
-
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Incomplete"
-msgstr "Incomplete"
-
-#: src/lib/components/dashboard/DashboardInstall.svelte
-msgid "Install FUTO Backups"
-msgstr "Install FUTO Backups"
 
 #: ../../web/src/routes/login/invite/+page.svelte
 #: ../../web/src/routes/login/invite/+page.svelte
@@ -1088,8 +1151,8 @@ msgid "Keep this key somewhere safe. It is required to restore your backups."
 msgstr "Keep this key somewhere safe. It is required to restore your backups."
 
 #: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
-msgid "Keep your Immich library safe with our secure, hosted backups solution."
-msgstr "Keep your Immich library safe with our secure, hosted backups solution."
+msgid "Keep your Immich library protected with backups stored locally, remotely, or in the cloud."
+msgstr "Keep your Immich library protected with backups stored locally, remotely, or in the cloud."
 
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
 msgid "Last backup"
@@ -1127,6 +1190,10 @@ msgstr "Learn More"
 msgid "Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones."
 msgstr "Libraries stored outside of Immich. New libraries are included automatically unless you choose specific ones."
 
+#: src/lib/services/runHistory.service.ts
+msgid "Library successfully backed up."
+msgstr "Library successfully backed up."
+
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 msgid "Lift the limit while you are asleep."
 msgstr "Lift the limit while you are asleep."
@@ -1144,8 +1211,8 @@ msgid "Link Discord account @{0} to {1}?"
 msgstr "Link Discord account @{0} to {1}?"
 
 #: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
-msgid "Link this server to your FUTO Backups subscription"
-msgstr "Link this server to your FUTO Backups subscription"
+msgid "Link this Immich server to your FUTO account"
+msgstr "Link this Immich server to your FUTO account"
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Load more"
@@ -1158,8 +1225,7 @@ msgstr "Local directory to store backups."
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
 #: src/lib/components/backups/BackupItem.svelte
-#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 msgid "Local Storage"
 msgstr "Local Storage"
 
@@ -1413,6 +1479,10 @@ msgstr "No snapshots in this repository."
 msgid "Not backed up"
 msgstr "Not backed up"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Not included"
+msgstr "Not included"
+
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow3ConfirmRestore.svelte
 msgid "Not restoring backup configuration"
 msgstr "Not restoring backup configuration"
@@ -1478,6 +1548,10 @@ msgstr "Open"
 #: src/lib/components/ui/StackListItem.svelte
 msgid "Options"
 msgstr "Options"
+
+#: src/lib/components/dashboard/DashboardPage.svelte
+msgid "Overview"
+msgstr "Overview"
 
 #: src/lib/components/ui/Pagination.svelte
 msgid "Page {item}"
@@ -1599,9 +1673,14 @@ msgstr "Reconfigure"
 msgid "Recovery key"
 msgstr "Recovery key"
 
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 msgid "Recovery Key"
 msgstr "Recovery Key"
+
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
+msgid "Recovery key does not match. Check you entered it exactly as saved."
+msgstr "Recovery key does not match. Check you entered it exactly as saved."
 
 #: src/lib/services/backend.service.ts
 msgid "Remove"
@@ -1679,8 +1758,12 @@ msgid "Restore from {name}"
 msgstr "Restore from {name}"
 
 #: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "Restore if your local storage fails"
-msgstr "Restore if your local storage fails"
+msgid "Restore from backup snapshots when needed"
+msgstr "Restore from backup snapshots when needed"
+
+#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
+msgid "Restore in one click"
+msgstr "Restore in one click"
 
 #: src/lib/components/onboarding/restore-point-flow/RestorePointFlow4Restore.svelte
 msgid "Restore progress"
@@ -1691,8 +1774,8 @@ msgid "Restore the Immich database"
 msgstr "Restore the Immich database"
 
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
-msgid "Restore your photos, videos, metadata, database, and configuration from a backup snapshot."
-msgstr "Restore your photos, videos, metadata, database, and configuration from a backup snapshot."
+msgid "Restore your files from an earlier backup whenever you want to return to a previous version."
+msgstr "Restore your files from an earlier backup whenever you want to return to a previous version."
 
 #: src/lib/components/backups/dialogs/ViewStatusModal.svelte
 msgid "restored"
@@ -1743,6 +1826,10 @@ msgstr "Run backups automatically"
 msgid "Run History for {name}"
 msgstr "Run History for {name}"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "S3 Bucket"
+msgstr "S3 Bucket"
+
 #: src/lib/components/backends/BackendItem.svelte
 #: src/lib/components/backups/BackupItem.svelte
 msgid "S3 Server"
@@ -1752,7 +1839,7 @@ msgstr "S3 Server"
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBandwidth.svelte
 #: src/lib/components/integrations/immich/settings/ImmichSettingsSchedule.svelte
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageKeyImport.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte
 #: src/lib/components/settings/SettingsNotifications.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "Save"
@@ -1762,8 +1849,9 @@ msgstr "Save"
 msgid "Save to password manager"
 msgstr "Save to password manager"
 
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
-#: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
 #: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
 msgid "Save your recovery key"
 msgstr "Save your recovery key"
@@ -1787,10 +1875,6 @@ msgstr "Search backups"
 msgid "Search snapshots"
 msgstr "Search snapshots"
 
-#: src/lib/components/onboarding/upsell/UpsellHowItWorks.svelte
-msgid "Securely connect FUTO Backups to Immich."
-msgstr "Securely connect FUTO Backups to Immich."
-
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "Select {name}"
 msgstr "Select {name}"
@@ -1811,6 +1895,10 @@ msgstr "Select files instead"
 msgid "Select new service"
 msgstr "Select new service"
 
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Select where a copy of your Immich library should be stored."
+msgstr "Select where a copy of your Immich library should be stored."
+
 #: src/lib/components/ui/PathPickerModal.svelte
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "Selected paths"
@@ -1824,12 +1912,16 @@ msgstr "Set up"
 msgid "Set up Backups"
 msgstr "Set up Backups"
 
-#: src/lib/components/dashboard/DashboardInstall.svelte
+#: src/lib/components/onboarding/steps/OnboardingStep2ConnectAccount.svelte
+msgid "Set up FUTO Cloud as your backup storage"
+msgstr "Set up FUTO Cloud as your backup storage"
+
+#: src/lib/components/dashboard/DashboardPage.svelte
 msgid "Setup on Immich"
 msgstr "Setup on Immich"
 
 #: src/lib/components/backends/dialogs/SelectBackendModal.svelte
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepBackupServices.svelte
 msgid "Simple, hosted backups."
 msgstr "Simple, hosted backups."
 
@@ -1849,10 +1941,6 @@ msgstr "Skip to content"
 msgid "Slow down backup uploads without affecting restores. Leave empty for no limit."
 msgstr "Slow down backup uploads without affecting restores. Leave empty for no limit."
 
-#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
-msgid "Snapshot restore"
-msgstr "Snapshot restore"
-
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsList.svelte
 #: src/lib/services/repository.service.ts
 msgid "Snapshots"
@@ -1861,6 +1949,10 @@ msgstr "Snapshots"
 #: src/lib/components/backups/snapshots-list/SnapshotsListModal.svelte
 msgid "Snapshots for {name}"
 msgstr "Snapshots for {name}"
+
+#: src/lib/services/runHistory.service.ts
+msgid "Some files could not be backed up. Check the backup log for details."
+msgstr "Some files could not be backed up. Check the backup log for details."
 
 #: src/lib/components/onboarding/OnboardingBootstrapError.svelte
 msgid "Something went wrong"
@@ -1875,8 +1967,8 @@ msgstr "Start backup"
 msgid "Start time"
 msgstr "Start time"
 
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
-#: src/lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte
 msgid "Start your first backup"
 msgstr "Start your first backup"
 
@@ -1893,21 +1985,21 @@ msgstr "Started {date}"
 msgid "Started backup"
 msgstr "Started backup"
 
-#: src/lib/components/onboarding/upsell/UpsellExplainFutoBackups.svelte
-msgid "Starting at {price}/month"
-msgstr "Starting at {price}/month"
-
-#: src/lib/components/onboarding/upsell/UpsellProtectYourImmichLibrary.svelte
-msgid "Starting at {price}/month. Additional storage billed by usage."
-msgstr "Starting at {price}/month. Additional storage billed by usage."
-
 #: src/lib/components/settings/SettingsBilling.svelte
 msgid "Status"
 msgstr "Status"
 
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Status across all of your backups"
+msgstr "Status across all of your backups"
+
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Storage"
 msgstr "Storage"
+
+#: src/lib/components/dashboard/DashboardPage.svelte
+msgid "Storage & Usage"
+msgstr "Storage & Usage"
 
 #: src/lib/components/settings/SettingsBackends.svelte
 msgid "Storage backends"
@@ -1925,9 +2017,17 @@ msgstr "Storage location"
 msgid "Storage Used"
 msgstr "Storage Used"
 
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Success"
-msgstr "Success"
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Store backups on storage shared by someone you trust."
+msgstr "Store backups on storage shared by someone you trust."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Store backups on storage you manage."
+msgstr "Store backups on storage you manage."
+
+#: src/lib/components/onboarding/steps/OnboardingStepChooseStorage.svelte
+msgid "Subscription"
+msgstr "Subscription"
 
 #: src/lib/components/backups/BackupItem.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
@@ -1946,13 +2046,19 @@ msgstr "Successful only"
 msgid "Target"
 msgstr "Target"
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
+#: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Telemetry required for closed beta"
 msgstr "Telemetry required for closed beta"
 
 #: src/lib/services/deviceFlow.service.svelte.ts
 msgid "That account does not own this instance. Log in with the account it was connected with."
 msgstr "That account does not own this instance. Log in with the account it was connected with."
+
+#: src/lib/services/runHistory.service.ts
+msgid "The backup was stopped before it finished."
+msgstr "The backup was stopped before it finished."
 
 #: src/lib/components/ui/PathPickerModal.svelte
 msgid "This folder is empty"
@@ -2060,6 +2166,7 @@ msgstr "View history"
 msgid "View Log"
 msgstr "View Log"
 
+#: src/lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte
 #: src/lib/services/immich.integration.service.ts
 msgid "View recovery key"
 msgstr "View recovery key"
@@ -2068,15 +2175,11 @@ msgstr "View recovery key"
 msgid "Waiting for you to confirm login..."
 msgstr "Waiting for you to confirm login..."
 
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Warning"
-msgstr "Warning"
-
 #: src/lib/components/backups/BackupItem.svelte
 msgid "Warnings"
 msgstr "Warnings"
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "We collect usage and diagnostic data to understand how FUTO Backups is used and to find problems."
 msgstr "We collect usage and diagnostic data to understand how FUTO Backups is used and to find problems."
 
@@ -2105,7 +2208,7 @@ msgstr "When your next FUTO Backups charge will occur."
 msgid "Where do you want this backup restored to?"
 msgstr "Where do you want this backup restored to?"
 
-#: src/lib/components/onboarding/stages/OnboardingStageBackupServices.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
 msgid "Where would you like to restore from?"
 msgstr "Where would you like to restore from?"
 
@@ -2136,10 +2239,6 @@ msgstr "write-only"
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Write-only"
 msgstr "Write-only"
-
-#: src/lib/components/backups/BackupStatus.svelte
-msgid "You can close this window and the backup will continue in the background."
-msgstr "You can close this window and the backup will continue in the background."
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "You can close this window and the prune will continue in the background."
@@ -2173,18 +2272,21 @@ msgstr "Your backup is encrypted and requires your recovery key to restore."
 msgid "Your backup was cancelled"
 msgstr "Your backup was cancelled"
 
-#: src/lib/components/backups/BackupsList.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Your backups"
+msgstr "Your backups"
+
+#: src/lib/components/backups/BackupsList.svelte
 msgid "Your Backups"
 msgstr "Your Backups"
-
-#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
-msgid "Your backups are protected with E2EE encryption, so only your recovery key can restore them."
-msgstr "Your backups are protected with E2EE encryption, so only your recovery key can restore them."
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Your backups are untouched — nothing was lost."
 msgstr "Your backups are untouched — nothing was lost."
+
+#: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
+msgid "Your backups stay encrypted and can only be restored with your recovery key."
+msgstr "Your backups stay encrypted and can only be restored with your recovery key."
 
 #: ../../web/src/routes/login/invite/+page.svelte
 msgid "Your email isn't part of the beta yet."
@@ -2195,8 +2297,8 @@ msgid "Your instance will return to how it was when this snapshot was taken."
 msgstr "Your instance will return to how it was when this snapshot was taken."
 
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
-msgid "Your library"
-msgstr "Your library"
+msgid "Your library backup"
+msgstr "Your library backup"
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Your library could not be backed up"
@@ -2230,7 +2332,7 @@ msgstr "Your library was restored, with warnings"
 msgid "Your media uploaded directly to Immich."
 msgstr "Your media uploaded directly to Immich."
 
-#: src/lib/components/onboarding/stages/OnboardingStageTelemetry.svelte
+#: src/lib/components/onboarding/steps/OnboardingStepTelemetry.svelte
 msgid "Your photos, files, and recovery key are never collected and never leave your device unencrypted."
 msgstr "Your photos, files, and recovery key are never collected and never leave your device unencrypted."
 

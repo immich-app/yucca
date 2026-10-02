@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { Badge, Card, CardBody, getByteUnitString } from "@immich/ui";
+  import { mdiHarddisk } from "@mdi/js";
   import VisualisationGauge from "../ui/VisualisationGauge.svelte";
   import { t } from "svelte-i18n-lingui";
 
@@ -23,10 +24,11 @@
   <CardBody>
     <VisualisationGauge
       title={$t`Total Stored`}
+      icon={mdiHarddisk}
       content={getByteUnitString(totalStored)}
     >
       {#snippet subtitle()}
-        <Badge size="tiny"
+        <Badge size="small"
           >{$t({
             message: "Estimated {size}",
             values: { size: getByteUnitString(estimatedStored) },

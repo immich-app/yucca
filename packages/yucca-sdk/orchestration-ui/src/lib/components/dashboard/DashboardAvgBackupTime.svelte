@@ -2,6 +2,7 @@
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { formatDuration } from "$lib/utils/format";
   import { Card, CardBody } from "@immich/ui";
+  import { mdiHistory } from "@mdi/js";
   import { t } from "svelte-i18n-lingui";
   import VisualisationGauge from "../ui/VisualisationGauge.svelte";
 
@@ -29,6 +30,7 @@
   <CardBody>
     <VisualisationGauge
       title={$t`Avg. Backup Time`}
+      icon={mdiHistory}
       content={avgBackupTime != null ? formatDuration(avgBackupTime) : "—"}
     />
   </CardBody>

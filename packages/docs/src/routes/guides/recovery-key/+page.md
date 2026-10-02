@@ -26,8 +26,8 @@ Every backup on the machine gets its own encryption key, worked out from this on
 
 When the app shows you the key during setup, it gives you three ways to keep it, and will not let you continue until you tick **I saved my recovery key somewhere safe**:
 
-- **Copy recovery key**, to paste into a password manager. This is the option most people should use.
-- **Download**, which saves it as `backups-recovery-code.txt`.
+- **Copy**, to paste into a password manager. This is the option most people should use.
+- **Download recovery key**, which saves it as `backups-recovery-code.txt`.
 - **Print**, for a paper copy.
 
 Good places to keep it: a password manager, a printed copy somewhere safe, or a file on a different machine. A bad place: only on the machine you are backing up, because that is exactly the machine you are protecting against losing.
