@@ -1093,11 +1093,13 @@ msgid "Import a different key"
 msgstr "Import a different key"
 
 #: src/lib/components/onboarding/steps/OnboardingStep1FinishSetup.svelte
+#: src/lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte
 msgid "Import key"
 msgstr "Import key"
 
 #: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
 #: src/lib/components/integrations/immich/ImmichOnboardingRestoreFlow.svelte
+#: src/lib/components/integrations/immich/ImmichOnboardingSetupFlow.svelte
 #: src/lib/components/onboarding/SampleOnboarding.svelte
 msgid "Import recovery key"
 msgstr "Import recovery key"

@@ -5,6 +5,7 @@
   import OnboardingStepSaveRecoveryKey from "$lib/components/onboarding/steps/OnboardingStep3SaveRecoveryKey.svelte";
   import OnboardingStepConfirmRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepConfirmRecoveryKey.svelte";
   import OnboardingStepFirstBackup from "$lib/components/onboarding/steps/OnboardingStep4FirstBackup.svelte";
+  import OnboardingStepImportRecoveryKey from "$lib/components/onboarding/steps/OnboardingStepImportRecoveryKey.svelte";
   import OnboardingStepModal from "$lib/components/onboarding/steps/OnboardingStepModal.svelte";
   import OnboardingStepTelemetry from "$lib/components/onboarding/steps/OnboardingStepTelemetry.svelte";
   import { type OnboardingStatusResponseDto } from "$lib/fetch-client";
@@ -30,6 +31,7 @@
     | "storage"
     | "connect"
     | "key"
+    | "key-import"
     | "key-confirm"
     | "backup"
     | "finished";
@@ -143,6 +145,18 @@
     <OnboardingStepSaveRecoveryKey
       {code}
       onContinue={() => (stage = "key-confirm")}
+      onImportKey={() => (stage = "key-import")}
+    />
+  </OnboardingStepModal>
+{:else if stage === "key-import"}
+  <OnboardingStepModal title={$t`Import recovery key`} onClose={onCancel}>
+    <OnboardingStepImportRecoveryKey
+      onBack={() => (stage = "key")}
+      onImported={(key) => {
+        code = key;
+        void onConfirmKey();
+      }}
+      {onCancel}
     />
   </OnboardingStepModal>
 {:else if stage === "key-confirm"}

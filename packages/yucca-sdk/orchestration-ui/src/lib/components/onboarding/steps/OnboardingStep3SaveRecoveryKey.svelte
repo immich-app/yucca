@@ -10,10 +10,11 @@
   type Props = {
     code: string;
     onContinue: () => void;
+    onImportKey?: () => void;
     loading?: boolean;
   };
 
-  const { code, onContinue, loading = false }: Props = $props();
+  const { code, onContinue, onImportKey, loading = false }: Props = $props();
 
   let saved = $state(false);
 
@@ -23,6 +24,11 @@
       onClick: onContinue,
       disabled: !saved,
       loading,
+    },
+    {
+      label: $t`Import key`,
+      onClick: () => onImportKey?.(),
+      $if: () => !!onImportKey,
     },
   ]);
 </script>
