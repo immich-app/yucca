@@ -228,7 +228,6 @@
 
     {#if onCancel}
       <HStack gap={4} wrap>
-        <!-- <Button shape="round">{$t`Pause backup`}</Button> -->
         <Button variant="ghost" color="danger" shape="round" onclick={onCancel}
           >{$t(cancelLabels[type])}</Button
         >
