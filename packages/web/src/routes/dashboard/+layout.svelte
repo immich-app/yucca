@@ -22,6 +22,7 @@
   import { defaults } from "@futo-org/backups-api-client";
   import { sidebarStore } from "$lib/stores/sidebar.svelte";
   import { beforeNavigate } from "$app/navigation";
+  import FutoBackupsLogo from "$lib/components/FutoBackupsLogo.svelte";
 
   const { data, children } = $props();
 
@@ -47,7 +48,7 @@
           class="md:hidden"
           onclick={() => sidebarStore.toggle()}
         />
-        <Heading size="tiny" tag="h2">FUTO Backups</Heading>
+        <Heading size="tiny" tag="h2"><FutoBackupsLogo /></Heading>
       </HStack>
       <HStack>
         <Avatar name={data.user!.name} />

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FutoBackupsLogo from "$lib/components/FutoBackupsLogo.svelte";
   import { handleError } from "$lib/utils/handle-error";
   import {
     confirmDiscordLinkRequest,
@@ -44,7 +45,7 @@
     <Card>
       <CardBody>
         <VStack>
-          <Heading tag="h1">FUTO Backups</Heading>
+          <Heading tag="h1"><FutoBackupsLogo class="h-12" /></Heading>
           {#if linked}
             <div bind:this={successMessage} tabindex="-1" class="outline-none">
               <Alert color="success"
