@@ -282,6 +282,7 @@ msgstr ""
 msgid "Backup did not complete"
 msgstr ""
 
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/integrations/immich/ImmichBackupsSidebarItem.svelte
 #: src/lib/services/runHistory.service.ts
 msgid "Backup failed"
@@ -292,10 +293,11 @@ msgid "Backup failures"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 msgid "Backup finished"
+msgstr ""
+
+#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
+msgid "Backup finished with warnings"
 msgstr ""
 
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
@@ -436,10 +438,6 @@ msgstr ""
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "Cancel restore"
-msgstr ""
-
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Cancelled"
 msgstr ""
 
 #: src/lib/components/backups/run-history/RepositoryRunHistoryItem.svelte
@@ -697,7 +695,7 @@ msgid "Downloaded"
 msgstr ""
 
 #: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Duration {duration}"
+msgid "Duration: {duration}"
 msgstr ""
 
 #: src/lib/components/schedules/dialogs/ConfigureScheduleModal.svelte
@@ -719,10 +717,6 @@ msgstr ""
 
 #: src/lib/components/onboarding/upsell/UpsellBackupFeaturesGrid.svelte
 msgid "Encrypted by design"
-msgstr ""
-
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Ended {date}"
 msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
@@ -769,8 +763,6 @@ msgid "External libraries"
 msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
 #: src/lib/components/dashboard/DashboardRecentBackups.svelte
 msgid "Failed"
@@ -1132,10 +1124,6 @@ msgstr ""
 
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Included: {names}"
-msgstr ""
-
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Incomplete"
 msgstr ""
 
 #: ../../web/src/routes/login/invite/+page.svelte
@@ -2039,10 +2027,6 @@ msgstr ""
 msgid "Subscription"
 msgstr ""
 
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Success"
-msgstr ""
-
 #: src/lib/components/backups/BackupItem.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
 msgid "Successful"
@@ -2187,10 +2171,6 @@ msgstr ""
 
 #: src/lib/components/util/DeviceFlowCode.svelte
 msgid "Waiting for you to confirm login..."
-msgstr ""
-
-#: src/lib/components/backups/metrics-history/MetricsHistoryModal.svelte
-msgid "Warning"
 msgstr ""
 
 #: src/lib/components/backups/BackupItem.svelte
