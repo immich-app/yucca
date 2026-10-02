@@ -299,7 +299,7 @@ msgid "Backup finished"
 msgstr ""
 
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
-msgid "Backup Health"
+msgid "Backup health"
 msgstr ""
 
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
@@ -2003,6 +2003,10 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Status across all of your backups"
+msgstr ""
+
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Storage"
 msgstr ""
@@ -2286,8 +2290,11 @@ msgstr ""
 msgid "Your backup was cancelled"
 msgstr ""
 
-#: src/lib/components/backups/BackupsList.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Your backups"
+msgstr ""
+
+#: src/lib/components/backups/BackupsList.svelte
 msgid "Your Backups"
 msgstr ""
 

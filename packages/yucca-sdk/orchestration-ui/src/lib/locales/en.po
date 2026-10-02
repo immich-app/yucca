@@ -299,8 +299,8 @@ msgid "Backup finished"
 msgstr "Backup finished"
 
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
-msgid "Backup Health"
-msgstr "Backup Health"
+msgid "Backup health"
+msgstr "Backup health"
 
 #: src/lib/components/integrations/immich/ImmichManageBackupOverview.svelte
 msgid "Backup in progress"
@@ -2003,6 +2003,10 @@ msgstr "Started backup"
 msgid "Status"
 msgstr "Status"
 
+#: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Status across all of your backups"
+msgstr "Status across all of your backups"
+
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Storage"
 msgstr "Storage"
@@ -2286,8 +2290,11 @@ msgstr "Your backup is encrypted and requires your recovery key to restore."
 msgid "Your backup was cancelled"
 msgstr "Your backup was cancelled"
 
-#: src/lib/components/backups/BackupsList.svelte
 #: src/lib/components/dashboard/DashboardBackupHealth.svelte
+msgid "Your backups"
+msgstr "Your backups"
+
+#: src/lib/components/backups/BackupsList.svelte
 msgid "Your Backups"
 msgstr "Your Backups"
 

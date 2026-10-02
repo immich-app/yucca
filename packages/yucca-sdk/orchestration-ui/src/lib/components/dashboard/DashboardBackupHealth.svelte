@@ -1,15 +1,11 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
-  import {
-    Button,
-    Card,
-    CardBody,
-    CardHeader,
-    CardTitle,
-    HStack,
-  } from "@immich/ui";
+  import { Badge, Button, Card, Icon } from "@immich/ui";
+  import { mdiProgressCheck } from "@mdi/js";
   import { getProvider } from "$lib/providers";
   import { getBackupOutcome } from "$lib/utils/backup-status";
+  import Section from "../ui/Section.svelte";
+  import StackListItem from "../ui/StackListItem.svelte";
   import VisualisationSegmentedBar from "../ui/VisualisationSegmentedBar.svelte";
   import { t } from "svelte-i18n-lingui";
 
@@ -62,62 +58,72 @@
   );
 </script>
 
-<Card class="border-primary-100 shadow-none">
-  <CardHeader>
-    <HStack class="justify-between">
-      <CardTitle tag="h2">{$t`Your Backups`}</CardTitle>
-      {#if onViewBackups}
-        <Button variant="outline" size="tiny" onclick={onViewBackups}>
-          {$t`View all`}
-        </Button>
-      {/if}
-    </HStack>
-  </CardHeader>
-  <CardBody>
-    <VisualisationSegmentedBar
-      title={$t`Backup Health`}
-      summary={$t({
-        message: "{successful} of {total} successful",
-        values: { successful: status.success, total },
-      })}
-      segments={[
-        {
-          value: status.success,
-          label: $t`Successful`,
-          color: "var(--immich-ui-success-500)",
-          badge: "success",
-        },
-        {
-          value: status.incomplete,
-          label: $t`In-progress or incomplete`,
-          color: "var(--immich-ui-info-400)",
-          badge: "info",
-        },
-        {
-          value: status.offline,
-          label: $t`Offline`,
-          color: "var(--immich-ui-warning-500)",
-          badge: "warning",
-        },
-        {
-          value: status.warned,
-          label: $t`With warnings`,
-          color: "var(--immich-ui-warning-500)",
-          badge: "warning",
-        },
-        {
-          value: status.failed,
-          label: $t`Failed`,
-          color: "var(--immich-ui-danger-500)",
-          badge: "danger",
-        },
-        {
-          value: status.neverRun,
-          label: $t`Never Run`,
-          color: "var(--immich-ui-light-400)",
-          badge: "secondary",
-        },
-      ]}
-    />
-  </CardBody>
-</Card>
+<Section>
+  {#snippet title()}
+    {$t`Your backups`}
+  {/snippet}
+
+  {#snippet action()}
+    {#if onViewBackups}
+      <Button variant="ghost" size="small" onclick={onViewBackups}>
+        {$t`View all`}
+      </Button>
+    {/if}
+  {/snippet}
+
+  <Card class="border-primary-100 shadow-none">
+    <StackListItem title={$t`Backup health`}>
+      {#snippet icon()}
+        <Icon icon={mdiProgressCheck} />
+      {/snippet}
+
+      {$t`Status across all of your backups`}
+
+      {#snippet trailing()}
+        <Badge size="small" color="success">
+          {$t({
+            message: "{successful} of {total} successful",
+            values: { successful: status.success, total },
+          })}
+        </Badge>
+      {/snippet}
+    </StackListItem>
+
+    <div class="px-5 pb-5">
+      <VisualisationSegmentedBar
+        segments={[
+          {
+            value: status.success,
+            label: $t`Successful`,
+            color: "var(--immich-ui-success-500)",
+          },
+          {
+            value: status.incomplete,
+            label: $t`In-progress or incomplete`,
+            color: "var(--immich-ui-info-400)",
+          },
+          {
+            value: status.offline,
+            label: $t`Offline`,
+            color: "var(--immich-ui-warning-500)",
+          },
+          {
+            value: status.warned,
+            label: $t`With warnings`,
+            color: "var(--immich-ui-warning-500)",
+          },
+          {
+            value: status.failed,
+            label: $t`Failed`,
+            color: "var(--immich-ui-danger-500)",
+          },
+          {
+            value: status.neverRun,
+            label: $t`Never Run`,
+            color: "var(--immich-ui-light-400)",
+          },
+        ]}
+      />
+    </div>
+  </Card>
+</Section>

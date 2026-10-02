@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { LocalRepositoryDto } from "$lib/fetch-client";
   import { getBackupOutcome } from "$lib/utils/backup-status";
-  import { Alert, Text } from "@immich/ui";
+  import { Alert, HStack, Text } from "@immich/ui";
   import SegmentedBar from "../../ui/VisualisationSegmentedBar.svelte";
 
   type Props = {
@@ -62,33 +62,32 @@
   </Alert>
 {/if}
 
+<HStack class="justify-between">
+  <Text size="large">Backup Health</Text>
+  <Text color="secondary">{status.success} of {total} successful</Text>
+</HStack>
+
 <SegmentedBar
-  title="Backup Health"
-  summary="{status.success} of {total} successful"
   segments={[
     {
       value: status.success,
       label: "Successful",
       color: "var(--immich-ui-success-500)",
-      badge: "success",
     },
     {
       value: status.offline,
       label: "Offline",
       color: "var(--immich-ui-warning-500)",
-      badge: "warning",
     },
     {
       value: status.failed,
       label: "Failed",
       color: "var(--immich-ui-danger-500)",
-      badge: "danger",
     },
     {
       value: status.neverRun,
       label: "Never Run",
       color: "var(--immich-ui-light-400)",
-      badge: "secondary",
     },
   ]}
 />
