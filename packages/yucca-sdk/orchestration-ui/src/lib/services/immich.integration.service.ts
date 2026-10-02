@@ -84,7 +84,7 @@ export type ImmichBackupStatus =
       lastBackup: string;
     };
 
-const toImmichBackupStatus = (
+export const toImmichBackupStatus = (
   data: ImmichBackupStatusDto | undefined,
   loading: boolean,
 ): ImmichBackupStatus => {
@@ -104,15 +104,15 @@ const toImmichBackupStatus = (
     return { kind: 'running' };
   }
 
+  if (data.schedule?.paused) {
+    return { kind: 'paused' };
+  }
+
   const outcome = getBackupOutcome(data.repository?.metrics);
   const lastBackup = data.repository?.metrics.lastBackup;
 
   if (lastBackup && outcome !== 'never') {
     return { kind: outcome, lastBackup };
-  }
-
-  if (data.schedule?.paused) {
-    return { kind: 'paused' };
   }
 
   return { kind: data.repository ? 'never' : 'unconfigured' };
