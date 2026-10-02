@@ -195,9 +195,23 @@ describe('Repository', () => {
       expect(cleanupDatabaseBackups).not.toHaveBeenCalled();
     });
 
-    it('still backs up without a tag when the database backup hook fails', async () => {
-      await backupWithHooks({ createDatabaseBackup: jest.fn().mockRejectedValue(new Error('pg_dump failed')) });
+    it('still backs up without a tag and finishes with a warning when the database backup hook fails', async () => {
+      const metricsEvent = waitForEvent(ctx.events, 'RepositoryUpdate');
 
+      await expect(
+        backupWithHooks({ createDatabaseBackup: jest.fn().mockRejectedValue(new Error('pg_dump failed')) }),
+      ).rejects.toMatchObject({
+        message: 'Task finished with warnings',
+        errors: [expect.objectContaining({ message: 'Database dump failed: Error: pg_dump failed' })],
+      });
+
+      await expect(metricsEvent).resolves.toEqual(
+        expect.objectContaining({
+          repository: expect.objectContaining({
+            metrics: expect.objectContaining({ lastBackupStatus: TaskStatus.Warn }),
+          }),
+        }),
+      );
       expect(ctx.resticMock.backup).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -209,10 +223,26 @@ describe('Repository', () => {
       );
     });
 
-    it('completes the backup when cleanup rejects', async () => {
+    it('finishes with a warning when cleanup rejects', async () => {
       await expect(
         backupWithHooks({ cleanupDatabaseBackups: jest.fn().mockRejectedValue(new Error('locked')) }),
-      ).resolves.toBeUndefined();
+      ).rejects.toMatchObject({
+        errors: [expect.objectContaining({ message: 'Database backup cleanup failed: Error: locked' })],
+      });
+    });
+
+    it('collects every hook failure into one warning', async () => {
+      await expect(
+        backupWithHooks({
+          createDatabaseBackup: jest.fn().mockRejectedValue(new Error('pg_dump failed')),
+          cleanupDatabaseBackups: jest.fn().mockRejectedValue(new Error('locked')),
+        }),
+      ).rejects.toMatchObject({
+        errors: [
+          expect.objectContaining({ message: 'Database dump failed: Error: pg_dump failed' }),
+          expect.objectContaining({ message: 'Database backup cleanup failed: Error: locked' }),
+        ],
+      });
     });
   });
 
