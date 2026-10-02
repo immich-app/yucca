@@ -13,10 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: ../../web/src/routes/dashboard/connections/+page.svelte
-msgid "{0} repositories"
-msgstr "{0} repositories"
-
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
 msgid "{count} changed"
 msgstr "{count} changed"
@@ -80,6 +76,10 @@ msgstr "{num, plural, one {# backup removed} other {# backups removed}}"
 #: src/lib/components/backups/snapshots-list/RepositorySnapshotsListItem.svelte
 msgid "{num, plural, one {# file} other {# files}}"
 msgstr "{num, plural, one {# file} other {# files}}"
+
+#: ../../web/src/routes/dashboard/connections/+page.svelte
+msgid "{num, plural, one {# repository} other {# repositories}}"
+msgstr "{num, plural, one {# repository} other {# repositories}}"
 
 #: src/lib/components/backups/BackupStatus.svelte
 msgid "{num, plural, one {Completed with # warning.} other {Completed with # warnings.}}"
