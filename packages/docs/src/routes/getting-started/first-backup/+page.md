@@ -8,6 +8,10 @@ Once the app is installed, setup takes three things: connecting your account, sa
 
 Immich asks you to connect your account first and shows the recovery key after. The standalone app does it the other way round. Either way you do both.
 
+## Choose where your backups live
+
+Immich starts by asking where your backups should be stored. Currently only FUTO Cloud is available.
+
 ## Connect your account
 
 The **Connect your FUTO account** step links the machine to the account you signed up with.
