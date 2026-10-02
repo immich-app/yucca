@@ -67,7 +67,7 @@
       inert={!sidebarStore.isOpen}
     >
       <NavbarItem
-        title="Dashboard"
+        title="Overview"
         href="/dashboard"
         icon={mdiViewDashboard}
         active={page.url.pathname === "/dashboard"}

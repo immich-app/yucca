@@ -633,10 +633,6 @@ msgstr "Daily"
 msgid "Daily Backup Time"
 msgstr "Daily Backup Time"
 
-#: ../../web/src/routes/dashboard/+page.svelte
-msgid "Dashboard"
-msgstr "Dashboard"
-
 #: src/lib/components/integrations/immich/settings/ImmichSettingsBackupContents.svelte
 msgid "Database and metadata"
 msgstr "Database and metadata"
@@ -1142,10 +1138,6 @@ msgstr "Included: {names}"
 msgid "Incomplete"
 msgstr "Incomplete"
 
-#: src/lib/components/dashboard/DashboardInstall.svelte
-msgid "Install FUTO Backups"
-msgstr "Install FUTO Backups"
-
 #: ../../web/src/routes/login/invite/+page.svelte
 #: ../../web/src/routes/login/invite/+page.svelte
 #: ../../web/src/routes/login/invite/+page.svelte
@@ -1567,6 +1559,10 @@ msgstr "Open"
 msgid "Options"
 msgstr "Options"
 
+#: src/lib/components/dashboard/DashboardPage.svelte
+msgid "Overview"
+msgstr "Overview"
+
 #: src/lib/components/ui/Pagination.svelte
 msgid "Page {item}"
 msgstr "Page {item}"
@@ -1930,7 +1926,7 @@ msgstr "Set up Backups"
 msgid "Set up FUTO Cloud as your backup storage"
 msgstr "Set up FUTO Cloud as your backup storage"
 
-#: src/lib/components/dashboard/DashboardInstall.svelte
+#: src/lib/components/dashboard/DashboardPage.svelte
 msgid "Setup on Immich"
 msgstr "Setup on Immich"
 
@@ -2010,6 +2006,10 @@ msgstr "Status across all of your backups"
 #: src/lib/components/integrations/immich/settings/ImmichSettingsStorage.svelte
 msgid "Storage"
 msgstr "Storage"
+
+#: src/lib/components/dashboard/DashboardPage.svelte
+msgid "Storage & Usage"
+msgstr "Storage & Usage"
 
 #: src/lib/components/settings/SettingsBackends.svelte
 msgid "Storage backends"
