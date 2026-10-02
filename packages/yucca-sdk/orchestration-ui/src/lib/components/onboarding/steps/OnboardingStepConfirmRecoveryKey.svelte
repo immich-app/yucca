@@ -44,12 +44,19 @@
     }}
   >
     <Field label={$t`Recovery Key`} invalid={mismatch}>
-      <Input bind:value autocomplete="off" spellcheck={false} />
-      {#if mismatch}
-        <HelperText color="danger"
-          >{$t`Recovery key does not match. Check you entered it exactly as saved.`}</HelperText
-        >
-      {/if}
+      <Input
+        bind:value
+        autocomplete="off"
+        spellcheck={false}
+        oninput={() => (mismatch = false)}
+      />
+      <div role="alert">
+        {#if mismatch}
+          <HelperText color="danger"
+            >{$t`Recovery key does not match. Check you entered it exactly as saved.`}</HelperText
+          >
+        {/if}
+      </div>
     </Field>
   </form>
 </OnboardingStepLayout>
