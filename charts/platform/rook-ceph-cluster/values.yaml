@@ -2,7 +2,7 @@
 clusterName: rook-ceph
 dataDirHostPath: /var/lib/rook
 # Pin to match the rook-ceph operator appVersion (Renovate keeps these in step).
-cephImage: quay.io/ceph/ceph:v19.2.2@sha256:8214ebff6133ac27d20659038df6962dbf9d77da21c9438a296b2e2059a56af6
+cephImage: quay.io/ceph/ceph:v19.2.6@sha256:ff836bb28e7d0be0ec4dd22e79407174452a96e11ee62e9cdd1fa47f4bcc3bdc
 
 mon:
   count: 1
