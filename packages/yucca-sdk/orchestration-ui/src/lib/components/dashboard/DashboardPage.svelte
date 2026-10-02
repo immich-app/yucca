@@ -44,27 +44,27 @@
 <OnEvents {onRepositoryCreate} {onRepositoryUpdate} />
 <BackupTaskMonitor />
 
-{#if query.isLoading}
-  <LoadingSpinner />
-{:else if query.isError}
-  <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
-{:else if query.isSuccess}
-  <Stack gap={6}>
-    <HStack class="items-center justify-between" wrap>
-      <Heading tag="h1" size="medium">{$t`Overview`}</Heading>
+<Stack gap={6}>
+  <HStack class="items-center justify-between" wrap>
+    <Heading tag="h1" size="medium">{$t`Overview`}</Heading>
 
-      {#if !local}
-        <Button
-          href="https://my.immich.app/link?target=backups"
-          variant="outline"
-          size="small"
-        >
-          <Logo variant="icon" size="tiny" />
-          {$t`Setup on Immich`}
-        </Button>
-      {/if}
-    </HStack>
+    {#if !local}
+      <Button
+        href="https://my.immich.app/link?target=backups"
+        variant="outline"
+        size="small"
+      >
+        <Logo variant="icon" size="tiny" />
+        {$t`Setup on Immich`}
+      </Button>
+    {/if}
+  </HStack>
 
+  {#if query.isLoading}
+    <LoadingSpinner />
+  {:else if query.isError}
+    <Alert color="danger">{getReadableErrorMessage(query.error)}</Alert>
+  {:else if query.isSuccess}
     <DashboardBackupHealth repositories={query.data} {onViewBackups} />
 
     <Section>
@@ -81,5 +81,5 @@
     </Section>
 
     <DashboardRecentBackups repositories={query.data} />
-  </Stack>
-{/if}
+  {/if}
+</Stack>
