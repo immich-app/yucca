@@ -27,10 +27,11 @@ const (
 
 var errToolBudget = errors.New("tool budget exhausted — write your conclusion with what you have")
 
-// toolbox is the complete capability surface the model gets: two read-only
-// queries pre-scoped to one user, a fixed-probe fleet-health check, and an
-// in-process jq over stored results. No tool takes a URL, a header, or a
-// credential.
+// toolbox is the complete capability surface the model gets: three read-only
+// queries pre-scoped to one user — metrics and service logs by customerId,
+// the Ceph gateway log by the account's own bucket set — plus a fixed-probe
+// fleet-health check and an in-process jq over stored results. No tool takes
+// a URL, a header, or a credential.
 type toolbox struct {
 	o11y  *o11y.Client
 	store *ResultStore
@@ -40,6 +41,10 @@ type toolbox struct {
 	maxCalls  int
 	maxResult int
 	queries   []string
+
+	bucketsOnce sync.Once
+	buckets     []string
+	bucketsErr  error
 }
 
 func newToolbox(client *o11y.Client, store *ResultStore, maxCalls, maxResult int) *toolbox {
@@ -55,6 +60,10 @@ func (t *toolbox) tools() ([]tool.BaseTool, error) {
 	if err != nil {
 		return nil, err
 	}
+	rgw, err := utils.InferTool("query_rgw_logs", rgwLogsDescription, audited("query_rgw_logs", t.queryRGWLogs))
+	if err != nil {
+		return nil, err
+	}
 	health, err := utils.InferTool("query_health", healthDescription(), audited("query_health", t.queryHealth))
 	if err != nil {
 		return nil, err
@@ -67,8 +76,8 @@ func (t *toolbox) tools() ([]tool.BaseTool, error) {
 	// not run failures: the model gets the error text and can correct itself
 	// instead of the whole investigation dying on a syntax error. MaxStep
 	// still bounds a model that never recovers.
-	wrapped := make([]tool.BaseTool, 0, 4)
-	for _, t := range []tool.BaseTool{metrics, logs, health, jq} {
+	wrapped := make([]tool.BaseTool, 0, 5)
+	for _, t := range []tool.BaseTool{metrics, logs, rgw, health, jq} {
 		wrapped = append(wrapped, utils.WrapToolWithErrorHandler(t, func(_ context.Context, err error) string {
 			return "ERROR: " + err.Error()
 		}))
@@ -213,6 +222,60 @@ func (t *toolbox) queryLogs(ctx context.Context, args logsArgs) (string, error) 
 		return "", err
 	}
 	return t.deliver(result), nil
+}
+
+const rgwLogsDescription = "Run a LogsQL query against the Ceph object-gateway (RGW) access log for THIS USER'S buckets only. " +
+	"This is the storage tier's own record of the same requests michael serves, so it settles whether a write actually reached Ceph and what Ceph answered. " +
+	"Every line is pre-filtered to buckets this account owns and pre-parsed into the fields op, bucket, status (Ceph code, 0 = ok), http_status, latency (seconds) and request_id — " +
+	"your query filters on those extracted fields, so write it as a plain expression such as `http_status:!=\"200\"` or `op:=\"put_obj\"`, and leave it empty to see everything. " +
+	"Pipes work: `| stats by (op, http_status) count() c`. Do not add bucket or user filters yourself."
+
+type rgwLogsArgs struct {
+	Query string `json:"query,omitempty" jsonschema:"description=Filter over the extracted fields (op/bucket/status/http_status/latency/request_id); empty means no filter"`
+	Start string `json:"start,omitempty" jsonschema:"description=Range start as RFC3339 or unix seconds; defaults to 24h ago, capped at 30 days back"`
+	End   string `json:"end,omitempty" jsonschema:"description=Range end as RFC3339 or unix seconds; defaults to now"`
+	Limit int    `json:"limit,omitempty" jsonschema:"description=Maximum entries to return; defaults to 100, capped at 1000"`
+}
+
+func (t *toolbox) queryRGWLogs(ctx context.Context, args rgwLogsArgs) (string, error) {
+	if err := t.spend("rgw: " + args.Query); err != nil {
+		return "", err
+	}
+	buckets, err := t.scopedBuckets(ctx)
+	if err != nil {
+		return "", err
+	}
+	start, end, err := resolveRange(args.Start, args.End, time.Now().UTC())
+	if err != nil {
+		return "", err
+	}
+	limit := args.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	result, err := t.o11y.QueryRGWLogs(ctx, buckets, args.Query, start, end, limit)
+	if err != nil {
+		return "", err
+	}
+	return t.deliver(result), nil
+}
+
+// scopedBuckets resolves the account's bucket names once per investigation.
+// It is the whole security boundary for the RGW tool — the gateway's logs
+// carry no per-user field — so it is deliberately not something the model can
+// influence, and a lookup failure fails the tool closed rather than falling
+// back to an unscoped read.
+func (t *toolbox) scopedBuckets(ctx context.Context) ([]string, error) {
+	t.bucketsOnce.Do(func() {
+		t.buckets, t.bucketsErr = t.o11y.RepositoryIDs(ctx, maxLookback)
+	})
+	if t.bucketsErr != nil {
+		return nil, fmt.Errorf("could not resolve this account's buckets, refusing to query the gateway log unscoped: %w", t.bucketsErr)
+	}
+	return t.buckets, nil
 }
 
 const jqDescription = "Run a jq program over a stored result (by ref from query_metrics/query_logs). " +
