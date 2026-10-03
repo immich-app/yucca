@@ -77,7 +77,7 @@ resource "talos_machine_configuration_apply" "cp" {
   node           = each.value.provisioned ? each.value.cp_ip : each.value.maint_ip
   endpoint       = each.value.provisioned ? each.value.cp_ip : each.value.maint_ip
   config_patches = local.cp_node_patches[each.key]
-  apply_mode     = "auto"
+  apply_mode = "staged_if_needing_reboot"
 
   # reset=false: decommissioning an etcd member must be a deliberate
   # `talosctl reset` (after `etcd leave`), never a terraform destroy side effect.

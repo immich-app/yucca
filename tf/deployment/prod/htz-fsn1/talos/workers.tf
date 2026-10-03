@@ -84,7 +84,8 @@ resource "talos_machine_configuration_apply" "worker" {
   node           = each.value.provisioned ? each.value.fabric_ip : each.value.maint_ip
   endpoint       = each.value.provisioned ? each.value.fabric_ip : each.value.maint_ip
   config_patches = local.worker_node_patches[each.key]
-  apply_mode     = "auto"
+  # Staged instead of auto-reboot; see the cp apply in controlplane.tf.
+  apply_mode = "staged_if_needing_reboot"
 
   # reset=false: decommissioning a Mayastor-bearing node must be a deliberate
   # `talosctl reset`, never a terraform destroy side effect (a removed tfvars
